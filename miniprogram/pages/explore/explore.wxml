@@ -1,17 +1,32 @@
 <view class="page">
-  <view class="page-title">探索页面</view>
+  <view class="section-label">MODE SELECT</view>
+  <view class="page-title">寻找传说</view>
   <view class="page-subtitle">
-    这里将来会承接地点探索、故事发现等能力。本轮仅保留页面结构和跳转入口。
+    你想听哪一种故事？同一个地点，换一个叙述角度，气质就会完全不同。
   </view>
 
-  <view class="card">
-    <view class="card-title">故事详情预留</view>
-    <view class="card-text">
-      当前可以从探索页进入故事详情占位页，用于验证路由链路是否正常。
+  <view
+    wx:for="{{storyModes}}"
+    wx:key="key"
+    class="mode-card panel {{item.featured ? 'featured' : ''}} {{!item.enabled ? 'disabled' : ''}}"
+    data-type="{{item.key}}"
+    data-enabled="{{item.enabled}}"
+    bindtap="goToStory"
+  >
+    <view class="mode-top">
+      <view class="mode-title-wrap">
+        <view class="panel-title">{{item.title}}</view>
+        <view wx:if="{{item.featured}}" class="tag">推荐</view>
+      </view>
+      <view wx:if="{{item.statusText}}" class="mode-status">{{item.statusText}}</view>
     </view>
-  </view>
 
-  <view class="actions">
-    <button class="action-button" bindtap="goToStory">进入故事详情</button>
+    <view class="panel-text">
+      {{item.description}}
+    </view>
+
+    <view class="mode-footer">
+      <text class="mode-entry">{{item.enabled ? '进入故事详情' : '敬请期待'}}</text>
+    </view>
   </view>
 </view>

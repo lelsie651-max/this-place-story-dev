@@ -1,3 +1,47 @@
-.card-title {
-  color: #7c3aed;
+.story-title {
+  margin-top: 18rpx;
+  margin-bottom: 10rpx;
+}
+
+.location-text {
+  margin-bottom: 28rpx;
+}
+
+.story-card {
+  background: linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(249, 240, 226, 0.94));
+}
+
+.story-content {
+  color: #4c3424;
+  line-height: 1.9;
+}
+
+.story-paragraph {
+  margin-bottom: 24rpx;
+  white-space: pre-line;
+}
+
+.story-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.story-meta {
+  background: rgba(255, 247, 235, 0.88);
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0;
+}
+
+.meta-label {
+  color: #8a725c;
+  font-size: 26rpx;
+}
+
+.meta-value {
+  color: #6b4527;
+  font-size: 28rpx;
 }

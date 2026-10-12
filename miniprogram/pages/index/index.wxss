@@ -1,3 +1,61 @@
-.page-title {
-  margin-top: 12rpx;
+.hero {
+  margin-bottom: 28rpx;
+}
+
+.hero-title {
+  margin-bottom: 14rpx;
+  font-size: 72rpx;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #412a1f;
+}
+
+.hero-subtitle {
+  margin-bottom: 20rpx;
+  color: #8b5e34;
+  font-size: 32rpx;
+}
+
+.hero-copy {
+  color: #6f5740;
+  line-height: 1.8;
+}
+
+.location-card {
+  background: linear-gradient(180deg, rgba(255, 251, 244, 0.95), rgba(247, 236, 219, 0.95));
+}
+
+.location-label {
+  margin-bottom: 12rpx;
+  color: #8b5e34;
+  font-size: 28rpx;
+}
+
+.location-value {
+  margin-bottom: 14rpx;
+  font-size: 44rpx;
+  font-weight: 600;
+  color: #4c3424;
+}
+
+.primary-entry {
+  text-align: center;
+}
+
+.entry-icon {
+  margin-bottom: 16rpx;
+  font-size: 72rpx;
+}
+
+.quick-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.quick-card .quick-title {
+  margin-bottom: 14rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #4c3424;
 }

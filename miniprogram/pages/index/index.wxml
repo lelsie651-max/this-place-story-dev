@@ -1,18 +1,45 @@
 <view class="page">
-  <view class="page-title">此地有传说</view>
-  <view class="page-subtitle">
-    一个基于地点与故事探索的小程序骨架。当前页面仅用于工程初始化验收。
-  </view>
-
-  <view class="card">
-    <view class="card-title">本轮状态</view>
-    <view class="card-text">
-      已完成原生小程序基础入口、页面路由、类型目录和云函数目录占位。
+  <view class="section-label">THIS PLACE HAS LEGENDS</view>
+  <view class="hero">
+    <view class="hero-title">此地有传说</view>
+    <view class="hero-subtitle">一个会讲故事的 AI 地图</view>
+    <view class="hero-copy">
+      从熟悉的地名里，翻出一点未被说完的故事。此刻还未定位，你可以先从假数据浏览完整体验。
     </view>
   </view>
 
-  <view class="actions">
-    <button class="action-button" bindtap="goToExplore">进入探索页面</button>
-    <button class="action-button secondary" bindtap="goToAtlas">进入图鉴页面</button>
+  <view class="location-card panel">
+    <view class="location-label">📍 当前位置</view>
+    <view class="location-value">等待发现</view>
+    <view class="panel-text">等你靠近一处地方，传说才会慢慢浮出来。</view>
+  </view>
+
+  <view class="primary-entry panel">
+    <view class="entry-icon">🔍</view>
+    <view class="panel-title">寻找附近的传说</view>
+    <view class="panel-text">
+      从不同讲述视角进入同一地点，先看看民间传说和 AI 观察会怎么描述这里。
+    </view>
+    <view class="actions">
+      <button class="action-button" bindtap="goToExplore">寻找传说</button>
+    </view>
+  </view>
+
+  <view class="quick-grid">
+    <view class="quick-card panel">
+      <view class="quick-title">✍ 分享你的传说</view>
+      <view class="panel-text">先预留入口，后续再开放投稿与旅人故事分享。</view>
+      <button class="action-button ghost" bindtap="showComingSoon">即将开放</button>
+    </view>
+
+    <view class="quick-card panel">
+      <view class="quick-title">🗺 我的图鉴</view>
+      <view class="panel-text">浏览已经收集到的地点卡片，感受产品收藏感。</view>
+      <button class="action-button secondary" bindtap="goToProfile">进入图鉴</button>
+    </view>
+  </view>
+
+  <view class="page-note">
+    当前为产品外观演示版，数据均为本地假数据。
   </view>
 </view>

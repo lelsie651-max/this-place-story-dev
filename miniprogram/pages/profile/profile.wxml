@@ -1,13 +1,18 @@
 <view class="page">
-  <view class="page-title">图鉴页面</view>
+  <view class="section-label">MY ATLAS</view>
+  <view class="page-title">我的传说图鉴</view>
   <view class="page-subtitle">
-    这里预留给个人传说图鉴、收藏内容和后续用户相关能力。
+    先用假数据建立收藏感和陈列感，后续再接真实地点、故事和用户数据。
   </view>
 
-  <view class="card">
-    <view class="card-title">后续扩展方向</view>
-    <view class="card-text">
-      可以继续在这里承接收藏列表、个人记录与图鉴统计等模块。
-    </view>
+  <view class="summary-card panel">
+    <view class="summary-number">{{atlasItems.length}}</view>
+    <view class="summary-label">已探索地点</view>
+  </view>
+
+  <view wx:for="{{atlasItems}}" wx:key="id" class="atlas-card panel">
+    <view class="atlas-location">📍 {{item.location}}</view>
+    <view class="atlas-type">{{item.type}}</view>
+    <view class="panel-text">{{item.note}}</view>
   </view>
 </view>

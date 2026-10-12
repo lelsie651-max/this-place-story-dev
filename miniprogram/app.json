@@ -7,9 +7,9 @@
   ],
   "window": {
     "navigationBarTitleText": "此地有传说",
-    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarBackgroundColor": "#f6efe2",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#f5f7fb",
+    "backgroundColor": "#efe4d2",
     "backgroundTextStyle": "light"
   },
   "style": "v2",

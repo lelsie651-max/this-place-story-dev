@@ -1,13 +1,33 @@
 <view class="page">
-  <view class="page-title">故事详情页</view>
-  <view class="page-subtitle">
-    当前仅为占位页面，后续会在这里展示地点故事、来源信息与交互能力。
-  </view>
+  <view class="section-label">STORY VIEW</view>
+  <view class="tag">{{currentStory.type}}</view>
+  <view class="page-title story-title">{{currentStory.title}}</view>
+  <view class="page-subtitle location-text">📍 {{currentStory.location}}</view>
 
-  <view class="card">
-    <view class="card-title">占位说明</view>
-    <view class="card-text">
-      本轮没有接入 AI、数据库、定位或云函数调用，仅保留详情页骨架。
+  <view class="story-card panel">
+    <view class="panel-title">故事正文</view>
+    <view class="story-content">
+      <view wx:for="{{contentParagraphs}}" wx:key="index" class="story-paragraph">
+        {{item}}
+      </view>
     </view>
   </view>
+
+  <view class="story-meta panel">
+    <view class="meta-row">
+      <text class="meta-label">故事来源</text>
+      <text class="meta-value">{{currentStory.source}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">展示模式</text>
+      <text class="meta-value">{{currentStory.type}}</text>
+    </view>
+  </view>
+
+  <view class="actions">
+    <button class="action-button" bindtap="handleCollect">❤️ 收藏</button>
+    <button class="action-button secondary" bindtap="backToHome">返回首页</button>
+  </view>
+
+  <view class="page-note">AI生成内容，仅供娱乐阅读。</view>
 </view>
