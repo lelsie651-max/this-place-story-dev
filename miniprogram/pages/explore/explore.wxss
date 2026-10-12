@@ -1,0 +1,3 @@
+.card {
+  border-left: 8rpx solid #2563eb;
+}

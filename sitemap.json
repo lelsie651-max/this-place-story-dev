@@ -1,0 +1,9 @@
+{
+  "desc": "sitemap for this-place-story-dev",
+  "rules": [
+    {
+      "action": "allow",
+      "page": "*"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+<view class="page">
+  <view class="page-title">故事详情页</view>
+  <view class="page-subtitle">
+    当前仅为占位页面，后续会在这里展示地点故事、来源信息与交互能力。
+  </view>
+
+  <view class="card">
+    <view class="card-title">占位说明</view>
+    <view class="card-text">
+      本轮没有接入 AI、数据库、定位或云函数调用，仅保留详情页骨架。
+    </view>
+  </view>
+</view>

@@ -1,0 +1,17 @@
+<view class="page">
+  <view class="page-title">探索页面</view>
+  <view class="page-subtitle">
+    这里将来会承接地点探索、故事发现等能力。本轮仅保留页面结构和跳转入口。
+  </view>
+
+  <view class="card">
+    <view class="card-title">故事详情预留</view>
+    <view class="card-text">
+      当前可以从探索页进入故事详情占位页，用于验证路由链路是否正常。
+    </view>
+  </view>
+
+  <view class="actions">
+    <button class="action-button" bindtap="goToStory">进入故事详情</button>
+  </view>
+</view>

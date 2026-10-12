@@ -1,0 +1,13 @@
+<view class="page">
+  <view class="page-title">图鉴页面</view>
+  <view class="page-subtitle">
+    这里预留给个人传说图鉴、收藏内容和后续用户相关能力。
+  </view>
+
+  <view class="card">
+    <view class="card-title">后续扩展方向</view>
+    <view class="card-text">
+      可以继续在这里承接收藏列表、个人记录与图鉴统计等模块。
+    </view>
+  </view>
+</view>
