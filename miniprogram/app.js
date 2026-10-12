@@ -1,7 +1,17 @@
+const { initCloud, isCloudAvailable } = require('./services/cloud');
+
 App({
   globalData: {
-    cloudReady: typeof wx.cloud !== 'undefined',
+    cloudReady: false,
   },
-  // CloudBase will be initialized after a real environment is configured.
-  onLaunch() {},
+
+  onLaunch() {
+    const cloudReady = initCloud();
+
+    this.globalData.cloudReady = cloudReady;
+
+    if (!cloudReady && !isCloudAvailable()) {
+      console.warn('CloudBase is unavailable. The app will continue with local mock data.');
+    }
+  },
 });
