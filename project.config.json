@@ -1,7 +1,8 @@
 {
   "description": "Project configuration for This Place Has Legends mini program.",
   "packOptions": {
-    "ignore": []
+    "ignore": [],
+    "include": []
   },
   "setting": {
     "urlCheck": false,
@@ -27,13 +28,23 @@
       "disablePlugins": [],
       "outputPath": ""
     },
-    "minifyWXSS": true
+    "minifyWXSS": true,
+    "compileWorklet": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false
   },
   "compileType": "miniprogram",
   "libVersion": "3.6.4",
-  "appid": "touristappid",
+  "appid": "wx481f49bb0454fa15",
   "projectname": "this-place-story-dev",
   "miniprogramRoot": "miniprogram/",
   "cloudfunctionRoot": "cloudfunctions/",
-  "simulatorType": "wechat"
+  "simulatorType": "wechat",
+  "simulatorPluginLibVersion": {},
+  "editorSetting": {}
 }
