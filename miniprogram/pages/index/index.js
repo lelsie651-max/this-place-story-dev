@@ -13,7 +13,7 @@ Page({
 
   showComingSoon() {
     wx.showToast({
-      title: '功能即将开放',
+      title: '分享功能即将开放',
       icon: 'none',
     });
   },
