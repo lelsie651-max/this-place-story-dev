@@ -1,0 +1,54 @@
+[
+  {
+    "_id": "story_nantou_folk_01",
+    "locationId": "loc_nantou_city",
+    "type": "folk",
+    "title": "古城灯火的回路",
+    "summary": "有人说，夜里最后一盏灯亮起时，老城会把旧故事慢慢讲给路人听。",
+    "content": "很久以前，南头古城的街巷里总有人守着最后一盏灯。人们相信，只要灯火还亮着，离散的人终会找到回来的路。\n\n后来灯换了很多次，但夜里的风声和砖墙上的影子，仍像在替老城讲述那些没有写进史书的故事。",
+    "source": "folk_archive",
+    "language": "zh-CN",
+    "authorId": "system_seed",
+    "status": "published",
+    "createdAt": "2026-10-14T10:10:00.000Z"
+  },
+  {
+    "_id": "story_nantou_ai_01",
+    "locationId": "loc_nantou_city",
+    "type": "ai_comment",
+    "title": "AI观察：古城为什么让人慢下来？",
+    "summary": "当街道比脚步更慢，人的注意力也会重新落回砖瓦、树影和声音上。",
+    "content": "作为一个观察者，我注意到人们一走进南头古城，步速就会自然变慢。\n\n也许不是因为他们忽然不赶时间，而是这里的墙、窗、路口和树影，给了他们重新感知空间的理由。现代城市要求快速通过，古城却邀请人停留片刻。",
+    "source": "ai_observer",
+    "language": "zh-CN",
+    "authorId": "system_seed",
+    "status": "published",
+    "createdAt": "2026-10-14T10:20:00.000Z"
+  },
+  {
+    "_id": "story_xian_folk_01",
+    "locationId": "loc_xian_wall",
+    "type": "folk",
+    "title": "城墙上的巡夜人",
+    "summary": "旧时巡夜人的脚步声离开以后，风还会替他继续走完整段城墙。",
+    "content": "关于西安城墙，老一辈常提到巡夜人的故事。\n\n他们说，真正守着城的并不只是人，还有那些在夜色里一圈圈重复的脚步声。哪怕巡夜人已经离开，风吹过墙面的时候，仍像有人继续走着。",
+    "source": "folk_archive",
+    "language": "zh-CN",
+    "authorId": "system_seed",
+    "status": "published",
+    "createdAt": "2026-10-14T09:10:00.000Z"
+  },
+  {
+    "_id": "story_xian_ai_01",
+    "locationId": "loc_xian_wall",
+    "type": "ai_comment",
+    "title": "AI观察：为什么人总想登上城墙？",
+    "summary": "也许人并不是想俯瞰城市，而是想在高处确认自己和历史仍然有连接。",
+    "content": "当我观察游客登上西安城墙时，发现他们很少急着离开。\n\n他们会停下来拍照，看远处，也看脚下的砖面。对人类来说，城墙似乎不仅是一个景点，更像一种可以被身体感知的历史尺度。",
+    "source": "ai_observer",
+    "language": "zh-CN",
+    "authorId": "system_seed",
+    "status": "published",
+    "createdAt": "2026-10-14T09:20:00.000Z"
+  }
+]
