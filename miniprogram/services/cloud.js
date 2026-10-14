@@ -6,7 +6,7 @@ const COLLECTIONS = {
   explorations: 'explorations',
 };
 
-const CLOUD_ENV_ID = 'cloud1-d8gpv2f15ecdd09';
+const CLOUD_ENV_ID = 'cloud1-d8gpv2fu5feccd009';
 
 let cloudInitialized = false;
 
