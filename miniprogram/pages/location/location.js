@@ -7,10 +7,20 @@ const STORY_TYPE_LABELS = {
 };
 
 function formatCityText(location) {
-  return [location.country, location.province, location.city].filter(Boolean).join(' · ') || '城市信息待补充';
+  const primary = [location.city, location.province].filter(Boolean).join(' · ');
+
+  if (primary) {
+    return primary;
+  }
+
+  return location.country || '城市信息待补充';
 }
 
 function formatLocationIntro(location) {
+  if (location.intro) {
+    return location.intro;
+  }
+
   if (location.description) {
     return location.description;
   }
@@ -26,18 +36,30 @@ function formatLocationIntro(location) {
   return '这个地点的简介还在整理中，先看看这里已经公开的故事。';
 }
 
-function formatStorySummary(content) {
-  if (!content) {
+function formatStorySummary(story) {
+  const rawContent = story.summary || story.content || '';
+
+  if (!rawContent) {
     return '故事内容待补充。';
   }
 
-  const normalized = content.replace(/\s+/g, ' ').trim();
+  const normalized = rawContent.replace(/\s+/g, ' ').trim();
 
   if (normalized.length <= 52) {
     return normalized;
   }
 
   return normalized.slice(0, 52) + '...';
+}
+
+function formatHeroIntro(location) {
+  const intro = formatLocationIntro(location);
+
+  if (intro.length <= 28) {
+    return intro;
+  }
+
+  return intro.slice(0, 28) + '...';
 }
 
 Page({
@@ -58,6 +80,12 @@ Page({
     }
 
     this.loadLocationDetail(options.locationId);
+  },
+
+  goBack() {
+    wx.navigateBack({
+      delta: 1,
+    });
   },
 
   async loadLocationDetail(locationId) {
@@ -81,6 +109,7 @@ Page({
           name: location.name || '未命名地点',
           cityText: formatCityText(location),
           intro: formatLocationIntro(location),
+          heroIntro: formatHeroIntro(location),
           storyCount: stories.length,
         },
         stories: stories.map(function mapStory(story) {
@@ -88,7 +117,7 @@ Page({
             id: story.id,
             title: story.title || '未命名故事',
             typeLabel: STORY_TYPE_LABELS[story.type] || story.type || '未分类',
-            summary: formatStorySummary(story.content),
+            summary: formatStorySummary(story),
           };
         }),
         loading: false,

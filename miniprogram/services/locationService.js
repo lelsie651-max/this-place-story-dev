@@ -11,6 +11,7 @@ function normalizeLocation(doc) {
     longitude: doc.longitude,
     level: doc.level,
     tags: doc.tags,
+    intro: doc.intro || doc.description || doc.introduction || doc.summary || '',
     description: doc.description || doc.introduction || doc.summary || '',
     status: doc.status,
     createdAt: doc.createdAt,
@@ -23,8 +24,10 @@ function normalizeStorySummary(doc) {
     locationId: doc.locationId,
     type: doc.type,
     title: doc.title,
+    summary: doc.summary || '',
     content: doc.content,
     source: doc.source,
+    status: doc.status,
     createdAt: doc.createdAt,
   };
 }
