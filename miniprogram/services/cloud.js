@@ -39,7 +39,10 @@ function getDatabase() {
     return null;
   }
 
-  return wx.cloud.database();
+  console.log('[Cloud] database env', CLOUD_ENV_ID);
+  return wx.cloud.database({
+    env: CLOUD_ENV_ID,
+  });
 }
 
 function getCollections() {
