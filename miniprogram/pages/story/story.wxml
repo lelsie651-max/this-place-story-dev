@@ -34,7 +34,7 @@
       <button class="action-button" bindtap="handleCollect" loading="{{favoriteSubmitting}}">
         {{isFavorited ? '💛 已收藏' : '❤️ 收藏'}}
       </button>
-      <button class="action-button secondary" bindtap="backToHome">返回首页</button>
+      <button class="action-button secondary" bindtap="backToHome">返回</button>
     </view>
 
     <view class="page-note">AI生成内容，仅供娱乐阅读。</view>
@@ -44,7 +44,7 @@
     <view class="panel-title">故事暂时不可用</view>
     <view class="panel-text">{{errorMessage}}</view>
     <view class="actions">
-      <button class="action-button secondary" bindtap="backToHome">返回首页</button>
+      <button class="action-button secondary" bindtap="backToHome">返回</button>
     </view>
   </view>
 </view>
