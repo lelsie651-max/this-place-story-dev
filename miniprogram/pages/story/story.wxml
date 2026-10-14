@@ -31,7 +31,9 @@
     </view>
 
     <view class="actions">
-      <button class="action-button" bindtap="handleCollect">❤️ 收藏</button>
+      <button class="action-button" bindtap="handleCollect" loading="{{favoriteSubmitting}}">
+        {{isFavorited ? '💛 已收藏' : '❤️ 收藏'}}
+      </button>
       <button class="action-button secondary" bindtap="backToHome">返回首页</button>
     </view>
 

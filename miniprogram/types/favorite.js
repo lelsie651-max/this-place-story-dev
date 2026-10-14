@@ -3,6 +3,7 @@ const FAVORITE_MODEL = {
   fields: {
     userId: '用户ID',
     storyId: '故事ID',
+    locationId: '地点ID',
     createdAt: '收藏时间',
   },
 };

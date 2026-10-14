@@ -39,9 +39,17 @@
     >
       <view class="menu-item-left">
         <view class="menu-icon">{{item.icon}}</view>
-        <view class="menu-label">{{item.label}}</view>
+        <view>
+          <view class="menu-label">{{item.label}}</view>
+          <view wx:if="{{item.key === 'favorites'}}" class="menu-subtext">
+            已收藏 {{favoriteCount}} 条
+          </view>
+        </view>
       </view>
-      <view class="menu-arrow">›</view>
+      <view class="menu-item-right">
+        <view wx:if="{{item.key === 'favorites'}}" class="menu-count">{{favoriteCount}}</view>
+        <view class="menu-arrow">›</view>
+      </view>
     </view>
   </view>
 </view>
