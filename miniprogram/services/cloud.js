@@ -6,6 +6,8 @@ const COLLECTIONS = {
   explorations: 'explorations',
 };
 
+const CLOUD_ENV_ID = 'cloud1-d8gpv2f15ecdd09';
+
 let cloudInitialized = false;
 
 function isCloudAvailable() {
@@ -20,7 +22,7 @@ function initCloud() {
 
   if (!cloudInitialized) {
     wx.cloud.init({
-      env: wx.cloud.DYNAMIC_CURRENT_ENV,
+      env: CLOUD_ENV_ID,
       traceUser: true,
     });
     cloudInitialized = true;
@@ -43,6 +45,7 @@ function getCollections() {
 
 module.exports = {
   COLLECTIONS,
+  CLOUD_ENV_ID,
   getCollections,
   getDatabase,
   initCloud,

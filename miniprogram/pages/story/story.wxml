@@ -1,33 +1,48 @@
 <view class="page">
   <view class="section-label">STORY VIEW</view>
-  <view class="tag">{{currentStory.type}}</view>
-  <view class="page-title story-title">{{currentStory.title}}</view>
-  <view class="page-subtitle location-text">📍 {{currentStory.location}}</view>
+  <view wx:if="{{loading}}" class="story-card panel">
+    <view class="panel-title">正在读取故事</view>
+    <view class="panel-text">正在从云端读取已发布内容，请稍等片刻。</view>
+  </view>
 
-  <view class="story-card panel">
-    <view class="panel-title">故事正文</view>
-    <view class="story-content">
-      <view wx:for="{{contentParagraphs}}" wx:key="index" class="story-paragraph">
-        {{item}}
+  <block wx:elif="{{currentStory}}">
+    <view class="tag">{{currentStory.typeLabel}}</view>
+    <view class="page-title story-title">{{currentStory.title}}</view>
+    <view class="page-subtitle location-text">📍 {{currentStory.location}}</view>
+
+    <view class="story-card panel">
+      <view class="panel-title">故事正文</view>
+      <view class="story-content">
+        <view wx:for="{{contentParagraphs}}" wx:key="index" class="story-paragraph">
+          {{item}}
+        </view>
       </view>
     </view>
-  </view>
 
-  <view class="story-meta panel">
-    <view class="meta-row">
-      <text class="meta-label">故事来源</text>
-      <text class="meta-value">{{currentStory.source}}</text>
+    <view class="story-meta panel">
+      <view class="meta-row">
+        <text class="meta-label">故事来源</text>
+        <text class="meta-value">{{currentStory.source}}</text>
+      </view>
+      <view class="meta-row">
+        <text class="meta-label">展示模式</text>
+        <text class="meta-value">{{currentStory.typeLabel}}</text>
+      </view>
     </view>
-    <view class="meta-row">
-      <text class="meta-label">展示模式</text>
-      <text class="meta-value">{{currentStory.type}}</text>
+
+    <view class="actions">
+      <button class="action-button" bindtap="handleCollect">❤️ 收藏</button>
+      <button class="action-button secondary" bindtap="backToHome">返回首页</button>
+    </view>
+
+    <view class="page-note">AI生成内容，仅供娱乐阅读。</view>
+  </block>
+
+  <view wx:else class="story-card panel error-card">
+    <view class="panel-title">故事暂时不可用</view>
+    <view class="panel-text">{{errorMessage}}</view>
+    <view class="actions">
+      <button class="action-button secondary" bindtap="backToHome">返回首页</button>
     </view>
   </view>
-
-  <view class="actions">
-    <button class="action-button" bindtap="handleCollect">❤️ 收藏</button>
-    <button class="action-button secondary" bindtap="backToHome">返回首页</button>
-  </view>
-
-  <view class="page-note">AI生成内容，仅供娱乐阅读。</view>
 </view>

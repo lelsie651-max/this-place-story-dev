@@ -1,42 +1,72 @@
-const { initCloud } = require('./cloud');
+const { getCollections, getDatabase } = require('./cloud');
 
-const LOCATION_LIST = [
-  {
-    id: 'loc-nantou',
-    name: '南头古城',
-    city: '深圳',
-    province: '广东',
-    country: '中国',
-    latitude: 22.5333,
-    longitude: 113.9294,
-    level: 'historic',
-    tags: ['古城', '城市记忆', '步行探索'],
-  },
-  {
-    id: 'loc-xian-wall',
-    name: '西安城墙',
-    city: '西安',
-    province: '陕西',
-    country: '中国',
-    latitude: 34.2594,
-    longitude: 108.9423,
-    level: 'landmark',
-    tags: ['城墙', '历史地标', '夜游'],
-  },
-];
-
-function listLocations() {
-  initCloud();
-  return Promise.resolve(LOCATION_LIST.slice());
+function normalizeLocation(doc) {
+  return {
+    id: doc._id || doc.id,
+    name: doc.name,
+    city: doc.city,
+    province: doc.province,
+    country: doc.country,
+    latitude: doc.latitude,
+    longitude: doc.longitude,
+    level: doc.level,
+    tags: doc.tags,
+  };
 }
 
-function getLocationById(locationId) {
-  initCloud();
-  const location = LOCATION_LIST.find(function findItem(item) {
-    return item.id === locationId;
-  });
+async function listLocations() {
+  const db = getDatabase();
 
-  return Promise.resolve(location || null);
+  if (!db) {
+    throw new Error('CloudBase database is unavailable.');
+  }
+
+  try {
+    const result = await db.collection(getCollections().locations).get();
+    return result.data.map(normalizeLocation);
+  } catch (error) {
+    throw new Error('Failed to list locations from CloudBase: ' + error.message);
+  }
+}
+
+async function getLocationById(locationId) {
+  const db = getDatabase();
+
+  if (!db) {
+    throw new Error('CloudBase database is unavailable.');
+  }
+
+  try {
+    const result = await db.collection(getCollections().locations).doc(locationId).get();
+
+    if (result.data) {
+      return normalizeLocation(result.data);
+    }
+  } catch (error) {
+    const message = error && error.message ? error.message : '';
+
+    if (message.indexOf('document') === -1 && message.indexOf('not exist') === -1) {
+      throw new Error('Failed to load location from CloudBase: ' + message);
+    }
+  }
+
+  try {
+    const fallbackResult = await db
+      .collection(getCollections().locations)
+      .where({
+        id: locationId,
+      })
+      .limit(1)
+      .get();
+
+    if (!fallbackResult.data || fallbackResult.data.length === 0) {
+      return null;
+    }
+
+    return normalizeLocation(fallbackResult.data[0]);
+  } catch (error) {
+    throw new Error('Failed to load location from CloudBase: ' + error.message);
+  }
 }
 
 module.exports = {

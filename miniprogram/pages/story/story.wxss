@@ -29,6 +29,10 @@
   background: rgba(255, 247, 235, 0.88);
 }
 
+.error-card {
+  background: rgba(255, 247, 235, 0.92);
+}
+
 .meta-row {
   display: flex;
   align-items: center;

@@ -1,74 +1,114 @@
-const { initCloud } = require('./cloud');
+const { getCollections, getDatabase } = require('./cloud');
 
-const STORY_LIST = [
-  {
-    id: 'story-ai-nantou',
-    locationId: 'loc-nantou',
-    type: 'ai_comment',
-    title: 'AI观察报告：人类为什么喜欢拍照？',
-    content:
-      '作为一名驻扎在南头古城的AI观察员，\n我发现了一件有趣的事情。\n\n人类来到古老建筑前，\n第一反应通常不是研究历史，\n而是寻找一个最佳角度证明自己来过。\n\n这是一种非常特别的人类行为。',
-    source: 'ai',
-    language: 'zh-CN',
-    authorId: 'system',
-    status: 'published',
-    createdAt: '2026-10-12T10:00:00.000Z',
-    location: '深圳·南头古城',
-  },
-  {
-    id: 'story-folk-xian',
-    locationId: 'loc-xian-wall',
-    type: 'folk',
-    title: '城门边的灯，总替晚归的人亮着',
-    content:
-      '老一辈常说，夜色落在城墙上以后，\n总会有一盏灯替晚归的人多亮一会儿。\n\n它照的不是路，\n而是提醒每一个走远的人，\n总还有一个地方在等你回来。',
-    source: 'folk',
-    language: 'zh-CN',
-    authorId: 'system',
-    status: 'published',
-    createdAt: '2026-10-12T10:05:00.000Z',
-    location: '西安·城墙',
-  },
-];
-
-function getDefaultStory() {
-  return STORY_LIST[0];
+function normalizeStory(doc) {
+  return {
+    id: doc._id,
+    locationId: doc.locationId,
+    type: doc.type,
+    title: doc.title,
+    content: doc.content,
+    source: doc.source,
+    language: doc.language,
+    authorId: doc.authorId,
+    status: doc.status,
+    createdAt: doc.createdAt,
+  };
 }
 
-function listStories() {
-  initCloud();
-  return Promise.resolve(STORY_LIST.slice());
+async function listStories() {
+  const db = getDatabase();
+
+  if (!db) {
+    throw new Error('CloudBase database is unavailable.');
+  }
+
+  try {
+    const result = await db
+      .collection(getCollections().stories)
+      .where({
+        status: 'published',
+      })
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    return result.data.map(normalizeStory);
+  } catch (error) {
+    throw new Error('Failed to list stories from CloudBase: ' + error.message);
+  }
 }
 
-function getStoryByType(type) {
-  initCloud();
-  const story = STORY_LIST.find(function findItem(item) {
-    return item.type === type;
-  });
+async function getStoryByType(type) {
+  const db = getDatabase();
 
-  return Promise.resolve(story || getDefaultStory());
+  if (!db) {
+    throw new Error('CloudBase database is unavailable.');
+  }
+
+  try {
+    const result = await db
+      .collection(getCollections().stories)
+      .where({
+        type: type,
+        status: 'published',
+      })
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
+
+    if (!result.data || result.data.length === 0) {
+      throw new Error('No published story found for type "' + type + '".');
+    }
+
+    return normalizeStory(result.data[0]);
+  } catch (error) {
+    throw new Error('Failed to load story from CloudBase: ' + error.message);
+  }
 }
 
-function getStoryById(storyId) {
-  initCloud();
-  const story = STORY_LIST.find(function findItem(item) {
-    return item.id === storyId;
-  });
+async function getStoryById(storyId) {
+  const db = getDatabase();
 
-  return Promise.resolve(story || null);
+  if (!db) {
+    throw new Error('CloudBase database is unavailable.');
+  }
+
+  try {
+    const result = await db.collection(getCollections().stories).doc(storyId).get();
+
+    if (!result.data) {
+      return null;
+    }
+
+    return normalizeStory(result.data);
+  } catch (error) {
+    throw new Error('Failed to load story by id from CloudBase: ' + error.message);
+  }
 }
 
-function listStoriesByLocation(locationId) {
-  initCloud();
-  const stories = STORY_LIST.filter(function filterItem(item) {
-    return item.locationId === locationId;
-  });
+async function listStoriesByLocation(locationId) {
+  const db = getDatabase();
 
-  return Promise.resolve(stories);
+  if (!db) {
+    throw new Error('CloudBase database is unavailable.');
+  }
+
+  try {
+    const result = await db
+      .collection(getCollections().stories)
+      .where({
+        locationId: locationId,
+        status: 'published',
+      })
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    return result.data.map(normalizeStory);
+  } catch (error) {
+    throw new Error('Failed to load stories by location from CloudBase: ' + error.message);
+  }
 }
 
 module.exports = {
-  getDefaultStory,
   getStoryById,
   getStoryByType,
   listStories,

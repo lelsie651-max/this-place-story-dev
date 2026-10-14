@@ -1,20 +1,30 @@
+const locationService = require('../../services/locationService');
 const storyService = require('../../services/storyService');
+
+const STORY_TYPE_LABELS = {
+  ai_comment: 'AI说',
+  folk: '民间传说',
+  traveler: '网友说',
+};
+
+function formatLocationText(location) {
+  if (!location) {
+    return '地点信息暂不可用';
+  }
+
+  if (location.city) {
+    return location.city + '·' + location.name;
+  }
+
+  return location.name;
+}
 
 Page({
   data: {
-    currentStory: {
-      title: 'AI观察报告：人类为什么喜欢拍照？',
-      type: 'AI说',
-      location: '深圳·南头古城',
-      content:
-        '作为一名驻扎在南头古城的AI观察员，\n我发现了一件有趣的事情。\n\n人类来到古老建筑前，\n第一反应通常不是研究历史，\n而是寻找一个最佳角度证明自己来过。\n\n这是一种非常特别的人类行为。',
-      source: 'ai',
-    },
-    contentParagraphs: [
-      '作为一名驻扎在南头古城的AI观察员，\n我发现了一件有趣的事情。',
-      '人类来到古老建筑前，\n第一反应通常不是研究历史，\n而是寻找一个最佳角度证明自己来过。',
-      '这是一种非常特别的人类行为。',
-    ],
+    currentStory: null,
+    contentParagraphs: [],
+    loading: true,
+    errorMessage: '',
   },
 
   onLoad(options) {
@@ -23,15 +33,43 @@ Page({
     this.loadStory(storyType);
   },
 
-  loadStory(storyType) {
-    const self = this;
-
-    storyService.getStoryByType(storyType).then(function handleStory(currentStory) {
-      self.setData({
-        currentStory,
-        contentParagraphs: currentStory.content.split('\n\n'),
-      });
+  async loadStory(storyType) {
+    this.setData({
+      loading: true,
+      errorMessage: '',
     });
+
+    try {
+      const story = await storyService.getStoryByType(storyType);
+      let location = null;
+
+      try {
+        location = await locationService.getLocationById(story.locationId);
+      } catch (locationError) {
+        console.warn('Failed to load location for story:', locationError);
+      }
+
+      this.setData({
+        currentStory: {
+          id: story.id,
+          title: story.title,
+          type: story.type,
+          typeLabel: STORY_TYPE_LABELS[story.type] || story.type,
+          location: formatLocationText(location),
+          content: story.content,
+          source: story.source,
+        },
+        contentParagraphs: (story.content || '').split('\n\n'),
+        loading: false,
+      });
+    } catch (error) {
+      this.setData({
+        currentStory: null,
+        contentParagraphs: [],
+        loading: false,
+        errorMessage: error.message || '故事加载失败，请稍后再试。',
+      });
+    }
   },
 
   handleCollect() {
