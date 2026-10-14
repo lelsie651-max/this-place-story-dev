@@ -5,37 +5,42 @@
     先看看最近公开的地点线索。选中一个地点后，会进入对应的详情页。
   </view>
 
-  <view wx:if="{{loading}}" class="mode-card panel">
-    <view class="panel-title">正在寻找地点</view>
-    <view class="panel-text">正在从云端读取已发布地点，请稍等片刻。</view>
-  </view>
+  <block wx:if="{{loading}}">
+    <view class="mode-card panel">
+      <view class="panel-title">正在寻找地点</view>
+      <view class="panel-text">正在从云端读取已发布地点，请稍等片刻。</view>
+    </view>
+  </block>
 
-  <view wx:elif="{{emptyState}}" class="mode-card panel empty-card">
-    <view class="panel-title">暂时没有新的线索</view>
-    <view class="panel-text">{{emptyMessage}}</view>
-  </view>
+  <block wx:elif="{{emptyState}}">
+    <view class="mode-card panel empty-card">
+      <view class="panel-title">暂时没有新的线索</view>
+      <view class="panel-text">{{emptyMessage}}</view>
+    </view>
+  </block>
 
-  <view
-    wx:else
-    wx:for="{{locations}}"
-    wx:key="id"
-    class="mode-card panel"
-    data-location-id="{{item.id}}"
-    bindtap="goToLocation"
-  >
-    <view class="mode-top">
-      <view class="mode-title-wrap">
-        <view class="panel-title">{{item.title}}</view>
-        <view class="tag">已发布</view>
+  <block wx:else>
+    <view
+      wx:for="{{locations}}"
+      wx:key="id"
+      class="mode-card panel"
+      data-location-id="{{item.id}}"
+      bindtap="goToLocation"
+    >
+      <view class="mode-top">
+        <view class="mode-title-wrap">
+          <view class="panel-title">{{item.title}}</view>
+          <view class="tag">已发布</view>
+        </view>
+      </view>
+
+      <view class="panel-text">
+        {{item.description}}
+      </view>
+
+      <view class="mode-footer">
+        <text class="mode-entry">查看地点详情</text>
       </view>
     </view>
-
-    <view class="panel-text">
-      {{item.description}}
-    </view>
-
-    <view class="mode-footer">
-      <text class="mode-entry">查看地点详情</text>
-    </view>
-  </view>
+  </block>
 </view>
