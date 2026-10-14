@@ -1,12 +1,12 @@
 .top-bar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin-bottom: 40rpx;
 }
 
 .avatar-button {
   margin: 0;
-  padding: 0;
+  padding: 10rpx;
   border: none;
   background: transparent;
   line-height: 1;
@@ -20,15 +20,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 88rpx;
-  height: 88rpx;
-  border: 1rpx solid rgba(140, 94, 52, 0.18);
-  border-radius: 50%;
-  background: linear-gradient(180deg, rgba(255, 248, 236, 0.98), rgba(235, 214, 181, 0.94));
-  color: #6b4527;
+  width: 104rpx;
+  height: 104rpx;
+  border: 1rpx solid rgba(140, 94, 52, 0.22);
+  border-radius: 28rpx;
+  background: linear-gradient(180deg, rgba(255, 248, 236, 0.98), rgba(233, 211, 176, 0.96));
+  color: #5b3922;
   font-size: 32rpx;
   font-weight: 600;
-  box-shadow: 0 12rpx 28rpx rgba(107, 69, 39, 0.12);
+  box-shadow: 0 16rpx 34rpx rgba(107, 69, 39, 0.16);
 }
 
 .hero {

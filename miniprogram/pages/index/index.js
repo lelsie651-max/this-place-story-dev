@@ -11,10 +11,9 @@ Page({
     });
   },
 
-  showComingSoon() {
-    wx.showToast({
-      title: '分享功能即将开放',
-      icon: 'none',
+  goToPublish() {
+    wx.navigateTo({
+      url: '/pages/publish/publish',
     });
   },
 });

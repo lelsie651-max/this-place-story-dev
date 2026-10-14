@@ -1,0 +1,16 @@
+.favorite-card {
+  background: linear-gradient(180deg, rgba(255, 249, 238, 0.98), rgba(244, 229, 205, 0.94));
+}
+
+.favorite-title {
+  margin-bottom: 14rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #4c3424;
+}
+
+.favorite-location {
+  color: #8b5e34;
+  font-size: 28rpx;
+}

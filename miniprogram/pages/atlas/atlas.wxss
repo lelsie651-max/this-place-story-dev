@@ -1,0 +1,35 @@
+.summary-card {
+  text-align: center;
+  background: linear-gradient(180deg, rgba(255, 248, 236, 0.98), rgba(244, 228, 199, 0.92));
+}
+
+.summary-number {
+  margin-bottom: 10rpx;
+  font-size: 72rpx;
+  font-weight: 600;
+  color: #6b4527;
+}
+
+.summary-label {
+  color: #8b5e34;
+}
+
+.atlas-card {
+  position: relative;
+}
+
+.atlas-location {
+  margin-bottom: 12rpx;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #4c3424;
+}
+
+.atlas-type {
+  display: inline-flex;
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(140, 94, 52, 0.12);
+  color: #8b5e34;
+  font-size: 24rpx;
+}

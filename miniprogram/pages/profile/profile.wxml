@@ -8,15 +8,34 @@
 
   <view class="page-title">个人中心</view>
   <view class="page-subtitle">
-    当前为静态占位页面，用于建立用户浏览路径和功能入口感知。
+    先整理你的探索入口与个人资源，后续再接入真实用户和收藏数据。
   </view>
 
+  <view class="asset-panel panel">
+    <view class="asset-label">用户资产</view>
+    <view class="asset-item">
+      <view class="asset-item-left">
+        <view class="asset-icon">🔍</view>
+        <view>
+          <view class="asset-name">放大镜</view>
+          <view class="asset-note">用于未来探索和地点互动的个人资源</view>
+        </view>
+      </view>
+      <view class="asset-value">
+        <view class="asset-number">5</view>
+        <view class="asset-unit">枚</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="function-label">功能入口</view>
   <view class="menu-list">
     <view
       wx:for="{{menuItems}}"
       wx:key="key"
       class="menu-item panel"
-      bindtap="showComingSoon"
+      data-route="{{item.route}}"
+      bindtap="handleMenuTap"
     >
       <view class="menu-item-left">
         <view class="menu-icon">{{item.icon}}</view>

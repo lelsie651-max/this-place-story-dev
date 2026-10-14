@@ -3,7 +3,10 @@
     "pages/index/index",
     "pages/explore/explore",
     "pages/story/story",
-    "pages/profile/profile"
+    "pages/profile/profile",
+    "pages/publish/publish",
+    "pages/atlas/atlas",
+    "pages/favorites/favorites"
   ],
   "window": {
     "navigationBarTitleText": "此地有传说",

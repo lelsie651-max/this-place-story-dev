@@ -1,0 +1,44 @@
+.field-card {
+  padding-top: 30rpx;
+  padding-bottom: 30rpx;
+}
+
+.field-label {
+  margin-bottom: 16rpx;
+  color: #8b5e34;
+  font-size: 28rpx;
+}
+
+.field-value {
+  margin-bottom: 12rpx;
+  font-size: 38rpx;
+  font-weight: 600;
+  color: #4c3424;
+}
+
+.field-note {
+  color: #7a624c;
+  font-size: 24rpx;
+  line-height: 1.7;
+}
+
+.text-input,
+.text-area {
+  width: 100%;
+  border-radius: 22rpx;
+  background: rgba(255, 247, 235, 0.92);
+  color: #4c3424;
+  box-sizing: border-box;
+}
+
+.text-input {
+  min-height: 92rpx;
+  padding: 0 24rpx;
+  line-height: 92rpx;
+}
+
+.text-area {
+  min-height: 280rpx;
+  padding: 24rpx;
+  line-height: 1.8;
+}

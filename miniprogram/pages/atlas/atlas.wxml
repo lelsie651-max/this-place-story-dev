@@ -1,0 +1,17 @@
+<view class="page">
+  <view class="section-label">ATLAS</view>
+  <view class="page-title">我的传说图鉴</view>
+  <view class="page-subtitle">
+    用静态卡片先建立个人探索记录的陈列感，后续再接真实探索数据。
+  </view>
+
+  <view class="summary-card panel">
+    <view class="summary-number">{{atlasItems.length}}</view>
+    <view class="summary-label">已探索地点</view>
+  </view>
+
+  <view wx:for="{{atlasItems}}" wx:key="id" class="atlas-card panel">
+    <view class="atlas-location">📍 {{item.location}}</view>
+    <view class="atlas-type">{{item.type}}</view>
+  </view>
+</view>
