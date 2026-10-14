@@ -74,7 +74,7 @@ Page({
     }
 
     wx.navigateTo({
-      url: '/pages/story/story?locationId=' + locationId,
+      url: '/pages/location/location?locationId=' + locationId,
     });
   },
 });

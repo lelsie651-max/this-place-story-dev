@@ -11,7 +11,20 @@ function normalizeLocation(doc) {
     longitude: doc.longitude,
     level: doc.level,
     tags: doc.tags,
+    description: doc.description || doc.introduction || doc.summary || '',
     status: doc.status,
+    createdAt: doc.createdAt,
+  };
+}
+
+function normalizeStorySummary(doc) {
+  return {
+    id: doc._id,
+    locationId: doc.locationId,
+    type: doc.type,
+    title: doc.title,
+    content: doc.content,
+    source: doc.source,
     createdAt: doc.createdAt,
   };
 }
@@ -94,8 +107,32 @@ async function getLocationById(locationId) {
   }
 }
 
+async function getStoriesByLocationId(locationId) {
+  const db = getDatabase();
+
+  if (!db) {
+    throw new Error('CloudBase database is unavailable.');
+  }
+
+  try {
+    const result = await db
+      .collection(getCollections().stories)
+      .where({
+        locationId: locationId,
+        status: 'published',
+      })
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    return (result.data || []).map(normalizeStorySummary);
+  } catch (error) {
+    throw new Error('Failed to load stories by location from CloudBase: ' + error.message);
+  }
+}
+
 module.exports = {
   getLocationById,
   getPublishedLocations,
+  getStoriesByLocationId,
   listLocations,
 };

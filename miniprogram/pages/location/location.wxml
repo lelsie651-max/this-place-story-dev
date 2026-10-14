@@ -1,0 +1,53 @@
+<view class="page">
+  <view class="section-label">LOCATION VIEW</view>
+
+  <view wx:if="{{loading}}" class="panel">
+    <view class="panel-title">正在读取地点</view>
+    <view class="panel-text">正在从云端整理地点信息和公开故事，请稍等片刻。</view>
+  </view>
+
+  <view wx:elif="{{errorMessage}}" class="panel error-card">
+    <view class="panel-title">地点暂时不可用</view>
+    <view class="panel-text">{{errorMessage}}</view>
+  </view>
+
+  <block wx:else>
+    <view class="tag">地点详情</view>
+    <view class="page-title location-title">{{locationDetail.name}}</view>
+    <view class="page-subtitle">📍 {{locationDetail.cityText}}</view>
+
+    <view class="panel detail-card">
+      <view class="panel-title">地点简介</view>
+      <view class="panel-text">{{locationDetail.intro}}</view>
+    </view>
+
+    <view class="panel detail-card">
+      <view class="meta-row">
+        <text class="meta-label">故事数量</text>
+        <text class="meta-value">{{locationDetail.storyCount}} 篇</text>
+      </view>
+    </view>
+
+    <view class="panel stories-card">
+      <view class="panel-title">故事列表</view>
+
+      <view wx:if="{{stories.length === 0}}" class="panel-text">
+        这个地点暂时还没有已发布故事。
+      </view>
+
+      <view
+        wx:for="{{stories}}"
+        wx:key="id"
+        class="story-item"
+        data-story-id="{{item.id}}"
+        bindtap="goToStoryDetail"
+      >
+        <view class="story-top">
+          <view class="story-title">{{item.title}}</view>
+          <view class="tag story-tag">{{item.typeLabel}}</view>
+        </view>
+        <view class="story-summary">{{item.summary}}</view>
+      </view>
+    </view>
+  </block>
+</view>
