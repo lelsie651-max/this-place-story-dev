@@ -11,7 +11,32 @@ function normalizeLocation(doc) {
     longitude: doc.longitude,
     level: doc.level,
     tags: doc.tags,
+    status: doc.status,
+    createdAt: doc.createdAt,
   };
+}
+
+async function getPublishedLocations() {
+  const db = getDatabase();
+
+  if (!db) {
+    throw new Error('CloudBase database is unavailable.');
+  }
+
+  try {
+    const result = await db
+      .collection(getCollections().locations)
+      .where({
+        status: 'published',
+      })
+      .orderBy('createdAt', 'desc')
+      .limit(20)
+      .get();
+
+    return (result.data || []).map(normalizeLocation);
+  } catch (error) {
+    throw new Error('Failed to list published locations from CloudBase: ' + error.message);
+  }
 }
 
 async function listLocations() {
@@ -71,5 +96,6 @@ async function getLocationById(locationId) {
 
 module.exports = {
   getLocationById,
+  getPublishedLocations,
   listLocations,
 };

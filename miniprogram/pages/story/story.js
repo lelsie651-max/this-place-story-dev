@@ -36,6 +36,11 @@ Page({
       return;
     }
 
+    if (options && options.locationId) {
+      this.loadStoryByLocationId(options.locationId);
+      return;
+    }
+
     if (options && options.type) {
       this.loadStoryByType(options.type);
       return;
@@ -103,6 +108,39 @@ Page({
 
     try {
       const story = await storyService.getStoryById(storyId);
+      const storyViewData = await this.buildStoryViewData(story);
+
+      this.setData({
+        currentStory: storyViewData.currentStory,
+        contentParagraphs: storyViewData.contentParagraphs,
+        loading: false,
+      });
+
+      await this.loadFavoriteStatus(story.id);
+    } catch (error) {
+      this.setData({
+        currentStory: null,
+        contentParagraphs: [],
+        loading: false,
+        errorMessage: error.message || '故事加载失败，请稍后再试。',
+      });
+    }
+  },
+
+  async loadStoryByLocationId(locationId) {
+    this.setData({
+      loading: true,
+      errorMessage: '',
+    });
+
+    try {
+      const stories = await storyService.listStoriesByLocation(locationId);
+
+      if (!stories || stories.length === 0) {
+        throw new Error('该地点暂时还没有已发布故事。');
+      }
+
+      const story = stories[0];
       const storyViewData = await this.buildStoryViewData(story);
 
       this.setData({

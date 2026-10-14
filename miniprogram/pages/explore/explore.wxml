@@ -1,24 +1,33 @@
 <view class="page">
-  <view class="section-label">MODE SELECT</view>
+  <view class="section-label">LOCATION DISCOVERY</view>
   <view class="page-title">寻找传说</view>
   <view class="page-subtitle">
-    你想听哪一种故事？同一个地点，换一个叙述角度，气质就会完全不同。
+    先看看最近公开的地点线索。选中一个地点后，会进入对应的详情页。
+  </view>
+
+  <view wx:if="{{loading}}" class="mode-card panel">
+    <view class="panel-title">正在寻找地点</view>
+    <view class="panel-text">正在从云端读取已发布地点，请稍等片刻。</view>
+  </view>
+
+  <view wx:elif="{{emptyState}}" class="mode-card panel empty-card">
+    <view class="panel-title">暂时没有新的线索</view>
+    <view class="panel-text">{{emptyMessage}}</view>
   </view>
 
   <view
-    wx:for="{{storyModes}}"
-    wx:key="key"
-    class="mode-card panel {{item.featured ? 'featured' : ''}} {{!item.enabled ? 'disabled' : ''}}"
-    data-type="{{item.key}}"
-    data-enabled="{{item.enabled}}"
-    bindtap="goToStory"
+    wx:else
+    wx:for="{{locations}}"
+    wx:key="id"
+    class="mode-card panel"
+    data-location-id="{{item.id}}"
+    bindtap="goToLocation"
   >
     <view class="mode-top">
       <view class="mode-title-wrap">
         <view class="panel-title">{{item.title}}</view>
-        <view wx:if="{{item.featured}}" class="tag">推荐</view>
+        <view class="tag">已发布</view>
       </view>
-      <view wx:if="{{item.statusText}}" class="mode-status">{{item.statusText}}</view>
     </view>
 
     <view class="panel-text">
@@ -26,7 +35,7 @@
     </view>
 
     <view class="mode-footer">
-      <text class="mode-entry">{{item.enabled ? '进入故事详情' : '敬请期待'}}</text>
+      <text class="mode-entry">查看地点详情</text>
     </view>
   </view>
 </view>
