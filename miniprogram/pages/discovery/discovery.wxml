@@ -1,9 +1,8 @@
 <view class="page">
   <view class="section-label">LOCATION DISCOVERY</view>
-  <view class="page-title">地点发现</view>
+  <view class="page-title">选择地点</view>
   <view class="page-subtitle">
-    <text wx:if="{{selectedTypeLabel}}">当前探索方式：{{selectedTypeLabel}}。</text>
-    先看看最近公开的地点线索。选中一个地点后，会进入对应的详情页。
+    先看看最近公开的地点线索。选中一个地点后，再决定你想听哪一种故事。
   </view>
 
   <block wx:if="{{loading}}">
@@ -40,7 +39,7 @@
       </view>
 
       <view class="mode-footer">
-        <text class="mode-entry">查看地点详情</text>
+        <text class="mode-entry">进入地点选择故事</text>
       </view>
     </view>
   </block>

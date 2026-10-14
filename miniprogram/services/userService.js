@@ -32,9 +32,13 @@ const ATLAS_ITEMS = [
   },
 ];
 
+function cloneCurrentUser() {
+  return Object.assign({}, CURRENT_USER);
+}
+
 function getCurrentUserProfile() {
   initCloud();
-  return Promise.resolve(Object.assign({}, CURRENT_USER));
+  return Promise.resolve(cloneCurrentUser());
 }
 
 function getAtlasItems() {
@@ -42,7 +46,21 @@ function getAtlasItems() {
   return Promise.resolve(ATLAS_ITEMS.slice());
 }
 
+function consumeMagnifyingGlass(amount) {
+  initCloud();
+
+  const consumeAmount = typeof amount === 'number' ? amount : 1;
+
+  if (CURRENT_USER.magnifyingGlass < consumeAmount) {
+    throw new Error('放大镜不足，暂时无法继续探索。');
+  }
+
+  CURRENT_USER.magnifyingGlass = CURRENT_USER.magnifyingGlass - consumeAmount;
+  return Promise.resolve(cloneCurrentUser());
+}
+
 module.exports = {
+  consumeMagnifyingGlass,
   getAtlasItems,
   getCurrentUserProfile,
 };

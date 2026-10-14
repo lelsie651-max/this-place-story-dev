@@ -15,6 +15,15 @@ function normalizeStory(doc) {
   };
 }
 
+function pickRandomStory(stories) {
+  if (!stories || stories.length === 0) {
+    return null;
+  }
+
+  const randomIndex = Math.floor(Math.random() * stories.length);
+  return stories[randomIndex];
+}
+
 async function listStories() {
   const db = getDatabase();
 
@@ -108,9 +117,38 @@ async function listStoriesByLocation(locationId) {
   }
 }
 
+async function getRandomStoryByLocationAndType(locationId, type) {
+  const db = getDatabase();
+
+  if (!db) {
+    throw new Error('CloudBase database is unavailable.');
+  }
+
+  try {
+    const result = await db
+      .collection(getCollections().stories)
+      .where({
+        locationId: locationId,
+        type: type,
+        status: 'published',
+      })
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    if (!result.data || result.data.length === 0) {
+      throw new Error('这个地点暂时还没有这种类型的已发布故事。');
+    }
+
+    return normalizeStory(pickRandomStory(result.data));
+  } catch (error) {
+    throw new Error('Failed to load story by location and type from CloudBase: ' + error.message);
+  }
+}
+
 module.exports = {
   getStoryById,
   getStoryByType,
+  getRandomStoryByLocationAndType,
   listStories,
   listStoriesByLocation,
 };

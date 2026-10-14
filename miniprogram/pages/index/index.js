@@ -1,7 +1,7 @@
 Page({
   goToExplore() {
     wx.navigateTo({
-      url: '/pages/explore/explore',
+      url: '/pages/discovery/discovery',
     });
   },
 

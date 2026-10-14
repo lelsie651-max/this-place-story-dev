@@ -1,11 +1,5 @@
 const locationService = require('../../services/locationService');
 
-const MODE_TITLES = {
-  folk: '民间传说',
-  ai_comment: 'AI说',
-  traveler: '网友说',
-};
-
 function formatLocationText(location) {
   const parts = [location.province, location.city, location.name].filter(Boolean);
 
@@ -30,22 +24,13 @@ function formatLocationMeta(location) {
 
 Page({
   data: {
-    selectedType: '',
-    selectedTypeLabel: '',
     locations: [],
     loading: true,
     emptyState: false,
     emptyMessage: '暂时没有发现新的地点',
   },
 
-  onLoad(options) {
-    const selectedType = options && options.type ? options.type : '';
-
-    this.setData({
-      selectedType: selectedType,
-      selectedTypeLabel: MODE_TITLES[selectedType] || '地点发现',
-    });
-
+  onLoad() {
     this.loadLocations();
   },
 
