@@ -31,12 +31,44 @@ Page({
   },
 
   onLoad(options) {
-    const storyType = (options && options.type) || 'ai_comment';
+    if (options && options.storyId) {
+      this.loadStoryById(options.storyId);
+      return;
+    }
 
-    this.loadStory(storyType);
+    if (options && options.type) {
+      this.loadStoryByType(options.type);
+      return;
+    }
+
+    this.loadStoryByType('ai_comment');
   },
 
-  async loadStory(storyType) {
+  async buildStoryViewData(story) {
+    let location = null;
+
+    try {
+      location = await locationService.getLocationById(story.locationId);
+    } catch (locationError) {
+      console.warn('Failed to load location for story:', locationError);
+    }
+
+    return {
+      currentStory: {
+        id: story.id,
+        locationId: story.locationId,
+        title: story.title,
+        type: story.type,
+        typeLabel: STORY_TYPE_LABELS[story.type] || story.type,
+        location: formatLocationText(location),
+        content: story.content,
+        source: story.source,
+      },
+      contentParagraphs: (story.content || '').split('\n\n'),
+    };
+  },
+
+  async loadStoryByType(storyType) {
     this.setData({
       loading: true,
       errorMessage: '',
@@ -44,26 +76,38 @@ Page({
 
     try {
       const story = await storyService.getStoryByType(storyType);
-      let location = null;
-
-      try {
-        location = await locationService.getLocationById(story.locationId);
-      } catch (locationError) {
-        console.warn('Failed to load location for story:', locationError);
-      }
+      const storyViewData = await this.buildStoryViewData(story);
 
       this.setData({
-        currentStory: {
-          id: story.id,
-          locationId: story.locationId,
-          title: story.title,
-          type: story.type,
-          typeLabel: STORY_TYPE_LABELS[story.type] || story.type,
-          location: formatLocationText(location),
-          content: story.content,
-          source: story.source,
-        },
-        contentParagraphs: (story.content || '').split('\n\n'),
+        currentStory: storyViewData.currentStory,
+        contentParagraphs: storyViewData.contentParagraphs,
+        loading: false,
+      });
+
+      await this.loadFavoriteStatus(story.id);
+    } catch (error) {
+      this.setData({
+        currentStory: null,
+        contentParagraphs: [],
+        loading: false,
+        errorMessage: error.message || '故事加载失败，请稍后再试。',
+      });
+    }
+  },
+
+  async loadStoryById(storyId) {
+    this.setData({
+      loading: true,
+      errorMessage: '',
+    });
+
+    try {
+      const story = await storyService.getStoryById(storyId);
+      const storyViewData = await this.buildStoryViewData(story);
+
+      this.setData({
+        currentStory: storyViewData.currentStory,
+        contentParagraphs: storyViewData.contentParagraphs,
         loading: false,
       });
 

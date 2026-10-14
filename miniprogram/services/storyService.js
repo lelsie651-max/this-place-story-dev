@@ -76,7 +76,7 @@ async function getStoryById(storyId) {
     const result = await db.collection(getCollections().stories).doc(storyId).get();
 
     if (!result.data) {
-      return null;
+      throw new Error('Story "' + storyId + '" does not exist.');
     }
 
     return normalizeStory(result.data);

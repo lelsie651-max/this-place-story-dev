@@ -1,16 +1,85 @@
+const favoriteService = require('../../services/favoriteService');
+const locationService = require('../../services/locationService');
+const storyService = require('../../services/storyService');
+
+function formatLocationText(location) {
+  if (!location) {
+    return '地点信息暂不可用';
+  }
+
+  if (location.city) {
+    return location.city + '·' + location.name;
+  }
+
+  return location.name;
+}
+
 Page({
   data: {
-    favoriteItems: [
-      {
-        id: '1',
-        title: 'AI观察：为什么人类喜欢拍照？',
-        location: '南头古城',
-      },
-      {
-        id: '2',
-        title: '民间传说：城墙上的风会记住离别',
-        location: '西安城墙',
-      },
-    ],
+    favoriteItems: [],
+    loading: true,
+    errorMessage: '',
+  },
+
+  onShow() {
+    this.loadFavorites();
+  },
+
+  async loadFavorites() {
+    this.setData({
+      loading: true,
+      errorMessage: '',
+    });
+
+    try {
+      const favorites = await favoriteService.getFavorites(favoriteService.TEST_USER_ID);
+      const favoriteItems = await Promise.all(
+        favorites.map(async function buildFavoriteItem(favorite) {
+          const storyId = favorite.storyId || favorite.id;
+          const story = await storyService.getStoryById(storyId);
+          let location = null;
+
+          try {
+            location = await locationService.getLocationById(story.locationId);
+          } catch (locationError) {
+            console.warn('Failed to load favorite location:', locationError);
+          }
+
+          return {
+            id: favorite.id,
+            storyId: storyId,
+            title: story.title,
+            location: formatLocationText(location),
+          };
+        })
+      );
+
+      this.setData({
+        favoriteItems: favoriteItems,
+        loading: false,
+      });
+    } catch (error) {
+      this.setData({
+        favoriteItems: [],
+        loading: false,
+        errorMessage: error.message || '收藏内容加载失败，请稍后再试。',
+      });
+    }
+  },
+
+  goToStoryDetail(event) {
+    const storyId = event.currentTarget.dataset.storyId;
+
+    if (!storyId) {
+      wx.showToast({
+        title: '故事ID缺失',
+        icon: 'none',
+      });
+      return;
+    }
+
+    wx.navigateTo({
+      url: '/pages/story/story?storyId=' + storyId,
+    });
   },
 });

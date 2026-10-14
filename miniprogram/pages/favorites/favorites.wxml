@@ -2,11 +2,34 @@
   <view class="section-label">FAVORITES</view>
   <view class="page-title">我的收藏</view>
   <view class="page-subtitle">
-    这里先展示静态收藏卡片，后续再接入真实的收藏关系与故事内容。
+    收藏过的故事会统一从这里进入详情页，继续阅读完整内容。
   </view>
 
-  <view wx:for="{{favoriteItems}}" wx:key="id" class="favorite-card panel">
-    <view class="favorite-title">❤️ {{item.title}}</view>
-    <view class="favorite-location">📍 {{item.location}}</view>
+  <view wx:if="{{loading}}" class="favorite-card panel">
+    <view class="favorite-title">正在读取收藏</view>
+    <view class="favorite-location">请稍等，正在加载你的收藏故事。</view>
+  </view>
+
+  <block wx:elif="{{favoriteItems.length > 0}}">
+    <view
+      wx:for="{{favoriteItems}}"
+      wx:key="id"
+      class="favorite-card panel"
+      data-story-id="{{item.storyId}}"
+      bindtap="goToStoryDetail"
+    >
+      <view class="favorite-title">❤️ {{item.title}}</view>
+      <view class="favorite-location">📍 {{item.location}}</view>
+    </view>
+  </block>
+
+  <view wx:elif="{{errorMessage}}" class="favorite-card panel">
+    <view class="favorite-title">收藏暂时不可用</view>
+    <view class="favorite-location">{{errorMessage}}</view>
+  </view>
+
+  <view wx:else class="favorite-card panel">
+    <view class="favorite-title">还没有收藏故事</view>
+    <view class="favorite-location">先去故事详情页点一次收藏，这里就会出现你的记录。</view>
   </view>
 </view>
