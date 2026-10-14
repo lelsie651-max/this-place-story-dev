@@ -1,0 +1,47 @@
+<view class="page">
+  <view class="section-label">LOCATION DISCOVERY</view>
+  <view class="page-title">地点发现</view>
+  <view class="page-subtitle">
+    <text wx:if="{{selectedTypeLabel}}">当前探索方式：{{selectedTypeLabel}}。</text>
+    先看看最近公开的地点线索。选中一个地点后，会进入对应的详情页。
+  </view>
+
+  <block wx:if="{{loading}}">
+    <view class="mode-card panel">
+      <view class="panel-title">正在寻找地点</view>
+      <view class="panel-text">正在从云端读取已发布地点，请稍等片刻。</view>
+    </view>
+  </block>
+
+  <block wx:elif="{{emptyState}}">
+    <view class="mode-card panel empty-card">
+      <view class="panel-title">暂时没有新的线索</view>
+      <view class="panel-text">{{emptyMessage}}</view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view
+      wx:for="{{locations}}"
+      wx:key="id"
+      class="mode-card panel"
+      data-location-id="{{item.id}}"
+      bindtap="goToLocation"
+    >
+      <view class="mode-top">
+        <view class="mode-title-wrap">
+          <view class="panel-title">{{item.title}}</view>
+          <view class="tag">已发布</view>
+        </view>
+      </view>
+
+      <view class="panel-text">
+        {{item.description}}
+      </view>
+
+      <view class="mode-footer">
+        <text class="mode-entry">查看地点详情</text>
+      </view>
+    </view>
+  </block>
+</view>

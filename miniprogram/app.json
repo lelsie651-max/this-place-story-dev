@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/explore/explore",
+    "pages/discovery/discovery",
     "pages/location/location",
     "pages/story/story",
     "pages/profile/profile",

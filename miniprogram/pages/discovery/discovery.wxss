@@ -1,0 +1,60 @@
+.mode-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.mode-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 120rpx;
+  height: 120rpx;
+  background: radial-gradient(circle, rgba(183, 132, 77, 0.15), rgba(183, 132, 77, 0));
+}
+
+.mode-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-bottom: 18rpx;
+}
+
+.mode-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+.mode-status {
+  color: #a08873;
+  font-size: 24rpx;
+}
+
+.mode-footer {
+  margin-top: 28rpx;
+  color: #8b5e34;
+  font-size: 28rpx;
+}
+
+.mode-entry {
+  position: relative;
+  padding-right: 28rpx;
+}
+
+.mode-entry::after {
+  content: "›";
+  position: absolute;
+  right: 0;
+}
+
+.featured {
+  background: linear-gradient(180deg, rgba(255, 248, 236, 0.98), rgba(244, 228, 199, 0.92));
+  border-color: rgba(155, 105, 55, 0.24);
+}
+
+.disabled {
+  opacity: 0.72;
+}
