@@ -1,3 +1,5 @@
+const storyService = require('../../services/storyService');
+
 Page({
   data: {
     storyModes: [
@@ -24,7 +26,7 @@ Page({
     ],
   },
 
-  goToStory(event) {
+  async goToStory(event) {
     const { type, enabled } = event.currentTarget.dataset;
 
     if (enabled === false || enabled === 'false') {
@@ -35,8 +37,17 @@ Page({
       return;
     }
 
-    wx.navigateTo({
-      url: '/pages/story/story?type=' + type,
-    });
+    try {
+      const story = await storyService.getStoryByType(type);
+
+      wx.navigateTo({
+        url: '/pages/story/story?storyId=' + story.id,
+      });
+    } catch (error) {
+      wx.showToast({
+        title: error.message || '故事加载失败，请稍后再试。',
+        icon: 'none',
+      });
+    }
   },
 });
