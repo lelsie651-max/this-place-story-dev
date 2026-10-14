@@ -21,10 +21,12 @@ function initCloud() {
   }
 
   if (!cloudInitialized) {
+    console.log('[Cloud] init start', CLOUD_ENV_ID);
     wx.cloud.init({
       env: CLOUD_ENV_ID,
       traceUser: true,
     });
+    console.log('[Cloud] init success');
     cloudInitialized = true;
   }
 
@@ -32,6 +34,7 @@ function initCloud() {
 }
 
 function getDatabase() {
+  console.log('[Cloud] getDatabase called');
   if (!initCloud()) {
     return null;
   }
