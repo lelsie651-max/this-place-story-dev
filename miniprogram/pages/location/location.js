@@ -185,18 +185,47 @@ Page({
 
     this.requestLock = true;
 
-    this.setData({
-      requesting: true,
-      requestingTypeLabel: label || '故事',
-    });
-
     try {
-      const story = await storyService.getRandomStoryByLocationAndType(this.data.locationDetail.id, type);
-      const profile = await userService.getCurrentUserProfile();
+      let profile = null;
 
-      if (!profile || (profile.magnifyingGlass || 0) < 1) {
-        throw new Error('放大镜不足，暂时无法继续探索。');
+      try {
+        profile = await userService.getCurrentUserProfile();
+      } catch (profileError) {
+        wx.showToast({
+          title: '放大镜数量获取失败，请稍后重试',
+          icon: 'none',
+        });
+        return;
       }
+
+      if (!profile) {
+        wx.showToast({
+          title: '放大镜数量获取失败，请稍后重试',
+          icon: 'none',
+        });
+        return;
+      }
+
+      const currentMagnifyingGlass = profile.magnifyingGlass || 0;
+
+      this.setData({
+        remainingMagnifyingGlass: currentMagnifyingGlass,
+      });
+
+      if (currentMagnifyingGlass < 1) {
+        wx.showToast({
+          title: '放大镜不足，暂时无法继续探索。',
+          icon: 'none',
+        });
+        return;
+      }
+
+      this.setData({
+        requesting: true,
+        requestingTypeLabel: label || '故事',
+      });
+
+      const story = await storyService.getRandomStoryByLocationAndType(this.data.locationDetail.id, type);
 
       const updatedProfile = await userService.consumeMagnifyingGlass(1);
 
