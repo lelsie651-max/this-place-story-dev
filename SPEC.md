@@ -569,9 +569,17 @@
 未来文本 POI 搜索的输入与输出契约还需满足：
 
 - `keyword` 必填且需要 `trim`
+- `keyword` 长度上限为 96 个 UTF-8 字节
 - 空关键词不调用外部 POI
 - `region` 可选
+- `region` 为空时，第一阶段默认按 `boundary=region(全国,0)` 执行文本搜索
 - 第一阶段不使用用户当前位置作为文本搜索前提
+- 成功时返回 `{ ok: true, results: [...] }`
+- 无结果时返回 `{ ok: true, results: [] }`
+- 失败时返回 `{ ok: false, error: { code, message } }`
+- 错误分类至少区分 `INVALID_INPUT`、`CONFIG_ERROR`、`PROVIDER_ERROR`、`PROVIDER_TIMEOUT`、`NORMALIZATION_ERROR`
+- 单次请求结果最多返回 10 条标准化 POI
+- 缺少稳定地点 ID、地点名称或合法经纬度的结果必须丢弃，不得伪造坐标
 - 小程序只依赖标准化后的 POI 结果字段，不直接依赖供应商原始字段
 
 ---
