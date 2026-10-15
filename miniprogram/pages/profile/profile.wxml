@@ -22,7 +22,7 @@
         </view>
       </view>
       <view class="asset-value">
-        <view class="asset-number">5</view>
+        <view class="asset-number">{{magnifyingGlass}}</view>
         <view class="asset-unit">枚</view>
       </view>
     </view>
