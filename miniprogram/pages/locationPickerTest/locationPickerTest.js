@@ -49,68 +49,226 @@ function detectPermissionHint(error) {
   );
 }
 
+function getSdkVersion() {
+  try {
+    const systemInfo = wx.getSystemInfoSync();
+    return systemInfo.SDKVersion || '';
+  } catch (error) {
+    return '';
+  }
+}
+
+function getCanIUseResult(apiName) {
+  try {
+    return !!wx.canIUse(apiName);
+  } catch (error) {
+    return false;
+  }
+}
+
+function buildSupportSnapshot() {
+  return {
+    sdkVersion: getSdkVersion(),
+    canIUseChoosePoi: getCanIUseResult('choosePoi'),
+    canIUseChooseLocation: getCanIUseResult('chooseLocation'),
+    choosePoiType: typeof wx.choosePoi,
+    chooseLocationType: typeof wx.chooseLocation,
+  };
+}
+
 Page({
   data: {
+    pageLoadMessage: '',
+    sdkVersion: '',
+    canIUseChoosePoi: false,
+    canIUseChooseLocation: false,
+    choosePoiType: '',
+    chooseLocationType: '',
     currentInterfaceName: '',
     loading: false,
     resultStatus: '',
+    lastActionMessage: '',
+    completeMessage: '',
     rawSuccessResult: '',
     normalizedResult: null,
     rawErrorResult: '',
     likelyPermissionIssue: false,
-    supportedApis: {
-      choosePoi: typeof wx !== 'undefined' && typeof wx.choosePoi === 'function',
-      chooseLocation: typeof wx !== 'undefined' && typeof wx.chooseLocation === 'function',
-    },
+    likelyPrivacyConfigIssue: false,
+    clickLocked: false,
+  },
+
+  onLoad() {
+    const supportSnapshot = buildSupportSnapshot();
+
+    this.setData({
+      pageLoadMessage: '原生地点接口测试页已加载',
+      sdkVersion: supportSnapshot.sdkVersion || '未知',
+      canIUseChoosePoi: supportSnapshot.canIUseChoosePoi,
+      canIUseChooseLocation: supportSnapshot.canIUseChooseLocation,
+      choosePoiType: supportSnapshot.choosePoiType,
+      chooseLocationType: supportSnapshot.chooseLocationType,
+      lastActionMessage: '等待点击测试按钮',
+      completeMessage: '',
+    });
+
+    wx.showToast({
+      title: '测试页已加载',
+      icon: 'none',
+    });
+  },
+
+  onUnload() {
+    this.clearPendingTimeout();
+    wx.hideLoading();
   },
 
   resetResultState(interfaceName) {
+    this.clearPendingTimeout();
+
     this.setData({
       currentInterfaceName: interfaceName,
       loading: true,
-      resultStatus: '',
+      resultStatus: 'pending',
+      lastActionMessage: '已点击，正在调用……',
+      completeMessage: '等待 complete 回调',
       rawSuccessResult: '',
       normalizedResult: null,
       rawErrorResult: '',
       likelyPermissionIssue: false,
+      likelyPrivacyConfigIssue: false,
+      clickLocked: true,
     });
+
+    wx.showLoading({
+      title: '正在调用',
+      mask: true,
+    });
+
+    this.pendingTimeoutId = setTimeout(() => {
+      this.handleSilentTimeout(interfaceName);
+    }, 8000);
   },
 
   handleSuccess(interfaceName, result) {
+    this.clearPendingTimeout();
+
     this.setData({
       currentInterfaceName: interfaceName,
       loading: false,
       resultStatus: 'success',
+      lastActionMessage: '接口调用成功',
       rawSuccessResult: safeStringify(result),
       normalizedResult: normalizeLocationResult(interfaceName, result),
       rawErrorResult: '',
       likelyPermissionIssue: false,
+      likelyPrivacyConfigIssue: false,
+      clickLocked: false,
+    });
+
+    wx.hideLoading();
+    wx.showToast({
+      title: '调用成功',
+      icon: 'success',
     });
   },
 
   handleFail(interfaceName, error) {
+    const supportSnapshot = buildSupportSnapshot();
+    const likelyPermissionIssue = detectPermissionHint(error);
+    const likelyPrivacyConfigIssue = likelyPermissionIssue;
+    const diagnostics = {
+      interfaceName: interfaceName,
+      sdkVersion: supportSnapshot.sdkVersion || '',
+      canIUse: interfaceName === 'wx.choosePoi' ? supportSnapshot.canIUseChoosePoi : supportSnapshot.canIUseChooseLocation,
+      typeofApi: interfaceName === 'wx.choosePoi' ? supportSnapshot.choosePoiType : supportSnapshot.chooseLocationType,
+      errMsg: error && error.errMsg ? error.errMsg : '',
+      error: error,
+      likelyPermissionIssue: likelyPermissionIssue,
+      likelyPrivacyConfigIssue: likelyPrivacyConfigIssue,
+    };
+
+    this.clearPendingTimeout();
+
     this.setData({
       currentInterfaceName: interfaceName,
       loading: false,
       resultStatus: 'fail',
+      lastActionMessage: '接口调用失败',
+      completeMessage: '',
       rawSuccessResult: '',
       normalizedResult: null,
-      rawErrorResult: safeStringify(error),
-      likelyPermissionIssue: detectPermissionHint(error),
+      rawErrorResult: safeStringify(diagnostics),
+      likelyPermissionIssue: likelyPermissionIssue,
+      likelyPrivacyConfigIssue: likelyPrivacyConfigIssue,
+      sdkVersion: supportSnapshot.sdkVersion || '未知',
+      canIUseChoosePoi: supportSnapshot.canIUseChoosePoi,
+      canIUseChooseLocation: supportSnapshot.canIUseChooseLocation,
+      choosePoiType: supportSnapshot.choosePoiType,
+      chooseLocationType: supportSnapshot.chooseLocationType,
+      clickLocked: false,
+    });
+
+    wx.hideLoading();
+    wx.showModal({
+      title: '地点接口调用失败',
+      content: (error && error.errMsg) || '未返回明确 errMsg，请查看页面完整错误信息。',
+      showCancel: false,
     });
   },
 
-  testChoosePoi() {
+  handleComplete(interfaceName, payload) {
+    this.clearPendingTimeout();
+
+    this.setData({
+      currentInterfaceName: interfaceName,
+      completeMessage: 'complete 已触发：' + safeStringify(payload),
+      clickLocked: false,
+    });
+
+    wx.hideLoading();
+  },
+
+  handleSilentTimeout(interfaceName) {
+    const timeoutError = {
+      errMsg: interfaceName + ':fail no callback received within timeout window',
+    };
+
+    this.handleFail(interfaceName, timeoutError);
+  },
+
+  clearPendingTimeout() {
+    if (this.pendingTimeoutId) {
+      clearTimeout(this.pendingTimeoutId);
+      this.pendingTimeoutId = null;
+    }
+  },
+
+  buildUnsupportedError(interfaceName, apiName) {
+    const supportSnapshot = buildSupportSnapshot();
+    const canIUseResult = apiName === 'choosePoi'
+      ? supportSnapshot.canIUseChoosePoi
+      : supportSnapshot.canIUseChooseLocation;
+    const apiType = apiName === 'choosePoi'
+      ? supportSnapshot.choosePoiType
+      : supportSnapshot.chooseLocationType;
+
+    return {
+      errMsg: interfaceName + ':fail current runtime does not support this API',
+      interfaceName: interfaceName,
+      apiName: apiName,
+      sdkVersion: supportSnapshot.sdkVersion || '',
+      canIUse: canIUseResult,
+      typeofApi: apiType,
+    };
+  },
+
+  callChoosePoi() {
     const interfaceName = 'wx.choosePoi';
 
-    if (typeof wx.choosePoi !== 'function') {
-      this.handleFail(interfaceName, {
-        errMsg: 'choosePoi:fail api not supported in current runtime',
-      });
+    if (typeof wx.choosePoi !== 'function' || !getCanIUseResult('choosePoi')) {
+      this.handleFail(interfaceName, this.buildUnsupportedError(interfaceName, 'choosePoi'));
       return;
     }
-
-    this.resetResultState(interfaceName);
 
     wx.choosePoi({
       success: (result) => {
@@ -119,20 +277,19 @@ Page({
       fail: (error) => {
         this.handleFail(interfaceName, error);
       },
+      complete: (payload) => {
+        this.handleComplete(interfaceName, payload);
+      },
     });
   },
 
-  testChooseLocation() {
+  callChooseLocation() {
     const interfaceName = 'wx.chooseLocation';
 
-    if (typeof wx.chooseLocation !== 'function') {
-      this.handleFail(interfaceName, {
-        errMsg: 'chooseLocation:fail api not supported in current runtime',
-      });
+    if (typeof wx.chooseLocation !== 'function' || !getCanIUseResult('chooseLocation')) {
+      this.handleFail(interfaceName, this.buildUnsupportedError(interfaceName, 'chooseLocation'));
       return;
     }
-
-    this.resetResultState(interfaceName);
 
     wx.chooseLocation({
       success: (result) => {
@@ -141,6 +298,63 @@ Page({
       fail: (error) => {
         this.handleFail(interfaceName, error);
       },
+      complete: (payload) => {
+        this.handleComplete(interfaceName, payload);
+      },
     });
+  },
+
+  testChoosePoi() {
+    const interfaceName = 'wx.choosePoi';
+
+    if (this.data.clickLocked) {
+      wx.showToast({
+        title: '接口调用中，请稍候',
+        icon: 'none',
+      });
+      return;
+    }
+
+    this.resetResultState(interfaceName);
+
+    try {
+      this.callChoosePoi();
+    } catch (error) {
+      this.handleFail(interfaceName, {
+        errMsg: interfaceName + ':fail sync exception',
+        error: {
+          name: error && error.name ? error.name : 'Error',
+          message: error && error.message ? error.message : String(error),
+          stack: error && error.stack ? error.stack : '',
+        },
+      });
+    }
+  },
+
+  testChooseLocation() {
+    const interfaceName = 'wx.chooseLocation';
+
+    if (this.data.clickLocked) {
+      wx.showToast({
+        title: '接口调用中，请稍候',
+        icon: 'none',
+      });
+      return;
+    }
+
+    this.resetResultState(interfaceName);
+
+    try {
+      this.callChooseLocation();
+    } catch (error) {
+      this.handleFail(interfaceName, {
+        errMsg: interfaceName + ':fail sync exception',
+        error: {
+          name: error && error.name ? error.name : 'Error',
+          message: error && error.message ? error.message : String(error),
+          stack: error && error.stack ? error.stack : '',
+        },
+      });
+    }
   },
 });

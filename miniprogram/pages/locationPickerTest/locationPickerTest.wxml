@@ -8,12 +8,40 @@
   </view>
 
   <view class="action-panel">
-    <button class="action-button primary" bindtap="testChoosePoi">测试微信 POI 选择</button>
-    <button class="action-button secondary" bindtap="testChooseLocation">测试微信地图选点</button>
+    <button class="action-button primary" bindtap="testChoosePoi" loading="{{loading}}" disabled="{{clickLocked}}">
+      测试微信 POI 选择
+    </button>
+    <button class="action-button secondary" bindtap="testChooseLocation" loading="{{loading}}" disabled="{{clickLocked}}">
+      测试微信地图选点
+    </button>
   </view>
 
   <view class="panel status-panel">
-    <view class="section-title">接口状态</view>
+    <view class="section-title">页面加载与接口状态</view>
+    <view class="meta-row">
+      <text class="meta-label">页面状态</text>
+      <text class="meta-value">{{pageLoadMessage || '未加载'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">SDKVersion</text>
+      <text class="meta-value">{{sdkVersion || '未知'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">canIUse choosePoi</text>
+      <text class="meta-value">{{canIUseChoosePoi ? 'true' : 'false'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">canIUse chooseLocation</text>
+      <text class="meta-value">{{canIUseChooseLocation ? 'true' : 'false'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">typeof wx.choosePoi</text>
+      <text class="meta-value">{{choosePoiType || 'unknown'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">typeof wx.chooseLocation</text>
+      <text class="meta-value">{{chooseLocationType || 'unknown'}}</text>
+    </view>
     <view class="meta-row">
       <text class="meta-label">当前接口</text>
       <text class="meta-value">{{currentInterfaceName || '未开始测试'}}</text>
@@ -23,16 +51,20 @@
       <text class="meta-value">{{loading ? '是' : '否'}}</text>
     </view>
     <view class="meta-row">
-      <text class="meta-label">choosePoi 支持</text>
-      <text class="meta-value">{{supportedApis.choosePoi ? '是' : '否'}}</text>
+      <text class="meta-label">点击锁</text>
+      <text class="meta-value">{{clickLocked ? '已锁定' : '未锁定'}}</text>
     </view>
     <view class="meta-row">
-      <text class="meta-label">chooseLocation 支持</text>
-      <text class="meta-value">{{supportedApis.chooseLocation ? '是' : '否'}}</text>
+      <text class="meta-label">当前动作</text>
+      <text class="meta-value">{{lastActionMessage || '无'}}</text>
     </view>
     <view class="meta-row">
       <text class="meta-label">结果状态</text>
       <text class="meta-value">{{resultStatus || '未返回'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">complete 状态</text>
+      <text class="meta-value">{{completeMessage || '未触发'}}</text>
     </view>
   </view>
 
@@ -72,7 +104,10 @@
   <view class="panel warning-panel" wx:if="{{rawErrorResult}}">
     <view class="section-title">失败信息</view>
     <view class="warning-text">
-      {{likelyPermissionIssue ? '可能与 requiredPrivateInfos、隐私声明或后台接口权限有关。' : '当前错误未明显指向权限未开通，请结合 errMsg 继续核对。'}}
+      {{likelyPermissionIssue ? '可能与后台接口权限未开通有关。' : '当前错误未明显指向后台权限未开通，请结合 errMsg 继续核对。'}}
+    </view>
+    <view class="warning-text">
+      {{likelyPrivacyConfigIssue ? '可能与 requiredPrivateInfos 或隐私声明未生效有关。' : '当前错误未明显指向隐私配置问题。'}}
     </view>
     <text class="code-block">{{rawErrorResult}}</text>
   </view>
