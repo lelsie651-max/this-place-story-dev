@@ -4,12 +4,22 @@
     "pages/explore/explore",
     "pages/discovery/discovery",
     "pages/location/location",
+    "pages/locationPickerTest/locationPickerTest",
     "pages/story/story",
     "pages/profile/profile",
     "pages/publish/publish",
     "pages/atlas/atlas",
     "pages/favorites/favorites"
   ],
+  "requiredPrivateInfos": [
+    "choosePoi",
+    "chooseLocation"
+  ],
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于打开微信原生地点选择与地图选点能力，帮助你主动选择地点。"
+    }
+  },
   "window": {
     "navigationBarTitleText": "此地有传说",
     "navigationBarBackgroundColor": "#f6efe2",

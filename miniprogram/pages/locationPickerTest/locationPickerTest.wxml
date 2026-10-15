@@ -1,0 +1,79 @@
+<view class="page">
+  <view class="hero-card">
+    <view class="hero-label">TEMP TEST PAGE</view>
+    <view class="hero-title">微信原生地点选择验证</view>
+    <view class="hero-subtitle">
+      本页只用于验证微信原生地点选择能力，不调用 CloudBase，不请求腾讯 LBS，也不改现有探索链路。
+    </view>
+  </view>
+
+  <view class="action-panel">
+    <button class="action-button primary" bindtap="testChoosePoi">测试微信 POI 选择</button>
+    <button class="action-button secondary" bindtap="testChooseLocation">测试微信地图选点</button>
+  </view>
+
+  <view class="panel status-panel">
+    <view class="section-title">接口状态</view>
+    <view class="meta-row">
+      <text class="meta-label">当前接口</text>
+      <text class="meta-value">{{currentInterfaceName || '未开始测试'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">loading</text>
+      <text class="meta-value">{{loading ? '是' : '否'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">choosePoi 支持</text>
+      <text class="meta-value">{{supportedApis.choosePoi ? '是' : '否'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">chooseLocation 支持</text>
+      <text class="meta-value">{{supportedApis.chooseLocation ? '是' : '否'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">结果状态</text>
+      <text class="meta-value">{{resultStatus || '未返回'}}</text>
+    </view>
+  </view>
+
+  <view class="panel" wx:if="{{normalizedResult}}">
+    <view class="section-title">整理后的字段</view>
+    <view class="field-row">
+      <text class="field-label">name</text>
+      <text class="field-value">{{normalizedResult.name || '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">address</text>
+      <text class="field-value">{{normalizedResult.address || '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">city</text>
+      <text class="field-value">{{normalizedResult.city || '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">latitude</text>
+      <text class="field-value">{{normalizedResult.latitude !== '' ? normalizedResult.latitude : '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">longitude</text>
+      <text class="field-value">{{normalizedResult.longitude !== '' ? normalizedResult.longitude : '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">type</text>
+      <text class="field-value">{{normalizedResult.type || '-'}}</text>
+    </view>
+  </view>
+
+  <view class="panel" wx:if="{{rawSuccessResult}}">
+    <view class="section-title">成功返回完整字段</view>
+    <text class="code-block">{{rawSuccessResult}}</text>
+  </view>
+
+  <view class="panel warning-panel" wx:if="{{rawErrorResult}}">
+    <view class="section-title">失败信息</view>
+    <view class="warning-text">
+      {{likelyPermissionIssue ? '可能与 requiredPrivateInfos、隐私声明或后台接口权限有关。' : '当前错误未明显指向权限未开通，请结合 errMsg 继续核对。'}}
+    </view>
+    <text class="code-block">{{rawErrorResult}}</text>
+  </view>
+</view>
