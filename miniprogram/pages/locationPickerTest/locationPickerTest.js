@@ -6,8 +6,21 @@ function safeStringify(value) {
   }
 }
 
-function isPlainObject(value) {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
+function getSdkVersion() {
+  try {
+    const systemInfo = wx.getSystemInfoSync();
+    return systemInfo.SDKVersion || '';
+  } catch (error) {
+    return '';
+  }
+}
+
+function getCanIUseResult(apiName) {
+  try {
+    return !!wx.canIUse(apiName);
+  } catch (error) {
+    return false;
+  }
 }
 
 function formatRawValue(value) {
@@ -26,79 +39,6 @@ function formatRawValue(value) {
   return String(value);
 }
 
-function normalizeCoordinate(rawValue) {
-  const hasNoValue = typeof rawValue === 'undefined' || rawValue === null || rawValue === '';
-
-  if (hasNoValue) {
-    return {
-      rawValue: rawValue,
-      rawDisplay: formatRawValue(rawValue),
-      value: null,
-      display: '未返回',
-      hasValidCoordinate: false,
-      invalidReason: 'missing',
-    };
-  }
-
-  const numericValue = Number(rawValue);
-
-  if (!Number.isFinite(numericValue)) {
-    return {
-      rawValue: rawValue,
-      rawDisplay: formatRawValue(rawValue),
-      value: null,
-      display: '未返回',
-      hasValidCoordinate: false,
-      invalidReason: 'nan',
-    };
-  }
-
-  return {
-    rawValue: rawValue,
-    rawDisplay: formatRawValue(rawValue),
-    value: numericValue,
-    display: String(numericValue),
-    hasValidCoordinate: true,
-    invalidReason: '',
-  };
-}
-
-function normalizeLocationResult(interfaceName, result) {
-  if (!isPlainObject(result)) {
-    return {
-      name: '',
-      address: '',
-      city: '',
-      latitudeDisplay: '未返回',
-      longitudeDisplay: '未返回',
-      rawLatitude: 'undefined',
-      rawLongitude: 'undefined',
-      type: '',
-      coordinateMessage: '微信接口本次未返回有效经纬度',
-    };
-  }
-
-  const normalizedLatitude = normalizeCoordinate(result.latitude);
-  const normalizedLongitude = normalizeCoordinate(result.longitude);
-  const bothCoordinatesReturned = normalizedLatitude.hasValidCoordinate && normalizedLongitude.hasValidCoordinate;
-  const bothZeroCoordinates = bothCoordinatesReturned && normalizedLatitude.value === 0 && normalizedLongitude.value === 0;
-  const hasValidCoordinates = bothCoordinatesReturned && !bothZeroCoordinates;
-
-  return {
-    name: result.name || '',
-    address: result.address || '',
-    city: result.city || '',
-    latitude: hasValidCoordinates ? normalizedLatitude.value : null,
-    longitude: hasValidCoordinates ? normalizedLongitude.value : null,
-    latitudeDisplay: hasValidCoordinates ? normalizedLatitude.display : '未返回',
-    longitudeDisplay: hasValidCoordinates ? normalizedLongitude.display : '未返回',
-    rawLatitude: normalizedLatitude.rawDisplay,
-    rawLongitude: normalizedLongitude.rawDisplay,
-    type: result.type || (interfaceName === 'wx.chooseLocation' ? '' : ''),
-    coordinateMessage: hasValidCoordinates ? '' : '微信接口本次未返回有效经纬度',
-  };
-}
-
 function detectPermissionHint(error) {
   const errMsg = error && error.errMsg ? String(error.errMsg) : '';
   const detail = safeStringify(error);
@@ -111,8 +51,8 @@ function detectPermissionHint(error) {
     combined.indexOf('privacy') !== -1 ||
     combined.indexOf('requiredprivateinfos') !== -1 ||
     combined.indexOf('need to be declared') !== -1 ||
-    combined.indexOf('112') !== -1 ||
-    combined.indexOf('110') !== -1
+    combined.indexOf('110') !== -1 ||
+    combined.indexOf('112') !== -1
   );
 }
 
@@ -122,30 +62,105 @@ function isCancelError(error) {
   return errMsg.indexOf(':fail cancel') !== -1;
 }
 
-function getSdkVersion() {
-  try {
-    const systemInfo = wx.getSystemInfoSync();
-    return systemInfo.SDKVersion || '';
-  } catch (error) {
-    return '';
-  }
-}
-
-function getCanIUseResult(apiName) {
-  try {
-    return !!wx.canIUse(apiName);
-  } catch (error) {
-    return false;
-  }
-}
-
 function buildSupportSnapshot() {
   return {
     sdkVersion: getSdkVersion(),
+    canIUseGetLocation: getCanIUseResult('getLocation'),
     canIUseChoosePoi: getCanIUseResult('choosePoi'),
     canIUseChooseLocation: getCanIUseResult('chooseLocation'),
+    getLocationType: typeof wx.getLocation,
     choosePoiType: typeof wx.choosePoi,
     chooseLocationType: typeof wx.chooseLocation,
+  };
+}
+
+function isValidLatitude(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= -90 && value <= 90;
+}
+
+function isValidLongitude(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= -180 && value <= 180;
+}
+
+function normalizeCoordinatePair(result) {
+  const rawLatitude = result ? result.latitude : undefined;
+  const rawLongitude = result ? result.longitude : undefined;
+  const latitudeValid = isValidLatitude(rawLatitude);
+  const longitudeValid = isValidLongitude(rawLongitude);
+  const zeroPair = latitudeValid && longitudeValid && rawLatitude === 0 && rawLongitude === 0;
+  const hasValidCoordinates = latitudeValid && longitudeValid && !zeroPair;
+
+  return {
+    rawLatitude: formatRawValue(rawLatitude),
+    rawLongitude: formatRawValue(rawLongitude),
+    latitude: hasValidCoordinates ? rawLatitude : null,
+    longitude: hasValidCoordinates ? rawLongitude : null,
+    latitudeDisplay: hasValidCoordinates ? String(rawLatitude) : '未返回',
+    longitudeDisplay: hasValidCoordinates ? String(rawLongitude) : '未返回',
+    hasValidCoordinates: hasValidCoordinates,
+    coordinateMessage: hasValidCoordinates ? '' : '微信本次未返回有效经纬度',
+  };
+}
+
+function normalizeApiResult(apiKey, result) {
+  const coordinates = normalizeCoordinatePair(result);
+
+  return {
+    apiKey: apiKey,
+    name: result && result.name ? result.name : '',
+    address: result && result.address ? result.address : '',
+    city: result && result.city ? result.city : '',
+    type: typeof (result && result.type) === 'undefined' ? '' : String(result.type),
+    errMsg: result && result.errMsg ? result.errMsg : '',
+    rawLatitude: coordinates.rawLatitude,
+    rawLongitude: coordinates.rawLongitude,
+    latitude: coordinates.latitude,
+    longitude: coordinates.longitude,
+    latitudeDisplay: coordinates.latitudeDisplay,
+    longitudeDisplay: coordinates.longitudeDisplay,
+    hasValidCoordinates: coordinates.hasValidCoordinates,
+    coordinateMessage: coordinates.coordinateMessage,
+    validityLabel: coordinates.hasValidCoordinates ? '有效' : '无效',
+  };
+}
+
+function buildEmptyApiState(interfaceName) {
+  return {
+    interfaceName: interfaceName,
+    statusText: '未测试',
+    lastActionMessage: '等待测试',
+    completeMessage: '',
+    rawSuccessResult: '',
+    rawCancelResult: '',
+    rawErrorResult: '',
+    normalizedResult: null,
+    likelyPermissionIssue: false,
+    likelyPrivacyConfigIssue: false,
+    coordinateValidityLabel: '未测试',
+    latestErrMsg: '',
+  };
+}
+
+function buildUnsupportedError(interfaceName, apiName) {
+  const supportSnapshot = buildSupportSnapshot();
+  const canIUseKey = apiName === 'getLocation'
+    ? 'canIUseGetLocation'
+    : apiName === 'choosePoi'
+      ? 'canIUseChoosePoi'
+      : 'canIUseChooseLocation';
+  const typeKey = apiName === 'getLocation'
+    ? 'getLocationType'
+    : apiName === 'choosePoi'
+      ? 'choosePoiType'
+      : 'chooseLocationType';
+
+  return {
+    errMsg: interfaceName + ':fail current runtime does not support this API',
+    interfaceName: interfaceName,
+    apiName: apiName,
+    sdkVersion: supportSnapshot.sdkVersion || '',
+    canIUse: supportSnapshot[canIUseKey],
+    typeofApi: supportSnapshot[typeKey],
   };
 }
 
@@ -153,22 +168,18 @@ Page({
   data: {
     pageLoadMessage: '',
     sdkVersion: '',
+    canIUseGetLocation: false,
     canIUseChoosePoi: false,
     canIUseChooseLocation: false,
+    getLocationType: '',
     choosePoiType: '',
     chooseLocationType: '',
     currentInterfaceName: '',
     loading: false,
-    resultStatus: '',
-    lastActionMessage: '',
-    completeMessage: '',
-    rawSuccessResult: '',
-    rawCancelResult: '',
-    normalizedResult: null,
-    rawErrorResult: '',
-    likelyPermissionIssue: false,
-    likelyPrivacyConfigIssue: false,
     clickLocked: false,
+    getLocationState: buildEmptyApiState('wx.getLocation'),
+    choosePoiState: buildEmptyApiState('wx.choosePoi'),
+    chooseLocationState: buildEmptyApiState('wx.chooseLocation'),
   },
 
   onLoad() {
@@ -177,12 +188,12 @@ Page({
     this.setData({
       pageLoadMessage: '原生地点接口测试页已加载',
       sdkVersion: supportSnapshot.sdkVersion || '未知',
+      canIUseGetLocation: supportSnapshot.canIUseGetLocation,
       canIUseChoosePoi: supportSnapshot.canIUseChoosePoi,
       canIUseChooseLocation: supportSnapshot.canIUseChooseLocation,
+      getLocationType: supportSnapshot.getLocationType,
       choosePoiType: supportSnapshot.choosePoiType,
       chooseLocationType: supportSnapshot.chooseLocationType,
-      lastActionMessage: '等待点击测试按钮',
-      completeMessage: '',
     });
 
     wx.showToast({
@@ -195,21 +206,33 @@ Page({
     wx.hideLoading();
   },
 
-  resetResultState(interfaceName) {
-    this.currentRequestId = (this.currentRequestId || 0) + 1;
-
+  updateApiState(apiKey, patch) {
     this.setData({
-      currentInterfaceName: interfaceName,
-      loading: true,
-      resultStatus: '调用中',
+      [apiKey + 'State']: Object.assign({}, this.data[apiKey + 'State'], patch),
+    });
+  },
+
+  beginApiCall(apiKey, interfaceName) {
+    this.currentRequestId = (this.currentRequestId || 0) + 1;
+    const requestId = this.currentRequestId;
+
+    this.updateApiState(apiKey, {
+      statusText: '调用中',
       lastActionMessage: '已点击，正在调用……',
       completeMessage: '等待 complete 回调',
       rawSuccessResult: '',
       rawCancelResult: '',
-      normalizedResult: null,
       rawErrorResult: '',
+      normalizedResult: null,
       likelyPermissionIssue: false,
       likelyPrivacyConfigIssue: false,
+      coordinateValidityLabel: '未测试',
+      latestErrMsg: '',
+    });
+
+    this.setData({
+      currentInterfaceName: interfaceName,
+      loading: true,
       clickLocked: true,
     });
 
@@ -218,42 +241,48 @@ Page({
       mask: true,
     });
 
-    return this.currentRequestId;
+    return requestId;
   },
 
   isStaleRequest(requestId) {
     return requestId !== this.currentRequestId;
   },
 
-  finishRequest(requestId, completeMessage) {
+  finishRequest(requestId, apiKey, completeMessage) {
     if (this.isStaleRequest(requestId)) {
       return;
     }
 
+    this.updateApiState(apiKey, {
+      completeMessage: completeMessage || this.data[apiKey + 'State'].completeMessage,
+    });
+
     this.setData({
       loading: false,
       clickLocked: false,
-      completeMessage: completeMessage || this.data.completeMessage,
     });
 
     wx.hideLoading();
   },
 
-  handleSuccess(interfaceName, result, requestId) {
+  handleSuccess(apiKey, interfaceName, result, requestId) {
     if (this.isStaleRequest(requestId)) {
       return;
     }
 
-    this.setData({
-      currentInterfaceName: interfaceName,
-      resultStatus: '选择成功',
+    const normalizedResult = normalizeApiResult(apiKey, result);
+
+    this.updateApiState(apiKey, {
+      statusText: '选择成功',
       lastActionMessage: '选择成功',
       rawSuccessResult: safeStringify(result),
       rawCancelResult: '',
-      normalizedResult: normalizeLocationResult(interfaceName, result),
       rawErrorResult: '',
+      normalizedResult: normalizedResult,
       likelyPermissionIssue: false,
       likelyPrivacyConfigIssue: false,
+      coordinateValidityLabel: normalizedResult.validityLabel,
+      latestErrMsg: result && result.errMsg ? result.errMsg : interfaceName + ':ok',
     });
 
     wx.showToast({
@@ -262,23 +291,22 @@ Page({
     });
   },
 
-  handleCancel(interfaceName, error, requestId) {
+  handleCancel(apiKey, error, requestId) {
     if (this.isStaleRequest(requestId)) {
       return;
     }
 
-    this.setData({
-      currentInterfaceName: interfaceName,
-      resultStatus: '已取消选择',
+    this.updateApiState(apiKey, {
+      statusText: '已取消选择',
       lastActionMessage: '已取消选择',
-      rawCancelResult: safeStringify({
-        interfaceName: interfaceName,
-        errMsg: error && error.errMsg ? error.errMsg : '',
-        error: error,
-      }),
+      rawSuccessResult: '',
+      rawCancelResult: safeStringify(error),
       rawErrorResult: '',
+      normalizedResult: null,
       likelyPermissionIssue: false,
       likelyPrivacyConfigIssue: false,
+      coordinateValidityLabel: '未测试',
+      latestErrMsg: error && error.errMsg ? error.errMsg : '',
     });
 
     wx.showToast({
@@ -287,99 +315,111 @@ Page({
     });
   },
 
-  handleFail(interfaceName, error, requestId) {
+  handleFail(apiKey, interfaceName, error, requestId) {
     if (this.isStaleRequest(requestId)) {
       return;
     }
 
     const supportSnapshot = buildSupportSnapshot();
     const likelyPermissionIssue = detectPermissionHint(error);
-    const likelyPrivacyConfigIssue = likelyPermissionIssue;
     const diagnostics = {
       interfaceName: interfaceName,
       sdkVersion: supportSnapshot.sdkVersion || '',
-      canIUse: interfaceName === 'wx.choosePoi' ? supportSnapshot.canIUseChoosePoi : supportSnapshot.canIUseChooseLocation,
-      typeofApi: interfaceName === 'wx.choosePoi' ? supportSnapshot.choosePoiType : supportSnapshot.chooseLocationType,
+      canIUse: apiKey === 'getLocation'
+        ? supportSnapshot.canIUseGetLocation
+        : apiKey === 'choosePoi'
+          ? supportSnapshot.canIUseChoosePoi
+          : supportSnapshot.canIUseChooseLocation,
+      typeofApi: apiKey === 'getLocation'
+        ? supportSnapshot.getLocationType
+        : apiKey === 'choosePoi'
+          ? supportSnapshot.choosePoiType
+          : supportSnapshot.chooseLocationType,
       errMsg: error && error.errMsg ? error.errMsg : '',
       error: error,
       likelyPermissionIssue: likelyPermissionIssue,
-      likelyPrivacyConfigIssue: likelyPrivacyConfigIssue,
+      likelyPrivacyConfigIssue: likelyPermissionIssue,
     };
 
-    this.setData({
-      currentInterfaceName: interfaceName,
-      resultStatus: '调用失败',
+    this.updateApiState(apiKey, {
+      statusText: '调用失败',
       lastActionMessage: '接口调用失败',
       rawSuccessResult: '',
       rawCancelResult: '',
-      normalizedResult: null,
       rawErrorResult: safeStringify(diagnostics),
+      normalizedResult: null,
       likelyPermissionIssue: likelyPermissionIssue,
-      likelyPrivacyConfigIssue: likelyPrivacyConfigIssue,
-      sdkVersion: supportSnapshot.sdkVersion || '未知',
-      canIUseChoosePoi: supportSnapshot.canIUseChoosePoi,
-      canIUseChooseLocation: supportSnapshot.canIUseChooseLocation,
-      choosePoiType: supportSnapshot.choosePoiType,
-      chooseLocationType: supportSnapshot.chooseLocationType,
+      likelyPrivacyConfigIssue: likelyPermissionIssue,
+      coordinateValidityLabel: '无效',
+      latestErrMsg: diagnostics.errMsg,
     });
 
     wx.showModal({
       title: '地点接口调用失败',
-      content: (error && error.errMsg) || '未返回明确 errMsg，请查看页面完整错误信息。',
+      content: diagnostics.errMsg || '未返回明确 errMsg，请查看页面完整错误信息。',
       showCancel: false,
     });
   },
 
-  handleComplete(interfaceName, payload, requestId) {
+  handleComplete(apiKey, payload, requestId) {
     if (this.isStaleRequest(requestId)) {
       return;
     }
 
-    this.finishRequest(requestId, 'complete 已触发：' + safeStringify(payload));
+    this.finishRequest(requestId, apiKey, 'complete 已触发：' + safeStringify(payload));
   },
 
-  buildUnsupportedError(interfaceName, apiName) {
-    const supportSnapshot = buildSupportSnapshot();
-    const canIUseResult = apiName === 'choosePoi'
-      ? supportSnapshot.canIUseChoosePoi
-      : supportSnapshot.canIUseChooseLocation;
-    const apiType = apiName === 'choosePoi'
-      ? supportSnapshot.choosePoiType
-      : supportSnapshot.chooseLocationType;
+  callGetLocation(requestId) {
+    const interfaceName = 'wx.getLocation';
 
-    return {
-      errMsg: interfaceName + ':fail current runtime does not support this API',
-      interfaceName: interfaceName,
-      apiName: apiName,
-      sdkVersion: supportSnapshot.sdkVersion || '',
-      canIUse: canIUseResult,
-      typeofApi: apiType,
-    };
+    if (typeof wx.getLocation !== 'function' || !getCanIUseResult('getLocation')) {
+      this.handleFail('getLocation', interfaceName, buildUnsupportedError(interfaceName, 'getLocation'), requestId);
+      this.finishRequest(requestId, 'getLocation', '未进入原生界面');
+      return;
+    }
+
+    wx.getLocation({
+      type: 'gcj02',
+      success: (result) => {
+        this.handleSuccess('getLocation', interfaceName, result, requestId);
+      },
+      fail: (error) => {
+        if (isCancelError(error)) {
+          this.handleCancel('getLocation', error, requestId);
+          return;
+        }
+
+        this.handleFail('getLocation', interfaceName, error, requestId);
+      },
+      complete: (payload) => {
+        this.handleComplete('getLocation', payload, requestId);
+      },
+    });
   },
 
   callChoosePoi(requestId) {
     const interfaceName = 'wx.choosePoi';
 
     if (typeof wx.choosePoi !== 'function' || !getCanIUseResult('choosePoi')) {
-      this.handleFail(interfaceName, this.buildUnsupportedError(interfaceName, 'choosePoi'), requestId);
-      this.finishRequest(requestId, '未进入原生界面');
+      this.handleFail('choosePoi', interfaceName, buildUnsupportedError(interfaceName, 'choosePoi'), requestId);
+      this.finishRequest(requestId, 'choosePoi', '未进入原生界面');
       return;
     }
 
     wx.choosePoi({
       success: (result) => {
-        this.handleSuccess(interfaceName, result, requestId);
+        this.handleSuccess('choosePoi', interfaceName, result, requestId);
       },
       fail: (error) => {
         if (isCancelError(error)) {
-          this.handleCancel(interfaceName, error, requestId);
+          this.handleCancel('choosePoi', error, requestId);
           return;
         }
 
-        this.handleFail(interfaceName, error, requestId);
+        this.handleFail('choosePoi', interfaceName, error, requestId);
       },
       complete: (payload) => {
-        this.handleComplete(interfaceName, payload, requestId);
+        this.handleComplete('choosePoi', payload, requestId);
       },
     });
   },
@@ -388,32 +428,30 @@ Page({
     const interfaceName = 'wx.chooseLocation';
 
     if (typeof wx.chooseLocation !== 'function' || !getCanIUseResult('chooseLocation')) {
-      this.handleFail(interfaceName, this.buildUnsupportedError(interfaceName, 'chooseLocation'), requestId);
-      this.finishRequest(requestId, '未进入原生界面');
+      this.handleFail('chooseLocation', interfaceName, buildUnsupportedError(interfaceName, 'chooseLocation'), requestId);
+      this.finishRequest(requestId, 'chooseLocation', '未进入原生界面');
       return;
     }
 
     wx.chooseLocation({
       success: (result) => {
-        this.handleSuccess(interfaceName, result, requestId);
+        this.handleSuccess('chooseLocation', interfaceName, result, requestId);
       },
       fail: (error) => {
         if (isCancelError(error)) {
-          this.handleCancel(interfaceName, error, requestId);
+          this.handleCancel('chooseLocation', error, requestId);
           return;
         }
 
-        this.handleFail(interfaceName, error, requestId);
+        this.handleFail('chooseLocation', interfaceName, error, requestId);
       },
       complete: (payload) => {
-        this.handleComplete(interfaceName, payload, requestId);
+        this.handleComplete('chooseLocation', payload, requestId);
       },
     });
   },
 
-  testChoosePoi() {
-    const interfaceName = 'wx.choosePoi';
-
+  runApiTest(apiKey, interfaceName, caller) {
     if (this.data.clickLocked) {
       wx.showToast({
         title: '接口调用中，请稍候',
@@ -422,12 +460,12 @@ Page({
       return;
     }
 
-    const requestId = this.resetResultState(interfaceName);
+    const requestId = this.beginApiCall(apiKey, interfaceName);
 
     try {
-      this.callChoosePoi(requestId);
+      caller.call(this, requestId);
     } catch (error) {
-      this.handleFail(interfaceName, {
+      this.handleFail(apiKey, interfaceName, {
         errMsg: interfaceName + ':fail sync exception',
         error: {
           name: error && error.name ? error.name : 'Error',
@@ -435,35 +473,19 @@ Page({
           stack: error && error.stack ? error.stack : '',
         },
       }, requestId);
-      this.finishRequest(requestId, '同步异常后结束');
+      this.finishRequest(requestId, apiKey, '同步异常后结束');
     }
   },
 
+  testGetLocation() {
+    this.runApiTest('getLocation', 'wx.getLocation', this.callGetLocation);
+  },
+
+  testChoosePoi() {
+    this.runApiTest('choosePoi', 'wx.choosePoi', this.callChoosePoi);
+  },
+
   testChooseLocation() {
-    const interfaceName = 'wx.chooseLocation';
-
-    if (this.data.clickLocked) {
-      wx.showToast({
-        title: '接口调用中，请稍候',
-        icon: 'none',
-      });
-      return;
-    }
-
-    const requestId = this.resetResultState(interfaceName);
-
-    try {
-      this.callChooseLocation(requestId);
-    } catch (error) {
-      this.handleFail(interfaceName, {
-        errMsg: interfaceName + ':fail sync exception',
-        error: {
-          name: error && error.name ? error.name : 'Error',
-          message: error && error.message ? error.message : String(error),
-          stack: error && error.stack ? error.stack : '',
-        },
-      }, requestId);
-      this.finishRequest(requestId, '同步异常后结束');
-    }
+    this.runApiTest('chooseLocation', 'wx.chooseLocation', this.callChooseLocation);
   },
 });

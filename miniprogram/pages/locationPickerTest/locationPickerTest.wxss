@@ -72,6 +72,13 @@
   margin-bottom: 24rpx;
 }
 
+.nested-panel {
+  margin-top: 20rpx;
+  margin-bottom: 0;
+  background: #fcf6ed;
+  box-shadow: none;
+}
+
 .status-panel {
   background: rgba(255, 250, 242, 0.98);
 }

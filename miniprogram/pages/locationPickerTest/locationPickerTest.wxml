@@ -3,11 +3,14 @@
     <view class="hero-label">TEMP TEST PAGE</view>
     <view class="hero-title">微信原生地点选择验证</view>
     <view class="hero-subtitle">
-      本页只用于验证微信原生地点选择能力，不调用 CloudBase，不请求腾讯 LBS，也不改现有探索链路。
+      本页只用于验证微信原生接口返回的原始地点数据，不调用 CloudBase，不请求腾讯 LBS，也不改现有探索链路。
     </view>
   </view>
 
   <view class="action-panel">
+    <button class="action-button primary" bindtap="testGetLocation" loading="{{loading}}" disabled="{{clickLocked}}">
+      测试微信实时定位
+    </button>
     <button class="action-button primary" bindtap="testChoosePoi" loading="{{loading}}" disabled="{{clickLocked}}">
       测试微信 POI 选择
     </button>
@@ -17,7 +20,7 @@
   </view>
 
   <view class="panel status-panel">
-    <view class="section-title">页面加载与接口状态</view>
+    <view class="section-title">页面加载与接口支持</view>
     <view class="meta-row">
       <text class="meta-label">页面状态</text>
       <text class="meta-value">{{pageLoadMessage || '未加载'}}</text>
@@ -27,23 +30,7 @@
       <text class="meta-value">{{sdkVersion || '未知'}}</text>
     </view>
     <view class="meta-row">
-      <text class="meta-label">canIUse choosePoi</text>
-      <text class="meta-value">{{canIUseChoosePoi ? 'true' : 'false'}}</text>
-    </view>
-    <view class="meta-row">
-      <text class="meta-label">canIUse chooseLocation</text>
-      <text class="meta-value">{{canIUseChooseLocation ? 'true' : 'false'}}</text>
-    </view>
-    <view class="meta-row">
-      <text class="meta-label">typeof wx.choosePoi</text>
-      <text class="meta-value">{{choosePoiType || 'unknown'}}</text>
-    </view>
-    <view class="meta-row">
-      <text class="meta-label">typeof wx.chooseLocation</text>
-      <text class="meta-value">{{chooseLocationType || 'unknown'}}</text>
-    </view>
-    <view class="meta-row">
-      <text class="meta-label">当前接口</text>
+      <text class="meta-label">当前测试接口</text>
       <text class="meta-value">{{currentInterfaceName || '未开始测试'}}</text>
     </view>
     <view class="meta-row">
@@ -55,76 +42,217 @@
       <text class="meta-value">{{clickLocked ? '已锁定' : '未锁定'}}</text>
     </view>
     <view class="meta-row">
-      <text class="meta-label">当前动作</text>
-      <text class="meta-value">{{lastActionMessage || '无'}}</text>
+      <text class="meta-label">canIUse getLocation</text>
+      <text class="meta-value">{{canIUseGetLocation ? 'true' : 'false'}}</text>
     </view>
     <view class="meta-row">
-      <text class="meta-label">结果状态</text>
-      <text class="meta-value">{{resultStatus || '未返回'}}</text>
+      <text class="meta-label">typeof wx.getLocation</text>
+      <text class="meta-value">{{getLocationType || 'unknown'}}</text>
     </view>
     <view class="meta-row">
-      <text class="meta-label">complete 状态</text>
-      <text class="meta-value">{{completeMessage || '未触发'}}</text>
+      <text class="meta-label">canIUse choosePoi</text>
+      <text class="meta-value">{{canIUseChoosePoi ? 'true' : 'false'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">typeof wx.choosePoi</text>
+      <text class="meta-value">{{choosePoiType || 'unknown'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">canIUse chooseLocation</text>
+      <text class="meta-value">{{canIUseChooseLocation ? 'true' : 'false'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">typeof wx.chooseLocation</text>
+      <text class="meta-value">{{chooseLocationType || 'unknown'}}</text>
     </view>
   </view>
 
-  <view class="panel" wx:if="{{normalizedResult}}">
-    <view class="section-title">整理后的字段</view>
-    <view class="field-row">
-      <text class="field-label">name</text>
-      <text class="field-value">{{normalizedResult.name || '-'}}</text>
+  <view class="panel status-panel">
+    <view class="section-title">对照结论</view>
+    <view class="meta-row">
+      <text class="meta-label">getLocation</text>
+      <text class="meta-value">{{getLocationState.coordinateValidityLabel}}</text>
     </view>
-    <view class="field-row">
-      <text class="field-label">address</text>
-      <text class="field-value">{{normalizedResult.address || '-'}}</text>
+    <view class="meta-row">
+      <text class="meta-label">choosePoi</text>
+      <text class="meta-value">{{choosePoiState.coordinateValidityLabel}}</text>
     </view>
-    <view class="field-row">
-      <text class="field-label">city</text>
-      <text class="field-value">{{normalizedResult.city || '-'}}</text>
+    <view class="meta-row">
+      <text class="meta-label">chooseLocation</text>
+      <text class="meta-value">{{chooseLocationState.coordinateValidityLabel}}</text>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="section-title">wx.getLocation</view>
+    <view class="meta-row">
+      <text class="meta-label">状态</text>
+      <text class="meta-value">{{getLocationState.statusText}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">当前动作</text>
+      <text class="meta-value">{{getLocationState.lastActionMessage}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">complete</text>
+      <text class="meta-value">{{getLocationState.completeMessage || '未触发'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">errMsg</text>
+      <text class="meta-value">{{getLocationState.latestErrMsg || '-'}}</text>
     </view>
     <view class="field-row">
       <text class="field-label">raw latitude</text>
-      <text class="field-value">{{normalizedResult.rawLatitude || '-'}}</text>
+      <text class="field-value">{{getLocationState.normalizedResult ? getLocationState.normalizedResult.rawLatitude : '-'}}</text>
     </view>
     <view class="field-row">
       <text class="field-label">raw longitude</text>
-      <text class="field-value">{{normalizedResult.rawLongitude || '-'}}</text>
+      <text class="field-value">{{getLocationState.normalizedResult ? getLocationState.normalizedResult.rawLongitude : '-'}}</text>
     </view>
     <view class="field-row">
       <text class="field-label">latitude</text>
-      <text class="field-value">{{normalizedResult.latitudeDisplay || '未返回'}}</text>
+      <text class="field-value">{{getLocationState.normalizedResult ? getLocationState.normalizedResult.latitudeDisplay : '未返回'}}</text>
     </view>
     <view class="field-row">
       <text class="field-label">longitude</text>
-      <text class="field-value">{{normalizedResult.longitudeDisplay || '未返回'}}</text>
+      <text class="field-value">{{getLocationState.normalizedResult ? getLocationState.normalizedResult.longitudeDisplay : '未返回'}}</text>
+    </view>
+    <view class="warning-text" wx:if="{{getLocationState.normalizedResult && getLocationState.normalizedResult.coordinateMessage}}">
+      {{getLocationState.normalizedResult.coordinateMessage}}
+    </view>
+    <view class="panel nested-panel" wx:if="{{getLocationState.rawSuccessResult}}">
+      <view class="section-title">getLocation 原始返回</view>
+      <text class="code-block">{{getLocationState.rawSuccessResult}}</text>
+    </view>
+    <view class="panel nested-panel" wx:if="{{getLocationState.rawCancelResult}}">
+      <view class="section-title">getLocation 取消返回</view>
+      <text class="code-block">{{getLocationState.rawCancelResult}}</text>
+    </view>
+    <view class="panel warning-panel nested-panel" wx:if="{{getLocationState.rawErrorResult}}">
+      <view class="section-title">getLocation 失败返回</view>
+      <text class="code-block">{{getLocationState.rawErrorResult}}</text>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="section-title">wx.choosePoi</view>
+    <view class="meta-row">
+      <text class="meta-label">状态</text>
+      <text class="meta-value">{{choosePoiState.statusText}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">当前动作</text>
+      <text class="meta-value">{{choosePoiState.lastActionMessage}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">complete</text>
+      <text class="meta-value">{{choosePoiState.completeMessage || '未触发'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">errMsg</text>
+      <text class="meta-value">{{choosePoiState.latestErrMsg || '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">name</text>
+      <text class="field-value">{{choosePoiState.normalizedResult ? choosePoiState.normalizedResult.name || '-' : '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">address</text>
+      <text class="field-value">{{choosePoiState.normalizedResult ? choosePoiState.normalizedResult.address || '-' : '-'}}</text>
     </view>
     <view class="field-row">
       <text class="field-label">type</text>
-      <text class="field-value">{{normalizedResult.type || '-'}}</text>
+      <text class="field-value">{{choosePoiState.normalizedResult ? choosePoiState.normalizedResult.type || '-' : '-'}}</text>
     </view>
-    <view class="warning-text" wx:if="{{normalizedResult.coordinateMessage}}">
-      {{normalizedResult.coordinateMessage}}
+    <view class="field-row">
+      <text class="field-label">raw latitude</text>
+      <text class="field-value">{{choosePoiState.normalizedResult ? choosePoiState.normalizedResult.rawLatitude : '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">raw longitude</text>
+      <text class="field-value">{{choosePoiState.normalizedResult ? choosePoiState.normalizedResult.rawLongitude : '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">latitude</text>
+      <text class="field-value">{{choosePoiState.normalizedResult ? choosePoiState.normalizedResult.latitudeDisplay : '未返回'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">longitude</text>
+      <text class="field-value">{{choosePoiState.normalizedResult ? choosePoiState.normalizedResult.longitudeDisplay : '未返回'}}</text>
+    </view>
+    <view class="warning-text" wx:if="{{choosePoiState.normalizedResult && choosePoiState.normalizedResult.coordinateMessage}}">
+      {{choosePoiState.normalizedResult.coordinateMessage}}
+    </view>
+    <view class="panel nested-panel" wx:if="{{choosePoiState.rawSuccessResult}}">
+      <view class="section-title">choosePoi 原始返回</view>
+      <text class="code-block">{{choosePoiState.rawSuccessResult}}</text>
+    </view>
+    <view class="panel nested-panel" wx:if="{{choosePoiState.rawCancelResult}}">
+      <view class="section-title">choosePoi 取消返回</view>
+      <text class="code-block">{{choosePoiState.rawCancelResult}}</text>
+    </view>
+    <view class="panel warning-panel nested-panel" wx:if="{{choosePoiState.rawErrorResult}}">
+      <view class="section-title">choosePoi 失败返回</view>
+      <text class="code-block">{{choosePoiState.rawErrorResult}}</text>
     </view>
   </view>
 
-  <view class="panel" wx:if="{{rawSuccessResult}}">
-    <view class="section-title">成功返回完整字段</view>
-    <text class="code-block">{{rawSuccessResult}}</text>
-  </view>
-
-  <view class="panel" wx:if="{{rawCancelResult}}">
-    <view class="section-title">取消信息</view>
-    <text class="code-block">{{rawCancelResult}}</text>
-  </view>
-
-  <view class="panel warning-panel" wx:if="{{rawErrorResult}}">
-    <view class="section-title">失败信息</view>
-    <view class="warning-text">
-      {{likelyPermissionIssue ? '可能与后台接口权限未开通有关。' : '当前错误未明显指向后台权限未开通，请结合 errMsg 继续核对。'}}
+  <view class="panel">
+    <view class="section-title">wx.chooseLocation</view>
+    <view class="meta-row">
+      <text class="meta-label">状态</text>
+      <text class="meta-value">{{chooseLocationState.statusText}}</text>
     </view>
-    <view class="warning-text">
-      {{likelyPrivacyConfigIssue ? '可能与 requiredPrivateInfos 或隐私声明未生效有关。' : '当前错误未明显指向隐私配置问题。'}}
+    <view class="meta-row">
+      <text class="meta-label">当前动作</text>
+      <text class="meta-value">{{chooseLocationState.lastActionMessage}}</text>
     </view>
-    <text class="code-block">{{rawErrorResult}}</text>
+    <view class="meta-row">
+      <text class="meta-label">complete</text>
+      <text class="meta-value">{{chooseLocationState.completeMessage || '未触发'}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">errMsg</text>
+      <text class="meta-value">{{chooseLocationState.latestErrMsg || '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">name</text>
+      <text class="field-value">{{chooseLocationState.normalizedResult ? chooseLocationState.normalizedResult.name || '-' : '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">address</text>
+      <text class="field-value">{{chooseLocationState.normalizedResult ? chooseLocationState.normalizedResult.address || '-' : '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">raw latitude</text>
+      <text class="field-value">{{chooseLocationState.normalizedResult ? chooseLocationState.normalizedResult.rawLatitude : '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">raw longitude</text>
+      <text class="field-value">{{chooseLocationState.normalizedResult ? chooseLocationState.normalizedResult.rawLongitude : '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">latitude</text>
+      <text class="field-value">{{chooseLocationState.normalizedResult ? chooseLocationState.normalizedResult.latitudeDisplay : '未返回'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">longitude</text>
+      <text class="field-value">{{chooseLocationState.normalizedResult ? chooseLocationState.normalizedResult.longitudeDisplay : '未返回'}}</text>
+    </view>
+    <view class="warning-text" wx:if="{{chooseLocationState.normalizedResult && chooseLocationState.normalizedResult.coordinateMessage}}">
+      {{chooseLocationState.normalizedResult.coordinateMessage}}
+    </view>
+    <view class="panel nested-panel" wx:if="{{chooseLocationState.rawSuccessResult}}">
+      <view class="section-title">chooseLocation 原始返回</view>
+      <text class="code-block">{{chooseLocationState.rawSuccessResult}}</text>
+    </view>
+    <view class="panel nested-panel" wx:if="{{chooseLocationState.rawCancelResult}}">
+      <view class="section-title">chooseLocation 取消返回</view>
+      <text class="code-block">{{chooseLocationState.rawCancelResult}}</text>
+    </view>
+    <view class="panel warning-panel nested-panel" wx:if="{{chooseLocationState.rawErrorResult}}">
+      <view class="section-title">chooseLocation 失败返回</view>
+      <text class="code-block">{{chooseLocationState.rawErrorResult}}</text>
+    </view>
   </view>
 </view>
