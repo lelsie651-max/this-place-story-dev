@@ -83,22 +83,38 @@
       <text class="field-value">{{normalizedResult.city || '-'}}</text>
     </view>
     <view class="field-row">
+      <text class="field-label">raw latitude</text>
+      <text class="field-value">{{normalizedResult.rawLatitude || '-'}}</text>
+    </view>
+    <view class="field-row">
+      <text class="field-label">raw longitude</text>
+      <text class="field-value">{{normalizedResult.rawLongitude || '-'}}</text>
+    </view>
+    <view class="field-row">
       <text class="field-label">latitude</text>
-      <text class="field-value">{{normalizedResult.latitude !== '' ? normalizedResult.latitude : '-'}}</text>
+      <text class="field-value">{{normalizedResult.latitudeDisplay || '未返回'}}</text>
     </view>
     <view class="field-row">
       <text class="field-label">longitude</text>
-      <text class="field-value">{{normalizedResult.longitude !== '' ? normalizedResult.longitude : '-'}}</text>
+      <text class="field-value">{{normalizedResult.longitudeDisplay || '未返回'}}</text>
     </view>
     <view class="field-row">
       <text class="field-label">type</text>
       <text class="field-value">{{normalizedResult.type || '-'}}</text>
+    </view>
+    <view class="warning-text" wx:if="{{normalizedResult.coordinateMessage}}">
+      {{normalizedResult.coordinateMessage}}
     </view>
   </view>
 
   <view class="panel" wx:if="{{rawSuccessResult}}">
     <view class="section-title">成功返回完整字段</view>
     <text class="code-block">{{rawSuccessResult}}</text>
+  </view>
+
+  <view class="panel" wx:if="{{rawCancelResult}}">
+    <view class="section-title">取消信息</view>
+    <text class="code-block">{{rawCancelResult}}</text>
   </view>
 
   <view class="panel warning-panel" wx:if="{{rawErrorResult}}">

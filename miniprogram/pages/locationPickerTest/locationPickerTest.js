@@ -10,25 +10,92 @@ function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
+function formatRawValue(value) {
+  if (typeof value === 'undefined') {
+    return 'undefined';
+  }
+
+  if (value === null) {
+    return 'null';
+  }
+
+  if (value === '') {
+    return '空字符串';
+  }
+
+  return String(value);
+}
+
+function normalizeCoordinate(rawValue) {
+  const hasNoValue = typeof rawValue === 'undefined' || rawValue === null || rawValue === '';
+
+  if (hasNoValue) {
+    return {
+      rawValue: rawValue,
+      rawDisplay: formatRawValue(rawValue),
+      value: null,
+      display: '未返回',
+      hasValidCoordinate: false,
+      invalidReason: 'missing',
+    };
+  }
+
+  const numericValue = Number(rawValue);
+
+  if (!Number.isFinite(numericValue)) {
+    return {
+      rawValue: rawValue,
+      rawDisplay: formatRawValue(rawValue),
+      value: null,
+      display: '未返回',
+      hasValidCoordinate: false,
+      invalidReason: 'nan',
+    };
+  }
+
+  return {
+    rawValue: rawValue,
+    rawDisplay: formatRawValue(rawValue),
+    value: numericValue,
+    display: String(numericValue),
+    hasValidCoordinate: true,
+    invalidReason: '',
+  };
+}
+
 function normalizeLocationResult(interfaceName, result) {
   if (!isPlainObject(result)) {
     return {
       name: '',
       address: '',
       city: '',
-      latitude: '',
-      longitude: '',
+      latitudeDisplay: '未返回',
+      longitudeDisplay: '未返回',
+      rawLatitude: 'undefined',
+      rawLongitude: 'undefined',
       type: '',
+      coordinateMessage: '微信接口本次未返回有效经纬度',
     };
   }
+
+  const normalizedLatitude = normalizeCoordinate(result.latitude);
+  const normalizedLongitude = normalizeCoordinate(result.longitude);
+  const bothCoordinatesReturned = normalizedLatitude.hasValidCoordinate && normalizedLongitude.hasValidCoordinate;
+  const bothZeroCoordinates = bothCoordinatesReturned && normalizedLatitude.value === 0 && normalizedLongitude.value === 0;
+  const hasValidCoordinates = bothCoordinatesReturned && !bothZeroCoordinates;
 
   return {
     name: result.name || '',
     address: result.address || '',
     city: result.city || '',
-    latitude: typeof result.latitude === 'number' ? result.latitude : '',
-    longitude: typeof result.longitude === 'number' ? result.longitude : '',
+    latitude: hasValidCoordinates ? normalizedLatitude.value : null,
+    longitude: hasValidCoordinates ? normalizedLongitude.value : null,
+    latitudeDisplay: hasValidCoordinates ? normalizedLatitude.display : '未返回',
+    longitudeDisplay: hasValidCoordinates ? normalizedLongitude.display : '未返回',
+    rawLatitude: normalizedLatitude.rawDisplay,
+    rawLongitude: normalizedLongitude.rawDisplay,
     type: result.type || (interfaceName === 'wx.chooseLocation' ? '' : ''),
+    coordinateMessage: hasValidCoordinates ? '' : '微信接口本次未返回有效经纬度',
   };
 }
 
@@ -47,6 +114,12 @@ function detectPermissionHint(error) {
     combined.indexOf('112') !== -1 ||
     combined.indexOf('110') !== -1
   );
+}
+
+function isCancelError(error) {
+  const errMsg = error && error.errMsg ? String(error.errMsg).toLowerCase() : '';
+
+  return errMsg.indexOf(':fail cancel') !== -1;
 }
 
 function getSdkVersion() {
@@ -90,6 +163,7 @@ Page({
     lastActionMessage: '',
     completeMessage: '',
     rawSuccessResult: '',
+    rawCancelResult: '',
     normalizedResult: null,
     rawErrorResult: '',
     likelyPermissionIssue: false,
@@ -118,20 +192,20 @@ Page({
   },
 
   onUnload() {
-    this.clearPendingTimeout();
     wx.hideLoading();
   },
 
   resetResultState(interfaceName) {
-    this.clearPendingTimeout();
+    this.currentRequestId = (this.currentRequestId || 0) + 1;
 
     this.setData({
       currentInterfaceName: interfaceName,
       loading: true,
-      resultStatus: 'pending',
+      resultStatus: '调用中',
       lastActionMessage: '已点击，正在调用……',
       completeMessage: '等待 complete 回调',
       rawSuccessResult: '',
+      rawCancelResult: '',
       normalizedResult: null,
       rawErrorResult: '',
       likelyPermissionIssue: false,
@@ -144,35 +218,80 @@ Page({
       mask: true,
     });
 
-    this.pendingTimeoutId = setTimeout(() => {
-      this.handleSilentTimeout(interfaceName);
-    }, 8000);
+    return this.currentRequestId;
   },
 
-  handleSuccess(interfaceName, result) {
-    this.clearPendingTimeout();
+  isStaleRequest(requestId) {
+    return requestId !== this.currentRequestId;
+  },
+
+  finishRequest(requestId, completeMessage) {
+    if (this.isStaleRequest(requestId)) {
+      return;
+    }
+
+    this.setData({
+      loading: false,
+      clickLocked: false,
+      completeMessage: completeMessage || this.data.completeMessage,
+    });
+
+    wx.hideLoading();
+  },
+
+  handleSuccess(interfaceName, result, requestId) {
+    if (this.isStaleRequest(requestId)) {
+      return;
+    }
 
     this.setData({
       currentInterfaceName: interfaceName,
-      loading: false,
-      resultStatus: 'success',
-      lastActionMessage: '接口调用成功',
+      resultStatus: '选择成功',
+      lastActionMessage: '选择成功',
       rawSuccessResult: safeStringify(result),
+      rawCancelResult: '',
       normalizedResult: normalizeLocationResult(interfaceName, result),
       rawErrorResult: '',
       likelyPermissionIssue: false,
       likelyPrivacyConfigIssue: false,
-      clickLocked: false,
     });
 
-    wx.hideLoading();
     wx.showToast({
-      title: '调用成功',
+      title: '选择成功',
       icon: 'success',
     });
   },
 
-  handleFail(interfaceName, error) {
+  handleCancel(interfaceName, error, requestId) {
+    if (this.isStaleRequest(requestId)) {
+      return;
+    }
+
+    this.setData({
+      currentInterfaceName: interfaceName,
+      resultStatus: '已取消选择',
+      lastActionMessage: '已取消选择',
+      rawCancelResult: safeStringify({
+        interfaceName: interfaceName,
+        errMsg: error && error.errMsg ? error.errMsg : '',
+        error: error,
+      }),
+      rawErrorResult: '',
+      likelyPermissionIssue: false,
+      likelyPrivacyConfigIssue: false,
+    });
+
+    wx.showToast({
+      title: '已取消',
+      icon: 'none',
+    });
+  },
+
+  handleFail(interfaceName, error, requestId) {
+    if (this.isStaleRequest(requestId)) {
+      return;
+    }
+
     const supportSnapshot = buildSupportSnapshot();
     const likelyPermissionIssue = detectPermissionHint(error);
     const likelyPrivacyConfigIssue = likelyPermissionIssue;
@@ -187,15 +306,12 @@ Page({
       likelyPrivacyConfigIssue: likelyPrivacyConfigIssue,
     };
 
-    this.clearPendingTimeout();
-
     this.setData({
       currentInterfaceName: interfaceName,
-      loading: false,
-      resultStatus: 'fail',
+      resultStatus: '调用失败',
       lastActionMessage: '接口调用失败',
-      completeMessage: '',
       rawSuccessResult: '',
+      rawCancelResult: '',
       normalizedResult: null,
       rawErrorResult: safeStringify(diagnostics),
       likelyPermissionIssue: likelyPermissionIssue,
@@ -205,10 +321,8 @@ Page({
       canIUseChooseLocation: supportSnapshot.canIUseChooseLocation,
       choosePoiType: supportSnapshot.choosePoiType,
       chooseLocationType: supportSnapshot.chooseLocationType,
-      clickLocked: false,
     });
 
-    wx.hideLoading();
     wx.showModal({
       title: '地点接口调用失败',
       content: (error && error.errMsg) || '未返回明确 errMsg，请查看页面完整错误信息。',
@@ -216,31 +330,12 @@ Page({
     });
   },
 
-  handleComplete(interfaceName, payload) {
-    this.clearPendingTimeout();
-
-    this.setData({
-      currentInterfaceName: interfaceName,
-      completeMessage: 'complete 已触发：' + safeStringify(payload),
-      clickLocked: false,
-    });
-
-    wx.hideLoading();
-  },
-
-  handleSilentTimeout(interfaceName) {
-    const timeoutError = {
-      errMsg: interfaceName + ':fail no callback received within timeout window',
-    };
-
-    this.handleFail(interfaceName, timeoutError);
-  },
-
-  clearPendingTimeout() {
-    if (this.pendingTimeoutId) {
-      clearTimeout(this.pendingTimeoutId);
-      this.pendingTimeoutId = null;
+  handleComplete(interfaceName, payload, requestId) {
+    if (this.isStaleRequest(requestId)) {
+      return;
     }
+
+    this.finishRequest(requestId, 'complete 已触发：' + safeStringify(payload));
   },
 
   buildUnsupportedError(interfaceName, apiName) {
@@ -262,44 +357,56 @@ Page({
     };
   },
 
-  callChoosePoi() {
+  callChoosePoi(requestId) {
     const interfaceName = 'wx.choosePoi';
 
     if (typeof wx.choosePoi !== 'function' || !getCanIUseResult('choosePoi')) {
-      this.handleFail(interfaceName, this.buildUnsupportedError(interfaceName, 'choosePoi'));
+      this.handleFail(interfaceName, this.buildUnsupportedError(interfaceName, 'choosePoi'), requestId);
+      this.finishRequest(requestId, '未进入原生界面');
       return;
     }
 
     wx.choosePoi({
       success: (result) => {
-        this.handleSuccess(interfaceName, result);
+        this.handleSuccess(interfaceName, result, requestId);
       },
       fail: (error) => {
-        this.handleFail(interfaceName, error);
+        if (isCancelError(error)) {
+          this.handleCancel(interfaceName, error, requestId);
+          return;
+        }
+
+        this.handleFail(interfaceName, error, requestId);
       },
       complete: (payload) => {
-        this.handleComplete(interfaceName, payload);
+        this.handleComplete(interfaceName, payload, requestId);
       },
     });
   },
 
-  callChooseLocation() {
+  callChooseLocation(requestId) {
     const interfaceName = 'wx.chooseLocation';
 
     if (typeof wx.chooseLocation !== 'function' || !getCanIUseResult('chooseLocation')) {
-      this.handleFail(interfaceName, this.buildUnsupportedError(interfaceName, 'chooseLocation'));
+      this.handleFail(interfaceName, this.buildUnsupportedError(interfaceName, 'chooseLocation'), requestId);
+      this.finishRequest(requestId, '未进入原生界面');
       return;
     }
 
     wx.chooseLocation({
       success: (result) => {
-        this.handleSuccess(interfaceName, result);
+        this.handleSuccess(interfaceName, result, requestId);
       },
       fail: (error) => {
-        this.handleFail(interfaceName, error);
+        if (isCancelError(error)) {
+          this.handleCancel(interfaceName, error, requestId);
+          return;
+        }
+
+        this.handleFail(interfaceName, error, requestId);
       },
       complete: (payload) => {
-        this.handleComplete(interfaceName, payload);
+        this.handleComplete(interfaceName, payload, requestId);
       },
     });
   },
@@ -315,10 +422,10 @@ Page({
       return;
     }
 
-    this.resetResultState(interfaceName);
+    const requestId = this.resetResultState(interfaceName);
 
     try {
-      this.callChoosePoi();
+      this.callChoosePoi(requestId);
     } catch (error) {
       this.handleFail(interfaceName, {
         errMsg: interfaceName + ':fail sync exception',
@@ -327,7 +434,8 @@ Page({
           message: error && error.message ? error.message : String(error),
           stack: error && error.stack ? error.stack : '',
         },
-      });
+      }, requestId);
+      this.finishRequest(requestId, '同步异常后结束');
     }
   },
 
@@ -342,10 +450,10 @@ Page({
       return;
     }
 
-    this.resetResultState(interfaceName);
+    const requestId = this.resetResultState(interfaceName);
 
     try {
-      this.callChooseLocation();
+      this.callChooseLocation(requestId);
     } catch (error) {
       this.handleFail(interfaceName, {
         errMsg: interfaceName + ':fail sync exception',
@@ -354,7 +462,8 @@ Page({
           message: error && error.message ? error.message : String(error),
           stack: error && error.stack ? error.stack : '',
         },
-      });
+      }, requestId);
+      this.finishRequest(requestId, '同步异常后结束');
     }
   },
 });
