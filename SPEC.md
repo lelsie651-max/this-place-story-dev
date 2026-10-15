@@ -108,6 +108,7 @@
 - 地点来自 CloudBase `locations`
 - 故事来自 CloudBase `stories`
 - 当前不依赖腾讯位置服务 WebService/API Key
+- 腾讯位置服务 WebService 和 `searchPlaces` 云函数当前不接入前端
 - 暂不接地图搜索 API
 - 暂不接 AI 生成
 - 暂不实现正式微信用户体系
@@ -154,13 +155,16 @@
 
 - 当前已实现：系统推荐地点
 - 当前临时能力：对已加载推荐地点做本地筛选
-- 当前候选方案：通过微信原生 `wx.choosePoi` / `wx.chooseLocation` 让用户主动选择新地点（仅临时测试页验证，尚未接入正式流程）
+- 当前正式方案：通过微信原生 `wx.chooseLocation` 让用户主动选择新地点
+- 当前排除方案：`wx.choosePoi` 已完成真机验证，但因原始经纬度为 `0,0`，不进入正式流程
+- 当前不接入：`wx.getLocation` 不进入自动定位流程
 
 当前地点选择边界冻结为：
 
 - 推荐地点与本地筛选继续保留
 - 不实现全国 POI 文本搜索
 - 不依赖腾讯位置服务 WebService/API Key
+- `wx.chooseLocation` 是正式的用户主动选点入口
 - 微信原生选点结果不等同于自定义 POI 搜索 API
 
 #### 禁止事项
@@ -281,9 +285,11 @@
 - 默认列表是系统推荐地点，来源于 CloudBase `locations`
 - 当前搜索框只对已加载推荐地点做本地筛选
 - 当前未接入外部 POI 搜索结果
-- 第一阶段文本地点搜索提供商冻结为腾讯位置服务
-- 腾讯 API Key 未来只允许存在于云函数或后端环境变量
-- 当前尚未实现真实 POI 请求
+- `wx.chooseLocation` 返回的 `name`、`address`、`latitude`、`longitude` 可作为用户主动选点输入
+- `poiid` 只作为可选辅助字段，不作为系统主键
+- `locations._id` 仍然是系统内部地点身份
+- 用户选择新地点后，应先匹配已有 `locations`，再决定是否创建新地点
+- 当前不自动创建正式 `locations`
 
 ### 7.2 stories
 
@@ -465,7 +471,7 @@
 - 首页进入地点选择页
 - 地点列表展示
 - 对已加载地点的本地关键词筛选
-- 独立临时测试页用于人工验证 `wx.choosePoi` / `wx.chooseLocation`
+- 独立临时测试页用于人工验证 `wx.getLocation`、`wx.choosePoi`、`wx.chooseLocation`
 - 地点详情展示
 - 故事类型选择
 - 按地点和类型查询单篇故事
@@ -497,7 +503,7 @@
 
 - 地图和 POI 搜索 API
 - 全国 POI 文本搜索
-- 微信原生选点结果接入正式 UGC / 新故事入口
+- `wx.chooseLocation` 接入正式 UGC / 新故事入口
 - 微信原生选点结果落库与正式 `locations` 复用
 - POI 去重与新地点落库的正式实现
 - 附近地点搜索
@@ -563,18 +569,21 @@
 最终产品中的地点入口仍需区分两层来源：
 
 - 系统推荐地点：来自已发布的 `locations`
-- 用户主动选点结果：候选入口为微信原生 `wx.choosePoi` / `wx.chooseLocation`
+- 用户主动选点结果：正式入口为微信原生 `wx.chooseLocation`
 
-后者当前仅有临时测试页，尚未接入正式 UGC、地点复用或故事流程，不得把当前本地筛选描述成已完成的地点搜索能力。
+后者当前仍仅停留在测试页结论和文档冻结层，尚未接入正式 UGC、地点复用或故事流程，不得把当前本地筛选描述成已完成的地点搜索能力。
 
 微信原生地点选择候选方案的当前约束为：
 
 - CloudBase 推荐地点与本地筛选继续保留
-- `wx.choosePoi` / `wx.chooseLocation` 只作为用户主动选择地点的候选入口
+- `wx.chooseLocation` 是正式的用户主动选点入口
+- `wx.choosePoi` 已完成真机验证，但当前原始经纬度为 `0,0`，不用于正式流程
+- `wx.getLocation` 当前不接入自动定位流程
 - 当前不实现全国 POI 文本搜索
 - 当前不依赖腾讯位置服务 WebService Key
 - 微信原生返回的是用户主动选择的地点信息，不等同于自定义 POI 搜索 API
-- 后续 UGC 地点可先保存 `name`、`address`、`city`、`latitude`、`longitude`
+- 后续 UGC 地点可先保存 `name`、`address`、`latitude`、`longitude`
+- `poiid` 只作为可选辅助字段，不作为系统主键
 - 当前不把微信返回结果伪装成 `providerPlaceId`
 - 当前不自动创建正式 `locations` 记录
 

@@ -7,6 +7,13 @@
     </view>
   </view>
 
+  <view class="panel status-panel">
+    <view class="section-title">当前冻结结论</view>
+    <view class="warning-text">`wx.chooseLocation`：已验证可返回有效经纬度，作为正式的用户主动选点入口。</view>
+    <view class="warning-text">`wx.choosePoi`：已验证名称、地址、类型可返回，但当前真机原始经纬度为 `0,0`，不进入正式流程。</view>
+    <view class="warning-text">`wx.getLocation`：当前未接入正式产品；现有失败原因为 `requiredPrivateInfos` 未声明，本轮不追加正式权限配置。</view>
+  </view>
+
   <view class="action-panel">
     <button class="action-button primary" bindtap="testGetLocation" loading="{{loading}}" disabled="{{clickLocked}}">
       测试微信实时定位

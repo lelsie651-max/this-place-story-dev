@@ -48,7 +48,9 @@
 1. 保留系统推荐地点
 2. 保留对已加载推荐地点的本地关键词筛选
 3. 不依赖腾讯位置服务 WebService / API Key
-4. 用微信原生 `wx.choosePoi` / `wx.chooseLocation` 验证“用户主动选择地点”是否可作为候选入口
+4. `wx.chooseLocation` 作为正式的用户主动选点入口
+5. `wx.choosePoi` 经真机验证后不进入正式流程
+6. `wx.getLocation` 当前不接入自动定位流程
 5. 当前不实现全国 POI 文本搜索
 
 ### 2.4 当前验证范围
@@ -57,6 +59,7 @@
 
 - 微信原生 `wx.choosePoi`
 - 微信原生 `wx.chooseLocation`
+- 微信原生 `wx.getLocation`
 - 是否需要 `requiredPrivateInfos`
 - 是否需要 `scope.userLocation` 相关声明
 - 是否需要后台接口权限与隐私声明
@@ -102,7 +105,6 @@
 
 ### 当前候选来源
 
-- 微信原生 `wx.choosePoi`
 - 微信原生 `wx.chooseLocation`
 - 用户在微信原生界面中主动选择地点
 
@@ -116,7 +118,9 @@
 ### 当前冻结结论
 
 - 当前本地筛选仍然只是临时能力
-- 微信原生选点是“用户主动选择地点”的候选入口
+- `wx.chooseLocation` 是正式的用户主动选点入口
+- `wx.choosePoi` 已验证名称、地址、类型可返回，但当前原始经纬度为 `0,0`，不进入正式流程
+- `wx.getLocation` 当前失败原因为 `requiredPrivateInfos` 未声明，本产品暂不接入自动定位流程
 - 微信原生选点不替代推荐地点列表
 - 清空关键词时仍然回到系统推荐地点列表
 
@@ -139,14 +143,15 @@
 
 ### 4.3 用户主动选点
 
-- 通过微信原生 `wx.choosePoi` 或 `wx.chooseLocation` 打开地点选择界面
+- 通过微信原生 `wx.chooseLocation` 打开地点选择界面
 - 返回用户明确选中的地点信息
 - 如果调用失败，应展示真实错误，不伪装成“没有结果”
 
 ### 4.4 选点成功
 
 - 返回微信原生能力提供的地点字段
-- 当前重点关注 `name`、`address`、`city`、`latitude`、`longitude`、`type`
+- 当前重点关注 `name`、`address`、`latitude`、`longitude`
+- `poiid` 可作为可选辅助字段
 - 当前不自动创建正式 `locations` 记录
 
 ### 4.5 选点取消或失败
@@ -170,14 +175,16 @@
 
 ### 5.1 微信原生选点身份边界
 
-微信原生 `wx.choosePoi` / `wx.chooseLocation` 返回的是用户选中的地点信息，不等同于自定义外部 POI 搜索结果。
+微信原生 `wx.chooseLocation` 返回的是用户选中的地点信息，不等同于自定义外部 POI 搜索结果。
 
 冻结规则：
 
 1. 当前不把微信返回结果伪装成 `providerPlaceId`
 2. 当前不自动创建新的 `locations` 记录
-3. 当前只验证返回字段和权限要求
-4. 后续如需落库，必须先定义标准化与去重规则
+3. `poiid` 只作为可选辅助字段，不作为系统主键
+4. 系统内部地点身份仍然使用 `locations._id`
+5. 当前只验证返回字段和权限要求
+6. 后续如需落库，必须先先匹配已有 `locations`，再决定是否创建新地点
 
 ### 5.2 当前代码保持不变的规则
 
@@ -190,9 +197,9 @@
 
 - `name`
 - `address`
-- `city`
 - `latitude`
 - `longitude`
+- `poiid`（仅辅助）
 
 在正式去重规则确定前，不得直接把名称字符串当作稳定地点身份。
 
@@ -284,7 +291,9 @@
 - 当前不依赖腾讯位置服务 WebService / API Key
 - 不调用 CloudBase 云函数地点搜索
 - 小程序前端不拼接腾讯地点搜索 URL
-- 当前验证只调用微信原生 `wx.choosePoi` / `wx.chooseLocation`
+- 当前正式入口只使用微信原生 `wx.chooseLocation`
+- `wx.choosePoi` 仅保留在临时测试页用于回归
+- `wx.getLocation` 当前不接入正式流程，也不新增对应权限声明
 - 当前不写入 CloudBase
 
 ### 7.2 当前职责划分
@@ -293,7 +302,7 @@
 
 - 展示推荐地点
 - 对推荐地点做本地筛选
-- 在临时测试页直接调用微信原生地点选择能力
+- 在临时测试页直接调用微信原生接口做回归
 - 展示成功字段和失败信息
 
 当前不需要：
@@ -334,14 +343,18 @@
 
 特点：
 
-- 候选接口为 `wx.choosePoi` / `wx.chooseLocation`
+- 正式入口为 `wx.chooseLocation`
+- `wx.choosePoi` 仅保留为临时测试项
+- `wx.getLocation` 当前不接入正式产品
 - 返回的是用户选择的地点信息
 - 可能涉及 `requiredPrivateInfos`、`scope.userLocation`、隐私声明和后台接口权限
 - 不等同于全国 POI 文本搜索
 
 当前状态：
 
-- 正在通过临时测试页验证
+- `wx.chooseLocation` 已通过真机验证，可返回有效经纬度
+- `wx.choosePoi` 已通过真机验证，但原始经纬度为 `0,0`
+- `wx.getLocation` 当前失败原因为 `requiredPrivateInfos` 未声明
 - 尚未接入正式业务流程
 
 ## 8.3 附近地点能力
@@ -392,7 +405,7 @@
 
 当前新增的临时测试页只用于：
 
-- 验证 `wx.choosePoi` / `wx.chooseLocation` 能否在真实设备上打开
+- 验证 `wx.getLocation` / `wx.choosePoi` / `wx.chooseLocation` 的真机返回
 - 采集成功字段与失败信息
 - 评估后续 UGC 或新故事入口是否适合接入
 
