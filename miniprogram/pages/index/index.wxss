@@ -3,8 +3,9 @@
 }
 
 .floating-profile {
-  position: fixed;
-  left: 20rpx;
+  position: absolute;
+  left: 32rpx;
+  top: 12rpx;
   z-index: 30;
   width: 88rpx;
   height: 88rpx;

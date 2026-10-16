@@ -1,5 +1,5 @@
 <view class="page">
-  <view class="floating-profile" style="{{topBarStyle}}" bindtap="goToProfile" hover-class="floating-profile-hover">
+  <view class="floating-profile" bindtap="goToProfile" hover-class="floating-profile-hover">
     <view class="avatar-circle">旅</view>
   </view>
 
