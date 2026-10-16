@@ -291,6 +291,98 @@
 - 用户选择新地点后，应先匹配已有 `locations`，再决定是否创建新地点
 - 当前不自动创建正式 `locations`
 
+#### `wx.chooseLocation` 标准输入契约
+
+当前冻结的标准化输入对象为：
+
+```json
+{
+  "source": "wechat_chooseLocation",
+  "name": "地点名称",
+  "address": "详细地址",
+  "latitude": 22.790329,
+  "longitude": 114.72781,
+  "poiid": "nearby_xxx"
+}
+```
+
+约束如下：
+
+- `source` 固定为 `wechat_chooseLocation`
+- `name` 必须是 `trim` 后的非空字符串
+- `address` 可以为空，但必须保留原始值与标准化值的区别
+- `latitude` / `longitude` 必须是有效数字
+- `latitude` 范围必须在 `-90` 到 `90`
+- `longitude` 范围必须在 `-180` 到 `180`
+- `latitude = 0` 且 `longitude = 0` 视为无效坐标
+- `poiid` 只能作为可选辅助字段
+- `poiid` 不得直接作为 `locations._id`
+- `poiid` 不得伪装成 `providerPlaceId`
+- 不假设 `poiid` 永久稳定
+
+#### `wx.chooseLocation` 匹配结果契约
+
+当前冻结的匹配判断结果对象为：
+
+```json
+{
+  "status": "matched",
+  "locationId": "已有 locations._id",
+  "selectedPlace": {
+    "source": "wechat_chooseLocation",
+    "name": "地点名称",
+    "address": "详细地址",
+    "latitude": 22.790329,
+    "longitude": 114.72781,
+    "poiid": "nearby_xxx"
+  },
+  "matchReason": "名称、地址和坐标与现有地点可靠一致"
+}
+```
+
+`status` 的含义冻结为：
+
+- `invalid_input`：地点名称为空、坐标非法、或选择结果缺少必要字段
+- `matched`：已能可靠判断对应已有 `locations`，返回真实 `locationId`
+- `candidate`：找到一个或多个可能匹配项，但不能直接进入已有地点
+- `unmatched`：当前没有可靠对应的 `locations`，也不能伪造 `locationId`
+
+#### 候选列表契约
+
+当出现多个可能地点时，冻结的候选结果对象为：
+
+```json
+{
+  "status": "candidate",
+  "selectedPlace": {
+    "source": "wechat_chooseLocation",
+    "name": "地点名称",
+    "address": "详细地址",
+    "latitude": 22.790329,
+    "longitude": 114.72781,
+    "poiid": "nearby_xxx"
+  },
+  "candidates": [
+    {
+      "locationId": "loc_nantou_city",
+      "name": "南头古城",
+      "address": "",
+      "latitude": 22.5333,
+      "longitude": 113.9294,
+      "matchReason": "名称高度接近，但需要进一步确认是否为同一地点",
+      "confidence": "medium"
+    }
+  ]
+}
+```
+
+约束如下：
+
+- 候选项必须使用真实 `locations._id`
+- 不得生成临时伪造 `_id`
+- 不得因为搜索词相同就直接合并
+- 每个候选项必须能解释进入候选列表的原因
+
 ### 7.2 stories
 
 当前代码实际读取的字段包括：
@@ -462,6 +554,15 @@
 
 业务代码不得依赖固定前缀或固定长度的 `_id`。
 
+### 11.6 `wx.chooseLocation` 与内部地点身份规则
+
+- `wx.chooseLocation` 返回的是用户选择结果，不是持久化后的 `locations`
+- `selectedPlace` 与正式 `locations` 必须明确区分
+- `locations._id` 仍然是系统内部地点身份
+- `poiid` 只作为辅助匹配字段，不作为系统主键
+- 当前只设计匹配契约，不执行 CloudBase 写入
+- 新地点自动创建属于后续独立 Sprint
+
 ---
 
 ## 12. 当前已实现内容
@@ -504,6 +605,7 @@
 - 地图和 POI 搜索 API
 - 全国 POI 文本搜索
 - `wx.chooseLocation` 接入正式 UGC / 新故事入口
+- `wx.chooseLocation` 与已有 `locations` 的正式匹配代码
 - 微信原生选点结果落库与正式 `locations` 复用
 - POI 去重与新地点落库的正式实现
 - 附近地点搜索
@@ -586,6 +688,15 @@
 - `poiid` 只作为可选辅助字段，不作为系统主键
 - 当前不把微信返回结果伪装成 `providerPlaceId`
 - 当前不自动创建正式 `locations` 记录
+
+`wx.chooseLocation` 的后续匹配边界冻结为：
+
+- 先校验标准输入对象，再进入匹配判断
+- 只在 `matched` 时返回真实 `locationId`
+- `candidate` 只能进入候选确认，不得直接跳现有地点
+- `unmatched` 不得伪造 `locationId`
+- 当前不执行 CloudBase 查询或写入
+- 距离阈值如需参与判断，必须作为待产品确认参数单独冻结
 
 ---
 

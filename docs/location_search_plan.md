@@ -123,6 +123,7 @@
 - `wx.getLocation` 当前失败原因为 `requiredPrivateInfos` 未声明，本产品暂不接入自动定位流程
 - 微信原生选点不替代推荐地点列表
 - 清空关键词时仍然回到系统推荐地点列表
+- 当前只设计 `wx.chooseLocation` 与已有 `locations` 的匹配契约，不执行 CloudBase 写入
 
 ---
 
@@ -153,6 +154,7 @@
 - 当前重点关注 `name`、`address`、`latitude`、`longitude`
 - `poiid` 可作为可选辅助字段
 - 当前不自动创建正式 `locations` 记录
+- 当前先进入“匹配判断”而不是直接落库
 
 ### 4.5 选点取消或失败
 
@@ -202,6 +204,99 @@
 - `poiid`（仅辅助）
 
 在正式去重规则确定前，不得直接把名称字符串当作稳定地点身份。
+
+### 5.4 `wx.chooseLocation` 标准输入对象
+
+冻结的标准化输入对象为：
+
+```json
+{
+  "source": "wechat_chooseLocation",
+  "name": "地点名称",
+  "address": "详细地址",
+  "latitude": 22.790329,
+  "longitude": 114.72781,
+  "poiid": "nearby_xxx"
+}
+```
+
+约束如下：
+
+- `source` 固定为 `wechat_chooseLocation`
+- `name` 必须是非空字符串
+- `address` 可以为空，但必须保留原始值
+- `latitude` / `longitude` 必须是有效数字
+- `latitude` 范围为 `-90` 到 `90`
+- `longitude` 范围为 `-180` 到 `180`
+- `latitude = 0` 且 `longitude = 0` 视为无效坐标
+- `poiid` 只能作为可选辅助字段
+- `poiid` 不得直接作为 `locations._id`
+- `poiid` 不得伪装成 `providerPlaceId`
+- 不假设 `poiid` 永久稳定
+- 必须保留微信原始选择对象与标准化对象的区别
+
+### 5.5 匹配结果对象
+
+冻结的匹配判断结果对象为：
+
+```json
+{
+  "status": "matched",
+  "locationId": "loc_nantou_city",
+  "selectedPlace": {
+    "source": "wechat_chooseLocation",
+    "name": "地点名称",
+    "address": "详细地址",
+    "latitude": 22.790329,
+    "longitude": 114.72781,
+    "poiid": "nearby_xxx"
+  },
+  "matchReason": "名称、地址和坐标与现有地点可靠一致"
+}
+```
+
+`status` 的含义冻结为：
+
+- `invalid_input`：地点名称为空、坐标非法、或选择结果缺少必要字段
+- `matched`：已经能可靠判断对应已有 `locations`，返回真实 `locationId`
+- `candidate`：找到一个或多个可能匹配项，但不能直接进入已有地点
+- `unmatched`：当前没有可靠对应的 `locations`，不能伪造 `locationId`
+
+### 5.6 候选列表契约
+
+当匹配结果不是唯一命中时，候选对象为：
+
+```json
+{
+  "status": "candidate",
+  "selectedPlace": {
+    "source": "wechat_chooseLocation",
+    "name": "地点名称",
+    "address": "详细地址",
+    "latitude": 22.790329,
+    "longitude": 114.72781,
+    "poiid": "nearby_xxx"
+  },
+  "candidates": [
+    {
+      "locationId": "loc_nantou_city",
+      "name": "南头古城",
+      "address": "",
+      "latitude": 22.5333,
+      "longitude": 113.9294,
+      "matchReason": "名称高度接近，但需要进一步确认是否为同一地点",
+      "confidence": "medium"
+    }
+  ]
+}
+```
+
+约束如下：
+
+- 候选项必须使用真实 `locations._id`
+- 不得生成临时伪造 `_id`
+- 不得因为名称相同就直接合并
+- 必须解释为什么进入候选列表
 
 ---
 
@@ -311,6 +406,15 @@
 - 腾讯位置服务 API Key
 - 外部 POI 文本搜索服务
 
+### 7.3 当前不执行的动作
+
+本轮只冻结契约，不执行：
+
+- CloudBase 查询
+- CloudBase 写入
+- `locations` 自动创建
+- `wx.chooseLocation` 正式业务接入
+
 ---
 
 ## 8. 本地筛选、原生选点与附近能力
@@ -356,6 +460,34 @@
 - `wx.choosePoi` 已通过真机验证，但原始经纬度为 `0,0`
 - `wx.getLocation` 当前失败原因为 `requiredPrivateInfos` 未声明
 - 尚未接入正式业务流程
+
+### 8.2.1 匹配顺序冻结
+
+当前只设计规则，不实现代码。冻结顺序为：
+
+1. 先校验 `selectedPlace` 是否满足标准输入契约
+2. 再做名称标准化：
+   - 去除首尾空格
+   - 合并连续空白
+   - 统一常见括号和标点
+3. 再做地址标准化：
+   - 去除首尾空格
+   - 保留原始地址
+4. `poiid` 只作为辅助匹配条件，不得单独决定命中
+5. 只有经纬度同时有效时，坐标才参与辅助判断
+6. 不能只根据名称直接认定为同一地点
+7. 名称、地址、坐标冲突时，优先降级为 `candidate` 或 `unmatched`
+8. 同名不同地点必须避免误匹配
+9. 已有 `location` 缺少经纬度时，只能依赖名称与地址的保守判断
+10. 只有名称和地址、没有坐标时，最多进入 `candidate`，不得直接 `matched`
+
+### 8.2.2 冲突处理规则
+
+- 名称接近但地址明显冲突：不得 `matched`
+- 名称一致但坐标明显冲突：不得 `matched`
+- 地址接近但名称明显冲突：不得 `matched`
+- 缺少任何必要字段时：进入 `invalid_input` 或 `candidate`
+- 需要距离阈值时，阈值属于“待产品确认参数”，本轮不擅自冻结
 
 ## 8.3 附近地点能力
 
