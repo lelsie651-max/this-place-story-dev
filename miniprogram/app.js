@@ -3,6 +3,7 @@ const { initCloud, isCloudAvailable } = require('./services/cloud');
 App({
   globalData: {
     cloudReady: false,
+    pendingGeneratedStory: null,
   },
 
   onLaunch() {

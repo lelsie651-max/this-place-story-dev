@@ -4,14 +4,20 @@ const storyService = require('../../services/storyService');
 
 const STORY_TYPE_LABELS = {
   ai_comment: 'AI说',
+  'AI说': 'AI说',
   folk: '民间传说',
   traveler: '网友说',
 };
 
 const STORY_SOURCE_LABELS = {
   ai_observer: 'AI观察',
+  deepseek: 'DeepSeek 生成',
   folk_archive: '民间整理',
 };
+
+function isAiStoryType(story) {
+  return !!story && (story.type === 'ai_comment' || story.type === 'AI说');
+}
 
 function formatLocationText(location) {
   if (!location) {
@@ -23,6 +29,18 @@ function formatLocationText(location) {
   }
 
   return location.name;
+}
+
+function formatFallbackLocationText(story) {
+  if (!story) {
+    return '地点信息暂不可用';
+  }
+
+  if (story.city && story.locationName) {
+    return story.city + '·' + story.locationName;
+  }
+
+  return story.locationName || '地点信息暂不可用';
 }
 
 function getStorySourceLabel(story) {
@@ -46,7 +64,11 @@ function getStorySourceLabel(story) {
 }
 
 function getStoryNote(story) {
-  if (story && story.type === 'ai_comment') {
+  if (story && story.generated) {
+    return '当前展示为 AI 生成内容，仅供阅读参考，暂不支持收藏。';
+  }
+
+  if (isAiStoryType(story)) {
     return '当前展示为 AI 说内容，仅供阅读参考。';
   }
 
@@ -97,6 +119,11 @@ Page({
   },
 
   onLoad(options) {
+    if (options && options.generatedStory === '1') {
+      this.loadGeneratedStory();
+      return;
+    }
+
     if (options && options.storyId) {
       this.loadStoryById(options.storyId);
       return;
@@ -131,13 +158,55 @@ Page({
         title: story.title,
         type: story.type,
         typeLabel: STORY_TYPE_LABELS[story.type] || story.type,
-        location: formatLocationText(location),
+        location: location ? formatLocationText(location) : formatFallbackLocationText(story),
         content: story.content,
         sourceLabel: getStorySourceLabel(story),
         note: getStoryNote(story),
+        collectible: !story.generated,
+        generated: !!story.generated,
       },
       contentParagraphs: (story.content || '').split('\n\n'),
     };
+  },
+
+  loadGeneratedStory() {
+    const app = getApp();
+    const generatedStory = app && app.globalData ? app.globalData.pendingGeneratedStory : null;
+
+    if (app && app.globalData) {
+      app.globalData.pendingGeneratedStory = null;
+    }
+
+    if (!generatedStory) {
+      this.setData({
+        currentStory: null,
+        contentParagraphs: [],
+        loading: false,
+        errorMessage: '刚生成的 AI 故事暂时不可用，请返回重试。',
+        isFavorited: false,
+      });
+      return;
+    }
+
+    this.buildStoryViewData(generatedStory)
+      .then((storyViewData) => {
+        this.setData({
+          currentStory: storyViewData.currentStory,
+          contentParagraphs: storyViewData.contentParagraphs,
+          loading: false,
+          errorMessage: '',
+          isFavorited: false,
+        });
+      })
+      .catch(() => {
+        this.setData({
+          currentStory: null,
+          contentParagraphs: [],
+          loading: false,
+          errorMessage: '刚生成的 AI 故事暂时不可用，请返回重试。',
+          isFavorited: false,
+        });
+      });
   },
 
   async loadStoryByType(storyType) {
@@ -246,6 +315,14 @@ Page({
     const currentStory = this.data.currentStory;
 
     if (!currentStory || this.data.favoriteSubmitting) {
+      return;
+    }
+
+    if (currentStory.collectible === false) {
+      wx.showToast({
+        title: '当前 AI 生成故事暂不支持收藏',
+        icon: 'none',
+      });
       return;
     }
 

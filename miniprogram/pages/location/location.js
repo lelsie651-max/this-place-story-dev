@@ -83,6 +83,48 @@ function createStoryModes() {
   });
 }
 
+function buildAiStoryRequestPayload(locationDetail) {
+  return {
+    locationId: locationDetail.id,
+    locationName: locationDetail.name || '',
+    locationDescription: locationDetail.intro || '',
+    city: locationDetail.city || '',
+    type: 'AI说',
+  };
+}
+
+function buildGeneratedStoryForPage(resultStory, locationDetail) {
+  return {
+    id: resultStory.storyId,
+    locationId: resultStory.locationId,
+    type: resultStory.type,
+    title: resultStory.title,
+    content: resultStory.content,
+    source: resultStory.source,
+    generated: true,
+    locationName: locationDetail.name || '',
+    city: locationDetail.city || '',
+  };
+}
+
+function getUserFacingAiErrorMessage(error) {
+  const rawMessage = error && error.message ? String(error.message) : '';
+
+  if (!rawMessage) {
+    return 'AI故事生成失败，请稍后重试';
+  }
+
+  if (rawMessage.indexOf('AI服务暂未配置') !== -1) {
+    return 'AI服务暂未配置';
+  }
+
+  if (rawMessage.indexOf('AI故事生成超时') !== -1) {
+    return 'AI故事生成超时，请稍后重试';
+  }
+
+  return rawMessage;
+}
+
 Page({
   data: {
     locationDetail: null,
@@ -148,6 +190,7 @@ Page({
         locationDetail: {
           id: location.id,
           name: location.name || '未命名地点',
+          city: location.city || '',
           cityText: formatCityText(location),
           intro: formatLocationIntro(location),
           heroIntro: formatHeroIntro(location),
@@ -225,7 +268,14 @@ Page({
         requestingTypeLabel: label || '故事',
       });
 
-      const story = await storyService.getRandomStoryByLocationAndType(this.data.locationDetail.id, type);
+      let story = null;
+
+      if (type === 'ai_comment') {
+        const generatedStory = await this.generateAiStory();
+        story = generatedStory;
+      } else {
+        story = await storyService.getRandomStoryByLocationAndType(this.data.locationDetail.id, type);
+      }
 
       const updatedProfile = await userService.consumeMagnifyingGlass(1);
 
@@ -235,14 +285,18 @@ Page({
 
       await new Promise(function navigateToStory(resolve, reject) {
         wx.navigateTo({
-          url: '/pages/story/story?storyId=' + story.id,
+          url: story.generated
+            ? '/pages/story/story?generatedStory=1'
+            : '/pages/story/story?storyId=' + story.id,
           success: resolve,
           fail: reject,
         });
       });
     } catch (error) {
       const rawMessage = error && error.message ? error.message : '';
-      const message = rawMessage.replace(/^Failed to load story by location and type from CloudBase:\s*/, '');
+      const message = rawMessage.indexOf('Failed to load story by location and type from CloudBase:') === 0
+        ? rawMessage.replace(/^Failed to load story by location and type from CloudBase:\s*/, '')
+        : getUserFacingAiErrorMessage(error);
 
       wx.showToast({
         title: message || '故事探索失败，请稍后再试。',
@@ -255,5 +309,38 @@ Page({
         requestingTypeLabel: '',
       });
     }
+  },
+
+  async generateAiStory() {
+    if (typeof wx === 'undefined' || !wx.cloud || typeof wx.cloud.callFunction !== 'function') {
+      throw new Error('AI服务暂时不可用，请稍后重试');
+    }
+
+    const payload = buildAiStoryRequestPayload(this.data.locationDetail);
+    const functionResult = await new Promise(function callGenerateStory(resolve, reject) {
+      wx.cloud.callFunction({
+        name: 'generateStory',
+        data: payload,
+        success: resolve,
+        fail: reject,
+      });
+    });
+    const result = functionResult && functionResult.result ? functionResult.result : null;
+
+    if (!result || result.ok !== true || !result.story) {
+      const message = result && result.error && result.error.message
+        ? result.error.message
+        : 'AI故事生成失败，请稍后重试';
+      throw new Error(message);
+    }
+
+    const app = getApp();
+    const generatedStory = buildGeneratedStoryForPage(result.story, this.data.locationDetail);
+
+    if (app && app.globalData) {
+      app.globalData.pendingGeneratedStory = generatedStory;
+    }
+
+    return generatedStory;
   },
 });
