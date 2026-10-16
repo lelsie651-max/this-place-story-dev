@@ -116,6 +116,7 @@
 - Base URL：`https://api.deepseek.com`
 - API Path：`/chat/completions`
 - Model：`deepseek-flash`
+- 外部请求超时：`25000ms`
 - `stream: false`
 - `response_format.type: "json_object"`
 
@@ -131,6 +132,12 @@ API Key 来源：
 - API Key 不能写入 `docs/`
 - API Key 不能通过源码进入 git 历史
 - 云函数不能把 Key、Authorization 或上游原始错误体返回给小程序
+
+CloudBase 云函数平台超时要求：
+
+- `generateStory` 的云函数平台超时时间必须配置为至少 `30 秒`
+- 建议在 CloudBase 控制台中将函数超时配置为 `60 秒`
+- 云函数平台超时时间不能短于外部 DeepSeek 请求超时，否则平台会先中断执行
 
 ## 5. AI 输出契约
 

@@ -18,7 +18,7 @@ cloud.init({
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
 const DEEPSEEK_CHAT_PATH = '/chat/completions';
 const DEEPSEEK_MODEL = 'deepseek-flash';
-const REQUEST_TIMEOUT_MS = 15000;
+const REQUEST_TIMEOUT_MS = 25000;
 const MAX_LOCATION_ID_LENGTH = 128;
 const MAX_LOCATION_NAME_LENGTH = 80;
 const MAX_LOCATION_DESCRIPTION_LENGTH = 300;
