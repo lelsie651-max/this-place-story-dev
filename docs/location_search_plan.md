@@ -48,28 +48,20 @@
 1. 保留系统推荐地点
 2. 保留对已加载推荐地点的本地关键词筛选
 3. 不依赖腾讯位置服务 WebService / API Key
-4. `wx.chooseLocation` 作为正式的用户主动选点入口
+4. `wx.chooseLocation` 作为后续功能方案保留
 5. `wx.choosePoi` 经真机验证后不进入正式流程
 6. `wx.getLocation` 当前不接入自动定位流程
-5. 当前不实现全国 POI 文本搜索
+7. 当前不实现全国 POI 文本搜索
 
 ### 2.4 当前验证范围
 
-本轮只验证：
+历史验证结论保留如下：
 
-- 微信原生 `wx.choosePoi`
-- 微信原生 `wx.chooseLocation`
-- 微信原生 `wx.getLocation`
-- 是否需要 `requiredPrivateInfos`
-- 是否需要 `scope.userLocation` 相关声明
-- 是否需要后台接口权限与隐私声明
+- `wx.chooseLocation` 真机可返回有效经纬度
+- `wx.choosePoi` 真机名称、地址、类型可返回，但原始经纬度为 `0,0`
+- `wx.getLocation` 当时失败原因为 `requiredPrivateInfos` 未声明
 
-本轮不执行：
-
-- API Key 申请
-- 腾讯位置服务 WebService 接入
-- 云函数代理地点搜索
-- 全国 POI 文本搜索
+当前正式审核版本不再保留原生接口测试页，也不保留 `choosePoi` / `chooseLocation` 的前端隐私配置。
 
 ---
 
@@ -118,7 +110,7 @@
 ### 当前冻结结论
 
 - 当前本地筛选仍然只是临时能力
-- `wx.chooseLocation` 是正式的用户主动选点入口
+- `wx.chooseLocation` 可作为后续能力方案，但当前不属于正式业务流程
 - `wx.choosePoi` 已验证名称、地址、类型可返回，但当前原始经纬度为 `0,0`，不进入正式流程
 - `wx.getLocation` 当前失败原因为 `requiredPrivateInfos` 未声明，本产品暂不接入自动定位流程
 - 微信原生选点不替代推荐地点列表
@@ -144,7 +136,7 @@
 
 ### 4.3 用户主动选点
 
-- 通过微信原生 `wx.chooseLocation` 打开地点选择界面
+- 后续可通过微信原生 `wx.chooseLocation` 打开地点选择界面
 - 返回用户明确选中的地点信息
 - 如果调用失败，应展示真实错误，不伪装成“没有结果”
 
@@ -386,9 +378,10 @@
 - 当前不依赖腾讯位置服务 WebService / API Key
 - 不调用 CloudBase 云函数地点搜索
 - 小程序前端不拼接腾讯地点搜索 URL
-- 当前正式入口只使用微信原生 `wx.chooseLocation`
-- `wx.choosePoi` 仅保留在临时测试页用于回归
-- `wx.getLocation` 当前不接入正式流程，也不新增对应权限声明
+- 当前正式页面不接入微信原生地点接口
+- `wx.chooseLocation` 只保留为后续功能方案
+- `wx.choosePoi` 不进入正式流程
+- `wx.getLocation` 当前不接入正式流程
 - 当前不写入 CloudBase
 
 ### 7.2 当前职责划分
@@ -397,14 +390,13 @@
 
 - 展示推荐地点
 - 对推荐地点做本地筛选
-- 在临时测试页直接调用微信原生接口做回归
-- 展示成功字段和失败信息
 
 当前不需要：
 
 - 云函数代理地点搜索
 - 腾讯位置服务 API Key
 - 外部 POI 文本搜索服务
+- 微信原生地点接口测试页
 
 ### 7.3 当前不执行的动作
 
@@ -447,11 +439,10 @@
 
 特点：
 
-- 正式入口为 `wx.chooseLocation`
-- `wx.choosePoi` 仅保留为临时测试项
+- 后续候选入口为 `wx.chooseLocation`
+- `wx.choosePoi` 不进入正式流程
 - `wx.getLocation` 当前不接入正式产品
 - 返回的是用户选择的地点信息
-- 可能涉及 `requiredPrivateInfos`、`scope.userLocation`、隐私声明和后台接口权限
 - 不等同于全国 POI 文本搜索
 
 当前状态：
@@ -459,7 +450,7 @@
 - `wx.chooseLocation` 已通过真机验证，可返回有效经纬度
 - `wx.choosePoi` 已通过真机验证，但原始经纬度为 `0,0`
 - `wx.getLocation` 当前失败原因为 `requiredPrivateInfos` 未声明
-- 尚未接入正式业务流程
+- 当前正式审核版本未接入，也未保留测试页
 
 ### 8.2.1 匹配顺序冻结
 
@@ -535,11 +526,7 @@
 
 ### 9.3 当前微信原生选点的定位
 
-当前新增的临时测试页只用于：
-
-- 验证 `wx.getLocation` / `wx.choosePoi` / `wx.chooseLocation` 的真机返回
-- 采集成功字段与失败信息
-- 评估后续 UGC 或新故事入口是否适合接入
+当前文档只保留微信原生选点的历史验证结论与后续契约。
 
 它当前不承担：
 
