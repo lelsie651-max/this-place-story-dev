@@ -6,13 +6,17 @@ const STORY_TYPE_LABELS = {
   ai_comment: 'AI说',
   'AI说': 'AI说',
   folk: '民间传说',
+  '民间传说': '民间传说',
   traveler: '网友说',
+  '网友说': '网友说',
 };
 
 const STORY_SOURCE_LABELS = {
-  ai_observer: 'AI观察',
+  preset: '预设库',
+  user: '网友投稿',
+  ai_observer: '预设库',
   deepseek: 'DeepSeek 生成',
-  folk_archive: '民间整理',
+  folk_archive: '预设库',
 };
 
 function isAiStoryType(story) {
@@ -48,16 +52,32 @@ function getStorySourceLabel(story) {
     return '已收录内容';
   }
 
+  if (story.source === 'preset') {
+    return '预设库';
+  }
+
+  if (story.source === 'user') {
+    return '网友投稿';
+  }
+
   if (STORY_SOURCE_LABELS[story.source]) {
     return STORY_SOURCE_LABELS[story.source];
   }
 
+  if (story.type === '民间传说') {
+    return 'DeepSeek 生成';
+  }
+
   if (story.type === 'ai_comment') {
-    return 'AI观察';
+    return '预设库';
   }
 
   if (story.type === 'folk') {
-    return '民间整理';
+    return '预设库';
+  }
+
+  if (story.type === 'traveler' || story.type === '网友说') {
+    return '网友投稿';
   }
 
   return '已收录内容';

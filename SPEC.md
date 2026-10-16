@@ -106,8 +106,9 @@
 当前 Demo 中：
 
 - 地点来自 CloudBase `locations`
-- `民间传说` 来自 CloudBase `stories`
-- `AI说` 已接通最小 DeepSeek 生成闭环
+- `民间传说` 当前先查预设内容，未命中时回退 DeepSeek 生成
+- `AI说` 当前始终走 DeepSeek 生成
+- `网友说` 当前只读取网友投稿内容，不调用 AI
 - 当前不依赖腾讯位置服务 WebService/API Key
 - 腾讯位置服务 WebService 和 `searchPlaces` 云函数当前不接入前端
 - 暂不接地图搜索 API
@@ -187,8 +188,9 @@
 - 对可用类型发起请求
 - 使用全屏遮罩和动画表达请求处理中
 - 使用代码层请求锁防止连续触发
-- `folk` 继续查询 CloudBase 已发布故事
-- `ai_comment` 当前调用 CloudBase 云函数 `generateStory`
+- `folk` 当前先查询当前地点的预设故事，未命中时调用云函数 `generateStory`
+- `ai_comment` 当前始终调用云函数 `generateStory`
+- `traveler` 当前只查询网友投稿内容，不调用 AI
 
 #### 已冻结职责
 
@@ -246,9 +248,28 @@
 
 - `folk`：民间传说
 - `ai_comment`：AI说
-- `traveler`：网友说，当前暂未开放
+- `traveler`：网友说
 
-### 6.2 已确认但尚未实现
+### 6.2 当前冻结的语义
+
+当前代码继续保留兼容枚举值：
+
+- `folk` -> 民间传说
+- `ai_comment` -> AI说
+- `traveler` -> 网友说
+
+其中：
+
+- `type` 表示展示模式
+- `source` 表示真实内容来源
+
+当前 source 兼容值与映射关系：
+
+- `preset` / `folk_archive` / `ai_observer` -> 预设库
+- `deepseek` -> AI 生成
+- `user` -> 网友投稿
+
+### 6.3 已确认但尚未实现
 
 以后允许增加更多内容类型或 tags，例如：
 
@@ -258,7 +279,7 @@
 - 无厘头
 - 地方记忆
 
-### 6.3 约束
+### 6.4 约束
 
 新增类型必须同时更新：
 
@@ -444,6 +465,25 @@
 
 - 当前 Demo 在 `stories` 层随机选择一篇
 
+### 7.7 当前三种入口路径
+
+- 民间传说：
+  - 先查 `locationId + type = folk + status = published`
+  - 仅预设来源命中时直接展示
+  - 未命中时调用 `generateStory`
+  - AI 回退生成结果的展示模式仍为 `民间传说`
+  - AI 回退生成结果的真实来源必须是 `deepseek`
+
+- AI说：
+  - 始终调用 `generateStory`
+  - 展示模式为 `AI说`
+  - 真实来源为 `deepseek`
+
+- 网友说：
+  - 只读取网友投稿内容
+  - 不调用 `generateStory`
+  - 当前优先识别 `source = user`，并兼容现有 `traveler` 类型值
+
 ---
 
 ## 8. 正式产品的故事池设计
@@ -515,7 +555,7 @@
 
 1. 选择地点和类型
 2. 检查 mock 放大镜余额
-3. 对 `folk` 查询可用故事，对 `AI说` 调用生成云函数
+3. 对 `folk` 先查预设故事，未命中时调用生成云函数；对 `AI说` 始终调用生成云函数；对 `traveler` 只查网友投稿
 4. 成功后扣除一次
 5. 进入故事详情
 

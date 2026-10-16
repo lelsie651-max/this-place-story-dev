@@ -20,10 +20,15 @@ const STORY_TYPES = [
     key: 'traveler',
     title: '网友说',
     description: '看看其他旅人的真实分享。',
-    enabled: false,
-    statusText: '即将开放',
+    enabled: true,
   },
 ];
+
+const STORY_MODE_DISPLAY_TYPES = {
+  folk: '民间传说',
+  ai_comment: 'AI说',
+  traveler: '网友说',
+};
 
 function formatCityText(location) {
   const primary = [location.city, location.province].filter(Boolean).join(' · ');
@@ -83,13 +88,13 @@ function createStoryModes() {
   });
 }
 
-function buildAiStoryRequestPayload(locationDetail) {
+function buildAiStoryRequestPayload(locationDetail, storyDisplayType) {
   return {
     locationId: locationDetail.id,
     locationName: locationDetail.name || '',
     locationDescription: locationDetail.intro || '',
     city: locationDetail.city || '',
-    type: 'AI说',
+    type: storyDisplayType,
   };
 }
 
@@ -109,20 +114,28 @@ function buildGeneratedStoryForPage(resultStory, locationDetail) {
 
 function getUserFacingAiErrorMessage(error) {
   const rawMessage = error && error.message ? String(error.message) : '';
+  const normalizedMessage = rawMessage
+    .replace(/^Failed to load story by location and type from CloudBase:\s*/, '')
+    .replace(/^Failed to load preset story by location and type from CloudBase:\s*/, '')
+    .replace(/^Failed to load user story by location from CloudBase:\s*/, '');
 
-  if (!rawMessage) {
+  if (!normalizedMessage) {
     return 'AI故事生成失败，请稍后重试';
   }
 
-  if (rawMessage.indexOf('AI服务暂未配置') !== -1) {
+  if (normalizedMessage.indexOf('AI服务暂未配置') !== -1) {
     return 'AI服务暂未配置';
   }
 
-  if (rawMessage.indexOf('AI故事生成超时') !== -1) {
+  if (normalizedMessage.indexOf('AI故事生成超时') !== -1) {
     return 'AI故事生成超时，请稍后重试';
   }
 
-  return rawMessage;
+  return normalizedMessage;
+}
+
+function getStoryDisplayTypeByModeKey(modeKey) {
+  return STORY_MODE_DISPLAY_TYPES[modeKey] || 'AI说';
 }
 
 Page({
@@ -271,8 +284,22 @@ Page({
       let story = null;
 
       if (type === 'ai_comment') {
-        const generatedStory = await this.generateAiStory();
+        const generatedStory = await this.generateAiStory(type);
         story = generatedStory;
+      } else if (type === 'folk') {
+        try {
+          story = await storyService.getRandomPresetStoryByLocationAndType(this.data.locationDetail.id, type);
+        } catch (presetError) {
+          const rawMessage = presetError && presetError.message ? String(presetError.message) : '';
+
+          if (rawMessage.indexOf('这个地点暂时还没有这种类型的预设故事。') === -1) {
+            throw presetError;
+          }
+
+          story = await this.generateAiStory(type);
+        }
+      } else if (type === 'traveler') {
+        story = await storyService.getRandomUserStoryByLocation(this.data.locationDetail.id);
       } else {
         story = await storyService.getRandomStoryByLocationAndType(this.data.locationDetail.id, type);
       }
@@ -293,10 +320,7 @@ Page({
         });
       });
     } catch (error) {
-      const rawMessage = error && error.message ? error.message : '';
-      const message = rawMessage.indexOf('Failed to load story by location and type from CloudBase:') === 0
-        ? rawMessage.replace(/^Failed to load story by location and type from CloudBase:\s*/, '')
-        : getUserFacingAiErrorMessage(error);
+      const message = getUserFacingAiErrorMessage(error);
 
       wx.showToast({
         title: message || '故事探索失败，请稍后再试。',
@@ -311,12 +335,15 @@ Page({
     }
   },
 
-  async generateAiStory() {
+  async generateAiStory(storyModeKey) {
     if (typeof wx === 'undefined' || !wx.cloud || typeof wx.cloud.callFunction !== 'function') {
       throw new Error('AI服务暂时不可用，请稍后重试');
     }
 
-    const payload = buildAiStoryRequestPayload(this.data.locationDetail);
+    const payload = buildAiStoryRequestPayload(
+      this.data.locationDetail,
+      getStoryDisplayTypeByModeKey(storyModeKey)
+    );
     const functionResult = await new Promise(function callGenerateStory(resolve, reject) {
       wx.cloud.callFunction({
         name: 'generateStory',

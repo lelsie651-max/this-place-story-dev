@@ -1,0 +1,3 @@
+"_id","name","city","province","country","latitude","longitude","level","intro","description","status","createdAt"
+"loc_nantou_city","南头古城","深圳","广东","中国",22.5333,113.9294,"historic_site","一座保存着城市记忆的古城。","这里保留着老城肌理，也聚集着被不断重新讲述的地方记忆。","published","2026-10-14T10:00:00.000Z"
+"loc_xian_wall","西安城墙","西安","陕西","中国",34.2599,108.9471,"historic_site","城门与砖石之间，仍能看见旧时代留下的回声。","它既是城市边界的遗迹，也是今天的人重新靠近历史的一条路。","published","2026-10-14T09:00:00.000Z"

@@ -1,11 +1,22 @@
 const { getCollections, getDatabase } = require('./cloud');
 
+const PRESET_SOURCE_VALUES = {
+  preset: true,
+  folk_archive: true,
+  ai_observer: true,
+};
+
+const USER_SOURCE_VALUES = {
+  user: true,
+};
+
 function normalizeStory(doc) {
   return {
     id: doc._id,
     locationId: doc.locationId,
     type: doc.type,
     title: doc.title,
+    summary: doc.summary,
     content: doc.content,
     source: doc.source,
     language: doc.language,
@@ -22,6 +33,30 @@ function pickRandomStory(stories) {
 
   const randomIndex = Math.floor(Math.random() * stories.length);
   return stories[randomIndex];
+}
+
+function isPresetStory(doc) {
+  if (!doc || typeof doc !== 'object') {
+    return false;
+  }
+
+  if (!doc.source) {
+    return true;
+  }
+
+  return !!PRESET_SOURCE_VALUES[doc.source];
+}
+
+function isUserStory(doc) {
+  if (!doc || typeof doc !== 'object') {
+    return false;
+  }
+
+  if (USER_SOURCE_VALUES[doc.source]) {
+    return true;
+  }
+
+  return doc.type === 'traveler' || doc.type === '网友说';
 }
 
 async function listStories() {
@@ -145,10 +180,71 @@ async function getRandomStoryByLocationAndType(locationId, type) {
   }
 }
 
+async function getRandomPresetStoryByLocationAndType(locationId, type) {
+  const db = getDatabase();
+
+  if (!db) {
+    throw new Error('CloudBase database is unavailable.');
+  }
+
+  try {
+    const result = await db
+      .collection(getCollections().stories)
+      .where({
+        locationId: locationId,
+        type: type,
+        status: 'published',
+      })
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const presetStories = (result.data || []).filter(isPresetStory);
+
+    if (presetStories.length === 0) {
+      throw new Error('这个地点暂时还没有这种类型的预设故事。');
+    }
+
+    return normalizeStory(pickRandomStory(presetStories));
+  } catch (error) {
+    throw new Error('Failed to load preset story by location and type from CloudBase: ' + error.message);
+  }
+}
+
+async function getRandomUserStoryByLocation(locationId) {
+  const db = getDatabase();
+
+  if (!db) {
+    throw new Error('CloudBase database is unavailable.');
+  }
+
+  try {
+    const result = await db
+      .collection(getCollections().stories)
+      .where({
+        locationId: locationId,
+        status: 'published',
+      })
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const userStories = (result.data || []).filter(isUserStory);
+
+    if (userStories.length === 0) {
+      throw new Error('这里暂时还没有网友投稿。');
+    }
+
+    return normalizeStory(pickRandomStory(userStories));
+  } catch (error) {
+    throw new Error('Failed to load user story by location from CloudBase: ' + error.message);
+  }
+}
+
 module.exports = {
   getStoryById,
   getStoryByType,
+  getRandomPresetStoryByLocationAndType,
   getRandomStoryByLocationAndType,
+  getRandomUserStoryByLocation,
   listStories,
   listStoriesByLocation,
 };

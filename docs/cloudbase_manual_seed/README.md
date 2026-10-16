@@ -4,8 +4,24 @@
 
 ## 文件
 
+- `locations.manual.csv`
+- `stories.manual.csv`
 - `locations.manual.json`
 - `stories.manual.json`
+- `locations.manual.jsonl`
+- `stories.manual.jsonl`
+
+说明：
+
+- `.csv` 适合当前 CloudBase 导入入口，建议优先使用
+- `.json` 是标准 JSON 数组，适合在 IDE 里查看和校验
+- `.jsonl` 是 `JSON Lines`，适合 CloudBase 控制台按行导入
+
+注意：
+
+- 当前导入界面对 CSV 更友好
+- CSV 只支持 string 和 number，所以 `locations.manual.csv` 里没有放数组类型的 `tags`
+- 当前页面仍可正常工作，因为地点列表和地点详情还有 `level`、`intro`、`description` 这些 fallback 字段
 
 ## 当前代码实际依赖的字段
 
@@ -50,10 +66,31 @@
 ## 手动导入建议
 
 1. 在 CloudBase 控制台打开 `locations` 集合。
-2. 按 `locations.manual.json` 录入或导入 2 条记录。
+2. 优先使用 `locations.manual.csv` 导入 2 条记录。
 3. 在 CloudBase 控制台打开 `stories` 集合。
-4. 按 `stories.manual.json` 录入或导入 4 条记录。
+4. 优先使用 `stories.manual.csv` 导入 4 条记录。
 5. 确认每条 `stories.locationId` 都指向真实存在的 `locations._id`。
+
+## duplicate key 报错说明
+
+如果导入时报：
+
+- `duplicate key error`
+- `dup key: { _id: "loc_xian_wall" }`
+
+这通常表示前一次导入已经成功写入了部分记录，这次再次导入时 `_id` 冲突了。
+
+处理方式：
+
+1. 先到 `locations` 集合删除已存在的：
+   - `loc_nantou_city`
+   - `loc_xian_wall`
+2. 再到 `stories` 集合删除已存在的：
+   - `story_nantou_folk_01`
+   - `story_nantou_ai_01`
+   - `story_xian_folk_01`
+   - `story_xian_ai_01`
+3. 删除后重新导入 `.jsonl` 文件
 
 ## 页面验收链路
 

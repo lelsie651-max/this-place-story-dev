@@ -2,12 +2,12 @@
 
 ## 1. 文档目的
 
-本文档用于冻结 Sprint 9-A 当前已经实现的 `AI说` 最小闭环。
+本文档用于冻结当前 DeepSeek 故事生成链路的接入边界。
 
 当前范围：
 
 - `AI说` 通过 CloudBase `generateStory` 调用真实 DeepSeek
-- `民间传说` 继续读取 CloudBase 已发布故事
+- `民间传说` 在没有预设故事时通过 `generateStory` 回退生成
 - AI 生成失败不能影响现有民间传说流程
 
 当前非目标：
@@ -36,9 +36,17 @@
 `民间传说` 保持现有流程：
 
 `location`
--> CloudBase `stories`
--> `storyId`
--> `pages/story/story`
+-> 优先查询当前地点预设故事
+-> 命中后直接进入 `story`
+-> 未命中时调用 `generateStory`
+-> 生成结果以 `generatedStory=1` 进入 `pages/story/story`
+
+`网友说` 当前流程：
+
+`location`
+-> 只查询网友投稿内容
+-> 不调用 `generateStory`
+-> 没有投稿时提示空状态
 
 ---
 
@@ -66,7 +74,9 @@
 - `locationName` 必须是非空字符串
 - `locationDescription` 可为空
 - `city` 可为空
-- `type` 必须等于 `"AI说"`
+- `type` 当前只允许：
+  - `"AI说"`
+  - `"民间传说"`
 - 云函数内对文本长度做上限控制
 - 客户端不能传 API Key
 - 客户端不能传自定义 system prompt
@@ -79,7 +89,7 @@
   "story": {
     "storyId": "generated-unique-id",
     "locationId": "loc-nantou",
-    "type": "AI说",
+    "type": "AI说 或 民间传说",
     "title": "故事标题",
     "content": "故事正文",
     "source": "deepseek"
@@ -155,6 +165,7 @@ CloudBase 云函数平台超时要求：
 - 必须围绕当前地点生成
 - 使用地点名称、城市和简介作为上下文
 - `AI说` 属于 AI 观察和想象，不冒充真实历史事实
+- `民间传说` 回退生成时要有传说讲述感，但仍然属于 AI 生成，不冒充真实民俗档案
 - 不捏造具体历史人物、年代或官方事件
 - 最终展示内容中不出现提示词、字段名或 JSON 代码块
 - 正文必须能直接展示在故事详情页
@@ -182,6 +193,7 @@ CloudBase 云函数平台超时要求：
 - AI 生成故事只在本次内存会话中存在
 - `story` 页消费后会清空这份临时数据
 - 当前 AI 生成故事不支持收藏
+- 民间传说的 AI 回退结果同样不落库，且必须保留 `source = deepseek`
 
 ## 7. 放大镜规则
 

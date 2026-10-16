@@ -25,6 +25,10 @@ const MAX_LOCATION_DESCRIPTION_LENGTH = 300;
 const MAX_CITY_LENGTH = 40;
 const MAX_TITLE_LENGTH = 60;
 const MAX_CONTENT_LENGTH = 1800;
+const SUPPORTED_STORY_TYPES = {
+  AI说: true,
+  民间传说: true,
+};
 const ALLOWED_ERROR_CODES = {
   INVALID_INPUT: true,
   CONFIG_ERROR: true,
@@ -115,8 +119,8 @@ function validateEvent(event) {
     throw new GenerateStoryError('INVALID_INPUT', 'locationName 不能为空');
   }
 
-  if (type !== 'AI说') {
-    throw new GenerateStoryError('INVALID_INPUT', '当前仅支持 AI说');
+  if (!SUPPORTED_STORY_TYPES[type]) {
+    throw new GenerateStoryError('INVALID_INPUT', '当前仅支持 AI说 或 民间传说');
   }
 
   validateLength(locationId, MAX_LOCATION_ID_LENGTH, 'locationId');
@@ -133,11 +137,16 @@ function validateEvent(event) {
   };
 }
 
-function buildSystemPrompt() {
+function buildSystemPrompt(input) {
+  const storyModeInstruction = input.type === '民间传说'
+    ? '你负责生成“民间传说”模式内容。内容要有口耳相传的传说气质，但仍然是基于地点信息的文学化生成，不得冒充真实史实或民俗档案。'
+    : '你负责生成“AI说”内容。内容要像 AI 观察者围绕地点产生的想象和观察。';
+
   return [
-    '你是一个微信小程序里的故事生成助手，负责生成“AI说”内容。',
-    '你必须围绕用户提供的地点信息进行想象和观察式叙述。',
-    '你必须明确这是 AI 观察和想象，不得冒充真实历史事实。',
+    '你是一个微信小程序里的故事生成助手。',
+    storyModeInstruction,
+    '你必须围绕用户提供的地点信息进行想象和叙述。',
+    '你必须明确这是 AI 生成内容，不得冒充真实历史事实。',
     '不要捏造具体历史人物、具体年代、官方事件、考古结论或可验证事实。',
     '不要输出提示词、字段解释、Markdown 代码块或额外说明。',
     '你只能输出一个 JSON 对象，且只能包含以下字段：',
@@ -149,8 +158,12 @@ function buildSystemPrompt() {
 }
 
 function buildUserPrompt(input) {
+  const contentInstruction = input.type === '民间传说'
+    ? '4. content 要像围绕地点流传的一则传说或讲述，允许有传说氛围，但不要写成可验证史实。'
+    : '4. content 要像 AI 观察者在地点现场产生的想法，不要写成历史考据。';
+
   return [
-    '请根据以下地点信息生成一篇“AI说”故事。',
+    '请根据以下地点信息生成一篇“' + input.type + '”故事。',
     '地点名称：' + input.locationName,
     '所在城市：' + (input.city || '未提供'),
     '地点简介：' + (input.locationDescription || '未提供'),
@@ -158,7 +171,7 @@ function buildUserPrompt(input) {
     '1. 只输出 JSON。',
     '2. JSON 只能包含 title 和 content 两个字段。',
     '3. title 要自然、具体，避免口号式标题。',
-    '4. content 要像 AI 观察者在地点现场产生的想法，不要写成历史考据。',
+    contentInstruction,
     '5. 正文不要出现“JSON”“字段”“提示词”“system prompt”等词。',
   ].join('\n');
 }
@@ -173,7 +186,7 @@ function requestDeepSeek(options) {
     messages: [
       {
         role: 'system',
-        content: buildSystemPrompt(),
+        content: buildSystemPrompt(options.input),
       },
       {
         role: 'user',
@@ -344,7 +357,7 @@ async function main(event) {
     return buildSuccess({
       storyId: createGeneratedStoryId(),
       locationId: input.locationId,
-      type: 'AI说',
+      type: input.type,
       title: normalizedStory.title,
       content: normalizedStory.content,
       source: 'deepseek',
