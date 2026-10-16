@@ -1,8 +1,6 @@
 <view class="page">
-  <view class="top-bar" style="{{topBarStyle}}">
-    <button class="avatar-button" bindtap="goToProfile">
-      <view class="avatar-circle">旅</view>
-    </button>
+  <view class="floating-profile" style="{{topBarStyle}}" bindtap="goToProfile" hover-class="floating-profile-hover">
+    <view class="avatar-circle">旅</view>
   </view>
 
   <view class="hero">

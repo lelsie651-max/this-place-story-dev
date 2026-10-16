@@ -5,14 +5,10 @@ function getTopBarStyle() {
       ? wx.getMenuButtonBoundingClientRect()
       : null;
     const statusBarHeight = windowInfo && windowInfo.statusBarHeight ? windowInfo.statusBarHeight : 0;
-    const paddingTop = menuButtonRect && menuButtonRect.top
-      ? menuButtonRect.top
-      : statusBarHeight + 8;
-    const minHeight = menuButtonRect && menuButtonRect.height
-      ? menuButtonRect.height
-      : 32;
-
-    return 'padding-top:' + paddingTop + 'px; min-height:' + minHeight + 'px;';
+    const top = menuButtonRect && menuButtonRect.bottom
+      ? menuButtonRect.bottom + 4
+      : statusBarHeight + 44;
+    return 'top:' + top + 'px;';
   } catch (error) {
     return '';
   }
