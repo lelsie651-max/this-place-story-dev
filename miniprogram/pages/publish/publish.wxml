@@ -2,13 +2,13 @@
   <view class="section-label">PUBLISH</view>
   <view class="page-title">分享你的传说</view>
   <view class="page-subtitle">
-    先预留用户投稿入口，当前不接真实发布与审核流程，只建立页面体验。
+    把你想分享的地点故事先整理下来，内容会在后续审核后展示。
   </view>
 
   <view class="panel field-card" bindtap="chooseLocation">
     <view class="field-label">📍 选择地点</view>
     <view class="field-value">{{locationName}}</view>
-    <view class="field-note">点击后暂时只做占位提示，后续再接地点搜索与定位。</view>
+    <view class="field-note">地点选择功能准备中，当前先保留示例地点。</view>
   </view>
 
   <view class="panel field-card">

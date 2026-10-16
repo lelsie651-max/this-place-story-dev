@@ -19,7 +19,7 @@ Page({
 
   chooseLocation() {
     wx.showToast({
-      title: '地点选择功能开发中',
+      title: '地点选择准备中',
       icon: 'none',
     });
   },

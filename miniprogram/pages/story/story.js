@@ -8,6 +8,11 @@ const STORY_TYPE_LABELS = {
   traveler: '网友说',
 };
 
+const STORY_SOURCE_LABELS = {
+  ai_observer: 'AI观察',
+  folk_archive: '民间整理',
+};
+
 function formatLocationText(location) {
   if (!location) {
     return '地点信息暂不可用';
@@ -18,6 +23,67 @@ function formatLocationText(location) {
   }
 
   return location.name;
+}
+
+function getStorySourceLabel(story) {
+  if (!story) {
+    return '已收录内容';
+  }
+
+  if (STORY_SOURCE_LABELS[story.source]) {
+    return STORY_SOURCE_LABELS[story.source];
+  }
+
+  if (story.type === 'ai_comment') {
+    return 'AI观察';
+  }
+
+  if (story.type === 'folk') {
+    return '民间整理';
+  }
+
+  return '已收录内容';
+}
+
+function getStoryNote(story) {
+  if (story && story.type === 'ai_comment') {
+    return '当前展示为 AI 说内容，仅供阅读参考。';
+  }
+
+  return '当前展示为已收录故事内容，仅供阅读参考。';
+}
+
+function getUserFacingStoryErrorMessage(error, fallbackMessage) {
+  const rawMessage = error && error.message ? String(error.message) : '';
+
+  if (!rawMessage) {
+    return fallbackMessage;
+  }
+
+  if (
+    rawMessage.indexOf('这个地点暂时还没有这种类型的已发布故事') !== -1 ||
+    rawMessage.indexOf('该地点暂时还没有已发布故事') !== -1
+  ) {
+    return '这里暂时还没有可以阅读的故事。';
+  }
+
+  if (rawMessage.indexOf('No published story found') !== -1) {
+    return '暂时还没有找到这一类故事。';
+  }
+
+  if (rawMessage.indexOf('does not exist') !== -1) {
+    return '这篇故事暂时不可用。';
+  }
+
+  if (
+    rawMessage.indexOf('CloudBase') !== -1 ||
+    rawMessage.indexOf('database is unavailable') !== -1 ||
+    rawMessage.indexOf('Failed to load') !== -1
+  ) {
+    return fallbackMessage;
+  }
+
+  return rawMessage;
 }
 
 Page({
@@ -67,7 +133,8 @@ Page({
         typeLabel: STORY_TYPE_LABELS[story.type] || story.type,
         location: formatLocationText(location),
         content: story.content,
-        source: story.source,
+        sourceLabel: getStorySourceLabel(story),
+        note: getStoryNote(story),
       },
       contentParagraphs: (story.content || '').split('\n\n'),
     };
@@ -95,7 +162,7 @@ Page({
         currentStory: null,
         contentParagraphs: [],
         loading: false,
-        errorMessage: error.message || '故事加载失败，请稍后再试。',
+        errorMessage: getUserFacingStoryErrorMessage(error, '故事加载失败，请稍后再试。'),
       });
     }
   },
@@ -122,7 +189,7 @@ Page({
         currentStory: null,
         contentParagraphs: [],
         loading: false,
-        errorMessage: error.message || '故事加载失败，请稍后再试。',
+        errorMessage: getUserFacingStoryErrorMessage(error, '故事加载失败，请稍后再试。'),
       });
     }
   },
@@ -155,7 +222,7 @@ Page({
         currentStory: null,
         contentParagraphs: [],
         loading: false,
-        errorMessage: error.message || '故事加载失败，请稍后再试。',
+        errorMessage: getUserFacingStoryErrorMessage(error, '故事加载失败，请稍后再试。'),
       });
     }
   },

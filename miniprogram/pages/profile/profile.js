@@ -60,7 +60,7 @@ Page({
     }
 
     wx.showToast({
-      title: '功能开发中',
+      title: '功能准备中',
       icon: 'none',
     });
   },
