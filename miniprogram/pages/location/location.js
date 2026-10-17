@@ -227,6 +227,34 @@ function createStableLocationHash(rawText) {
   return Math.abs(hash).toString(36);
 }
 
+// #region debug-point mg-update-location-debug
+function summarizeUsagePayloadForDebug(payload) {
+  const data = payload && typeof payload === 'object' ? payload : {};
+
+  return {
+    locationKey: data.locationKey || '',
+    storyType: data.storyType || '',
+    requestId: data.requestId || '',
+  };
+}
+
+function summarizeLocationDetailForDebug(locationDetail) {
+  const detail = locationDetail && typeof locationDetail === 'object' ? locationDetail : {};
+
+  return {
+    id: detail.id || null,
+    isTemporary: !!detail.isTemporary,
+    transientPlace: !!detail.transientPlace,
+    name: detail.name || '',
+    address: detail.address || '',
+    latitude: detail.latitude,
+    longitude: detail.longitude,
+    poiid: detail.poiid || '',
+    selectedPlace: buildTemporarySelectedPlace(detail),
+  };
+}
+// #endregion debug-point mg-update-location-debug
+
 function buildMagnifyingGlassLocationKey(locationDetail) {
   if (!locationDetail) {
     throw new Error('地点信息暂时不可用');
@@ -585,8 +613,18 @@ Page({
         this.data.locationDetail,
         getStoryDisplayTypeByModeKey(type)
       );
+      console.warn('[location][debug] prepare start', {
+        type: type,
+        label: label || '',
+        locationDetail: summarizeLocationDetailForDebug(this.data.locationDetail),
+        usagePayload: summarizeUsagePayloadForDebug(usagePayload),
+      });
       await userService.prepareMagnifyingGlassUsage(usagePayload);
       usagePrepared = true;
+      console.warn('[location][debug] prepare success', {
+        type: type,
+        usagePayload: summarizeUsagePayloadForDebug(usagePayload),
+      });
 
       this.setData({
         requesting: true,
@@ -625,8 +663,27 @@ Page({
         }
       }
 
+      console.warn('[location][debug] consume start', {
+        type: type,
+        usagePayload: summarizeUsagePayloadForDebug(usagePayload),
+        storyGenerated: !!(story && story.generated),
+        storyId: story && story.id ? story.id : '',
+      });
       const updatedProfile = await userService.consumeMagnifyingGlass(usagePayload);
       usageConsumed = true;
+      console.warn('[location][debug] consume success', {
+        type: type,
+        usagePayload: summarizeUsagePayloadForDebug(usagePayload),
+        magnifyingGlass: updatedProfile && typeof updatedProfile.magnifyingGlass === 'number'
+          ? updatedProfile.magnifyingGlass
+          : null,
+        dailyTotalCount: updatedProfile && typeof updatedProfile.dailyTotalCount === 'number'
+          ? updatedProfile.dailyTotalCount
+          : null,
+        locationTypeCount: updatedProfile && typeof updatedProfile.locationTypeCount === 'number'
+          ? updatedProfile.locationTypeCount
+          : null,
+      });
 
       this.setData({
         remainingMagnifyingGlass: updatedProfile.magnifyingGlass || 0,
@@ -644,11 +701,20 @@ Page({
     } catch (error) {
       if (usagePrepared && !usageConsumed && usagePayload) {
         try {
+          console.warn('[location][debug] release start', {
+            type: type,
+            usagePayload: summarizeUsagePayloadForDebug(usagePayload),
+          });
           await userService.releaseMagnifyingGlassRequest(usagePayload);
+          console.warn('[location][debug] release success', {
+            type: type,
+            usagePayload: summarizeUsagePayloadForDebug(usagePayload),
+          });
         } catch (releaseError) {
           console.warn('[location] release magnifying glass request failed', {
             code: releaseError && releaseError.code ? releaseError.code : 'INTERNAL_ERROR',
             message: releaseError && releaseError.message ? releaseError.message : '',
+            usagePayload: summarizeUsagePayloadForDebug(usagePayload),
           });
         }
       }
@@ -657,6 +723,9 @@ Page({
         code: error && error.code ? error.code : 'INTERNAL_ERROR',
         message: error && error.message ? error.message : '',
         type: type,
+        usagePayload: summarizeUsagePayloadForDebug(usagePayload),
+        usagePrepared: usagePrepared,
+        usageConsumed: usageConsumed,
       });
       const message = getUserFacingAiErrorMessage(error);
 

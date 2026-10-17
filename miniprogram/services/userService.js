@@ -51,6 +51,25 @@ function createServiceError(code, message) {
   return error;
 }
 
+// #region debug-point mg-update-client-debug
+function summarizeCloudFunctionData(data) {
+  const payload = data && typeof data === 'object' ? data : {};
+  const locationKey = trimString(payload.locationKey);
+  const requestId = trimString(payload.requestId);
+
+  return {
+    action: trimString(payload.action),
+    storyType: trimString(payload.storyType),
+    locationKey: locationKey,
+    locationKeyLength: locationKey.length,
+    requestId: requestId,
+    requestIdLength: requestId.length,
+    rewardRequestId: trimString(payload.rewardRequestId),
+    adUnitId: trimString(payload.adUnitId),
+  };
+}
+// #endregion debug-point mg-update-client-debug
+
 function syncLocalCurrentUser(profile) {
   if (!profile || typeof profile !== 'object') {
     return null;
@@ -96,11 +115,24 @@ function callCloudFunction(name, data, deployCode, deployMessage) {
   }
 
   return new Promise(function executor(resolve, reject) {
+    console.warn('[userService][debug] callCloudFunction request', {
+      name: name,
+      data: summarizeCloudFunctionData(data),
+    });
+
     wx.cloud.callFunction({
       name: name,
       data: data,
       success: function onSuccess(result) {
         const functionResult = result && result.result ? result.result : null;
+
+        console.warn('[userService][debug] callCloudFunction response', {
+          name: name,
+          data: summarizeCloudFunctionData(data),
+          ok: functionResult && functionResult.ok,
+          code: functionResult && functionResult.error ? functionResult.error.code : '',
+          message: functionResult && functionResult.error ? functionResult.error.message : '',
+        });
 
         if (!functionResult || typeof functionResult.ok !== 'boolean') {
           reject(createServiceError(deployCode, deployMessage));
@@ -123,6 +155,13 @@ function callCloudFunction(name, data, deployCode, deployMessage) {
       },
       fail: function onFail(error) {
         const rawMessage = error && error.message ? String(error.message) : '';
+
+        console.error('[userService][debug] callCloudFunction transport failed', {
+          name: name,
+          data: summarizeCloudFunctionData(data),
+          code: error && error.code ? String(error.code) : '',
+          message: rawMessage,
+        });
 
         if (
           rawMessage.indexOf('FunctionName parameter could not be found') !== -1

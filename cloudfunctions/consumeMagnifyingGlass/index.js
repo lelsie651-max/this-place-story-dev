@@ -87,6 +87,37 @@ function trimString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+// #region debug-point mg-update-debug-helpers
+function summarizeEventForDebug(event) {
+  if (!event || typeof event !== 'object') {
+    return {
+      action: 'unknown',
+    };
+  }
+
+  const locationKey = trimString(event.locationKey);
+  const requestId = trimString(event.requestId);
+
+  return {
+    action: trimString(event.action) || 'unknown',
+    storyType: trimString(event.storyType) || '',
+    locationKey: locationKey,
+    locationKeyLength: locationKey.length,
+    isTemporaryLocationKey: locationKey.indexOf('temporary:') === 0,
+    requestId: requestId,
+    requestIdLength: requestId.length,
+  };
+}
+
+function summarizeErrorForDebug(error) {
+  return {
+    name: error && error.name ? error.name : 'Error',
+    code: error && error.code ? error.code : '',
+    message: error && error.message ? error.message : '',
+  };
+}
+// #endregion debug-point mg-update-debug-helpers
+
 function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
@@ -398,12 +429,15 @@ async function getProfile(openId) {
 
   const dateKey = getDateKey();
   const usageDocId = createUsageDocId(dateKey, openId);
+  let stage = 'ensure-user';
 
   try {
     const userState = await ensureUserDocument(db, openId);
+    stage = 'get-usage-doc';
     const usageDoc = await safeGetDocument(db, USAGE_COLLECTION, usageDocId);
 
     if (userState.isNew) {
+      stage = 'create-user-doc';
       await db.collection(USERS_COLLECTION).doc(userState.userDocId).set({
         data: Object.assign({
           createdAt: db.serverDate(),
@@ -413,6 +447,16 @@ async function getProfile(openId) {
 
     return buildProfilePayload(userState.userDoc, usageDoc);
   } catch (error) {
+    console.error('[consumeMagnifyingGlass][debug] getProfile failed', {
+      stage: stage,
+      usageDocId: usageDocId,
+      collections: {
+        users: USERS_COLLECTION,
+        usage: USAGE_COLLECTION,
+      },
+      error: summarizeErrorForDebug(error),
+    });
+
     if (error instanceof MagnifyingGlassError) {
       throw error;
     }
@@ -430,10 +474,13 @@ async function prepareUsage(event, openId) {
   const dateKey = getDateKey(nowMs);
   const usageDocId = createUsageDocId(dateKey, openId);
   const locationTypeCountKey = createLocationTypeKey(event.locationKey, event.storyType);
+  let stage = 'start-transaction';
 
   try {
     return await db.runTransaction(async function prepareTransaction(transaction) {
+      stage = 'ensure-user';
       const userState = await ensureUserDocument(transaction, openId);
+      stage = 'get-usage-doc';
       const existingUsage = await safeGetDocument(transaction, USAGE_COLLECTION, usageDocId);
       const requestLockUntil = getNumericValue(existingUsage && existingUsage.requestLockUntil);
       const activeRequestId = trimString(existingUsage && existingUsage.activeRequestId);
@@ -446,8 +493,10 @@ async function prepareUsage(event, openId) {
         throw new MagnifyingGlassError('MAGNIFYING_GLASS_CONCURRENT_REQUEST', '当前探索处理中，请稍后再试。');
       }
 
+      stage = 'assert-usage-allowed';
       assertUsageAllowed(userState.userDoc, existingUsage, locationTypeCountKey);
 
+      stage = 'build-usage-doc';
       const usageDoc = buildUsageDocument({
         existingUsage: existingUsage,
         dateKey: dateKey,
@@ -463,6 +512,7 @@ async function prepareUsage(event, openId) {
       });
 
       if (userState.isNew) {
+        stage = 'create-user-doc';
         await transaction.collection(USERS_COLLECTION).doc(userState.userDocId).set({
           data: Object.assign({
             createdAt: db.serverDate(),
@@ -471,10 +521,12 @@ async function prepareUsage(event, openId) {
       }
 
       if (existingUsage) {
+        stage = 'update-usage-doc';
         await transaction.collection(USAGE_COLLECTION).doc(usageDocId).update({
           data: usageDoc,
         });
       } else {
+        stage = 'create-usage-doc';
         await transaction.collection(USAGE_COLLECTION).doc(usageDocId).set({
           data: Object.assign({
             createdAt: db.serverDate(),
@@ -485,6 +537,18 @@ async function prepareUsage(event, openId) {
       return buildProfilePayload(userState.userDoc, usageDoc, locationTypeCountKey);
     });
   } catch (error) {
+    console.error('[consumeMagnifyingGlass][debug] prepare failed', {
+      stage: stage,
+      event: summarizeEventForDebug(event),
+      usageDocId: usageDocId,
+      locationTypeCountKey: locationTypeCountKey,
+      collections: {
+        users: USERS_COLLECTION,
+        usage: USAGE_COLLECTION,
+      },
+      error: summarizeErrorForDebug(error),
+    });
+
     if (error instanceof MagnifyingGlassError) {
       throw error;
     }
@@ -502,10 +566,13 @@ async function consumeUsage(event, openId) {
   const dateKey = getDateKey(nowMs);
   const usageDocId = createUsageDocId(dateKey, openId);
   const locationTypeCountKey = createLocationTypeKey(event.locationKey, event.storyType);
+  let stage = 'start-transaction';
 
   try {
     return await db.runTransaction(async function consumeTransaction(transaction) {
+      stage = 'ensure-user';
       const userState = await ensureUserDocument(transaction, openId);
+      stage = 'get-usage-doc';
       const existingUsage = await safeGetDocument(transaction, USAGE_COLLECTION, usageDocId);
       const recentRequestIds = Array.isArray(existingUsage && existingUsage.recentRequestIds)
         ? existingUsage.recentRequestIds
@@ -531,8 +598,10 @@ async function consumeUsage(event, openId) {
         throw new MagnifyingGlassError('MAGNIFYING_GLASS_CONCURRENT_REQUEST', '当前探索请求已失效，请重新选择。');
       }
 
+      stage = 'assert-usage-allowed';
       assertUsageAllowed(userState.userDoc, existingUsage, locationTypeCountKey);
 
+      stage = 'build-next-docs';
       const nextMagnifyingGlass = getNumericValue(userState.userDoc.magnifyingGlass) - 1;
       const nextTotalCount = getNumericValue(existingUsage && existingUsage.totalCount) + 1;
       const nextLocationTypeCount = getLocationTypeCount(existingUsage, locationTypeCountKey) + 1;
@@ -556,22 +625,26 @@ async function consumeUsage(event, openId) {
       nextUsageDoc.recentRequestIds = appendRecentRequestId(recentRequestIds, event.requestId);
 
       if (userState.isNew) {
+        stage = 'create-user-doc';
         await transaction.collection(USERS_COLLECTION).doc(userState.userDocId).set({
           data: Object.assign({
             createdAt: db.serverDate(),
           }, nextUserDoc),
         });
       } else {
+        stage = 'update-user-doc';
         await transaction.collection(USERS_COLLECTION).doc(userState.userDocId).update({
           data: nextUserDoc,
         });
       }
 
       if (existingUsage) {
+        stage = 'update-usage-doc';
         await transaction.collection(USAGE_COLLECTION).doc(usageDocId).update({
           data: nextUsageDoc,
         });
       } else {
+        stage = 'create-usage-doc';
         await transaction.collection(USAGE_COLLECTION).doc(usageDocId).set({
           data: Object.assign({
             createdAt: db.serverDate(),
@@ -584,6 +657,18 @@ async function consumeUsage(event, openId) {
       }, buildProfilePayload(nextUserDoc, nextUsageDoc, locationTypeCountKey));
     });
   } catch (error) {
+    console.error('[consumeMagnifyingGlass][debug] consume failed', {
+      stage: stage,
+      event: summarizeEventForDebug(event),
+      usageDocId: usageDocId,
+      locationTypeCountKey: locationTypeCountKey,
+      collections: {
+        users: USERS_COLLECTION,
+        usage: USAGE_COLLECTION,
+      },
+      error: summarizeErrorForDebug(error),
+    });
+
     if (error instanceof MagnifyingGlassError) {
       throw error;
     }
@@ -599,6 +684,7 @@ async function releaseUsage(event, openId) {
 
   const dateKey = getDateKey();
   const usageDocId = createUsageDocId(dateKey, openId);
+  let stage = 'get-usage-doc';
 
   try {
     const usageDoc = await safeGetDocument(db, USAGE_COLLECTION, usageDocId);
@@ -609,6 +695,7 @@ async function releaseUsage(event, openId) {
       };
     }
 
+    stage = 'release-lock';
     await db.collection(USAGE_COLLECTION).doc(usageDocId).update({
       data: {
         activeRequestId: '',
@@ -623,6 +710,16 @@ async function releaseUsage(event, openId) {
       released: true,
     };
   } catch (error) {
+    console.error('[consumeMagnifyingGlass][debug] release failed', {
+      stage: stage,
+      event: summarizeEventForDebug(event),
+      usageDocId: usageDocId,
+      collections: {
+        usage: USAGE_COLLECTION,
+      },
+      error: summarizeErrorForDebug(error),
+    });
+
     if (error instanceof MagnifyingGlassError) {
       throw error;
     }
@@ -636,6 +733,15 @@ exports.main = async function main(event) {
     const input = validateEvent(event);
     const wxContext = cloud.getWXContext ? cloud.getWXContext() : {};
     const openId = trimString(wxContext && wxContext.OPENID);
+
+    console.warn('[consumeMagnifyingGlass][debug] request received', {
+      event: summarizeEventForDebug(input),
+      hasOpenId: !!openId,
+      collections: {
+        users: USERS_COLLECTION,
+        usage: USAGE_COLLECTION,
+      },
+    });
 
     if (!openId) {
       throw new MagnifyingGlassError('UNAUTHORIZED', '当前用户身份读取失败，请稍后再试');
@@ -659,6 +765,11 @@ exports.main = async function main(event) {
 
     throw new MagnifyingGlassError('INVALID_INPUT', '当前请求动作不受支持');
   } catch (error) {
+    console.error('[consumeMagnifyingGlass][debug] request failed', {
+      event: summarizeEventForDebug(event),
+      error: summarizeErrorForDebug(error),
+    });
+
     if (error instanceof MagnifyingGlassError && ALLOWED_ERROR_CODES[error.code]) {
       return buildError(error.code, error.message);
     }
