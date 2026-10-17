@@ -389,8 +389,13 @@
 - `wx.getLocation` 当前不接入正式流程
 - 当前不写入 CloudBase 新地点或临时故事
 - `wx.chooseLocation` 未命中系统地点时生成的是临时故事，不写入正式 `stories`
-- `wx.chooseLocation` 未命中的临时地点当前也不能进入正式网友投稿写库流程
-- 当前网友投稿只接受已存在于 `locations` 集合中的正式地点 `locationId`
+- `wx.chooseLocation` 未命中的临时地点当前允许用户投稿
+- 临时投稿写入 `stories` 时使用：
+  - `locationId = null`
+  - `isTemporary = true`
+  - `placeSnapshot`
+- 当前首页也可以直接通过 `wx.chooseLocation` 选择地点后进入投稿
+- 当前网友投稿不调用腾讯位置服务 WebService，也不伪造正式地点 ID
 - 正式地点的“网友说”当前通过独立页面承接，不在地点详情页内展开空状态
 - 开发验证点“开发验证点·民间传说回退”只导入 `locations`，不导入任何 `folk` 预设故事
 

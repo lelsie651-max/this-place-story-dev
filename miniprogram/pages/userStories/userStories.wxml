@@ -48,7 +48,7 @@
       <view class="panel empty-card">
         <view class="panel-title">{{emptyStateMessage}}</view>
         <view class="panel-text">
-          {{locationContext.isTemporary || locationContext.transientPlace ? '临时地点还不能进入正式地点库投稿流程。' : '你可以先分享一个版本，审核通过后这里就会出现第一条“网友说”。'}}
+          你可以先分享一个版本，审核通过后这里就会出现第一条“网友说”。
         </view>
         <view class="empty-actions">
           <button class="action-secondary action-primary" bindtap="handleShareStory">我来分享</button>

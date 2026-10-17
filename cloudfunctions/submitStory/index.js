@@ -62,6 +62,20 @@ function trimString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function normalizeOptionalCoordinate(value) {
+  if (typeof value === 'undefined' || value === null || value === '') {
+    return null;
+  }
+
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    throw new SubmitStoryError('INVALID_INPUT', '地点坐标格式不正确');
+  }
+
+  return numericValue;
+}
+
 function validateLength(value, maxLength, fieldLabel) {
   if (value.length > maxLength) {
     throw new SubmitStoryError('INVALID_INPUT', fieldLabel + '长度不能超过 ' + maxLength + ' 个字符');
@@ -78,12 +92,42 @@ function buildSummary(content) {
   return normalized.slice(0, SUMMARY_MAX_LENGTH) + '...';
 }
 
+function validatePlaceSnapshot(placeSnapshot) {
+  if (!placeSnapshot || typeof placeSnapshot !== 'object') {
+    throw new SubmitStoryError('INVALID_INPUT', 'placeSnapshot 缺失');
+  }
+
+  const name = trimString(placeSnapshot.name);
+
+  if (!name) {
+    throw new SubmitStoryError('INVALID_INPUT', 'placeSnapshot.name 不能为空');
+  }
+
+  const latitude = normalizeOptionalCoordinate(placeSnapshot.latitude);
+  const longitude = normalizeOptionalCoordinate(placeSnapshot.longitude);
+
+  return {
+    name: name,
+    address: trimString(placeSnapshot.address),
+    latitude: latitude,
+    longitude: longitude,
+    poiid: trimString(placeSnapshot.poiid),
+  };
+}
+
 function validateEvent(event) {
-  const locationId = trimString(event && event.locationId);
+  const isTemporary = !!(event && event.isTemporary);
+  const rawLocationId = event ? event.locationId : null;
+  const locationId = typeof rawLocationId === 'string' ? trimString(rawLocationId) : '';
   const title = trimString(event && event.title);
   const content = trimString(event && event.content);
+  const placeSnapshot = validatePlaceSnapshot(event && event.placeSnapshot);
 
-  if (!locationId) {
+  if (isTemporary) {
+    if (rawLocationId !== null) {
+      throw new SubmitStoryError('INVALID_INPUT', '临时地点投稿时 locationId 必须为 null');
+    }
+  } else if (!locationId || locationId.toLowerCase() === 'null') {
     throw new SubmitStoryError('INVALID_INPUT', 'locationId 必须是有效的正式地点 ID');
   }
 
@@ -95,12 +139,16 @@ function validateEvent(event) {
     throw new SubmitStoryError('INVALID_INPUT', '正文不能为空');
   }
 
-  validateLength(locationId, 128, 'locationId');
+  if (!isTemporary) {
+    validateLength(locationId, 128, 'locationId');
+  }
   validateLength(title, TITLE_MAX_LENGTH, '标题');
   validateLength(content, CONTENT_MAX_LENGTH, '正文');
 
   return {
-    locationId: locationId,
+    locationId: isTemporary ? null : locationId,
+    isTemporary: isTemporary,
+    placeSnapshot: placeSnapshot,
     title: title,
     content: content,
   };
@@ -136,6 +184,8 @@ async function createTravelerStory(input, openId) {
   const result = await db.collection(STORIES_COLLECTION).add({
     data: {
       locationId: input.locationId,
+      isTemporary: !!input.isTemporary,
+      placeSnapshot: input.placeSnapshot,
       title: input.title,
       summary: buildSummary(input.content),
       content: input.content,
@@ -161,7 +211,9 @@ exports.main = async function main(event) {
       throw new SubmitStoryError('UNAUTHORIZED', '当前用户身份读取失败，请稍后再试');
     }
 
-    await ensureLocationExists(input.locationId);
+    if (!input.isTemporary) {
+      await ensureLocationExists(input.locationId);
+    }
 
     const storyId = await createTravelerStory(input, openId);
 

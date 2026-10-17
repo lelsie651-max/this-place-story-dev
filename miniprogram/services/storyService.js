@@ -62,8 +62,31 @@ function trimString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function normalizePlaceSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') {
+    return null;
+  }
+
+  const name = trimString(snapshot.name);
+
+  if (!name) {
+    return null;
+  }
+
+  const latitude = typeof snapshot.latitude === 'number' ? snapshot.latitude : Number(snapshot.latitude);
+  const longitude = typeof snapshot.longitude === 'number' ? snapshot.longitude : Number(snapshot.longitude);
+
+  return {
+    name: name,
+    address: trimString(snapshot.address),
+    latitude: Number.isFinite(latitude) ? latitude : null,
+    longitude: Number.isFinite(longitude) ? longitude : null,
+    poiid: trimString(snapshot.poiid),
+  };
+}
+
 function validateRequiredLocationId(locationId, actionText) {
-  if (typeof locationId !== 'string' || !locationId.trim()) {
+  if (typeof locationId !== 'string' || !locationId.trim() || locationId.trim().toLowerCase() === 'null') {
     throw new Error((actionText || '当前操作') + '需要正式地点的有效 locationId。');
   }
 
@@ -306,9 +329,16 @@ async function listPublishedUserStoriesByLocation(locationId) {
 }
 
 async function submitTravelerStory(payload) {
-  const locationId = validateRequiredLocationId(payload && payload.locationId, '提交网友投稿');
+  const isTemporary = !!(payload && payload.isTemporary);
+  const rawLocationId = payload ? payload.locationId : null;
+  const locationId = isTemporary ? null : validateRequiredLocationId(rawLocationId, '提交网友投稿');
+  const placeSnapshot = normalizePlaceSnapshot(payload && payload.placeSnapshot);
   const title = trimString(payload && payload.title);
   const content = trimString(payload && payload.content);
+
+  if (!placeSnapshot) {
+    throw new Error('请选择一个有效地点。');
+  }
 
   if (!title) {
     throw new Error('请输入故事标题。');
@@ -328,6 +358,8 @@ async function submitTravelerStory(payload) {
         name: 'submitStory',
         data: {
           locationId: locationId,
+          isTemporary: isTemporary,
+          placeSnapshot: placeSnapshot,
           title: title,
           content: content,
         },

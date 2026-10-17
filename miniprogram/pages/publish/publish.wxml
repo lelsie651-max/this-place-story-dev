@@ -10,10 +10,12 @@
 
   <view class="panel field-card" bindtap="chooseLocation">
     <view class="field-label">📍 选择地点</view>
-    <view class="field-value">{{locationName || '请先从地点页进入投稿'}}</view>
+    <view class="field-value">{{locationName || '点击这里选择地点'}}</view>
     <view wx:if="{{locationAddress}}" class="field-address">{{locationAddress}}</view>
-    <view wx:if="{{locationId}}" class="field-note">当前地点已从地点页自动带入，投稿会绑定这个正式地点。</view>
-    <view wx:else class="field-note">当前没有正式地点上下文，请先从地点页进入投稿。</view>
+    <view wx:if="{{latitude !== null && longitude !== null}}" class="field-note">坐标：{{latitude}}, {{longitude}}</view>
+    <view wx:if="{{locationName && !isTemporary && locationId}}" class="field-note">当前地点会绑定到已有地点库中的正式地点。</view>
+    <view wx:elif="{{locationName && isTemporary}}" class="field-note">当前地点会按临时投稿写入审核队列，不会伪造正式 locationId。</view>
+    <view wx:else class="field-note">支持从地点页自动带入，也支持在这里直接选择地点。</view>
   </view>
 
   <view class="panel field-card">

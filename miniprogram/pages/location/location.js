@@ -406,6 +406,13 @@ Page({
         longitude: locationDetail.longitude,
         isTemporary: !!(locationDetail.isTemporary || locationDetail.transientPlace),
         transientPlace: !!locationDetail.transientPlace,
+        placeSnapshot: {
+          name: locationDetail.name || '',
+          address: locationDetail.address || '',
+          latitude: locationDetail.latitude,
+          longitude: locationDetail.longitude,
+          poiid: locationDetail.poiid || '',
+        },
       };
     }
 

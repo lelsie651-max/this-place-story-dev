@@ -4,13 +4,16 @@ function buildLocationContext(rawLocation) {
   const location = rawLocation || {};
 
   return {
-    locationId: location.locationId || null,
+    locationId: typeof location.locationId === 'string' && location.locationId.trim()
+      ? location.locationId.trim()
+      : null,
     locationName: location.locationName || location.name || '',
     address: location.address || '',
     latitude: location.latitude,
     longitude: location.longitude,
     isTemporary: !!location.isTemporary,
     transientPlace: !!location.transientPlace,
+    placeSnapshot: location.placeSnapshot || null,
   };
 }
 
@@ -73,11 +76,9 @@ Page({
       app.globalData.pendingUserStoriesSubmissionNotice = '';
     }
 
-    if (notice) {
-      this.setData({
-        submissionNotice: notice,
-      });
-    }
+    this.setData({
+      submissionNotice: notice || '',
+    });
 
     this.loadUserStories();
   },
@@ -111,7 +112,7 @@ Page({
       this.setData({
         loading: false,
         stories: [],
-        emptyStateMessage: '这个地点还没有加入地点库，暂时不能投稿。',
+        emptyStateMessage: '暂时没有网友提供故事哦！',
       });
       return;
     }
@@ -143,14 +144,6 @@ Page({
       return;
     }
 
-    if (locationContext.isTemporary || locationContext.transientPlace || !locationContext.locationId) {
-      wx.showToast({
-        title: '这个地点还没有加入地点库，暂时不能投稿。',
-        icon: 'none',
-      });
-      return;
-    }
-
     const app = getApp();
 
     if (app && app.globalData) {
@@ -160,6 +153,14 @@ Page({
         address: locationContext.address || '',
         latitude: locationContext.latitude,
         longitude: locationContext.longitude,
+        isTemporary: !!(locationContext.isTemporary || locationContext.transientPlace),
+        placeSnapshot: locationContext.placeSnapshot || {
+          name: locationContext.locationName || '',
+          address: locationContext.address || '',
+          latitude: locationContext.latitude,
+          longitude: locationContext.longitude,
+          poiid: '',
+        },
       };
     }
 

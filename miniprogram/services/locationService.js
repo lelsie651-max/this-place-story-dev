@@ -133,7 +133,7 @@ function normalizeStorySummary(doc) {
 }
 
 function validateRequiredLocationId(locationId, actionText) {
-  if (typeof locationId !== 'string' || !locationId.trim()) {
+  if (typeof locationId !== 'string' || !locationId.trim() || locationId.trim().toLowerCase() === 'null') {
     throw new Error((actionText || '当前操作') + '需要正式地点的有效 locationId。');
   }
 
