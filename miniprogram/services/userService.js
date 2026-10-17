@@ -5,7 +5,7 @@ const CURRENT_USER = {
   nickname: '旅途观察员',
   avatarUrl: '',
   language: 'zh-CN',
-  magnifyingGlass: 1,
+  magnifyingGlass: 5,
   createdAt: '2026-10-12T10:10:00.000Z',
 };
 

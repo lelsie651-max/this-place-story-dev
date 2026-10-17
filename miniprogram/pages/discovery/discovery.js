@@ -49,17 +49,26 @@ function buildSearchFields(location) {
 
 function buildTransientLocationDetail(selectedPlace) {
   return {
+    isTemporary: true,
     transientPlace: true,
     source: selectedPlace.source,
-    id: '',
+    locationId: null,
+    id: null,
     name: selectedPlace.name || '未命名地点',
     city: '',
     address: selectedPlace.address || '',
     latitude: selectedPlace.latitude,
     longitude: selectedPlace.longitude,
+    poiid: selectedPlace.poiid || '',
+    selectedPlace: {
+      name: selectedPlace.name || '未命名地点',
+      address: selectedPlace.address || '',
+      latitude: selectedPlace.latitude,
+      longitude: selectedPlace.longitude,
+      poiid: selectedPlace.poiid || '',
+    },
     intro: selectedPlace.address || '本次地点来自微信地图选点，将按临时地点处理。',
     rawSelectedPlace: selectedPlace.rawPlace || null,
-    poiid: selectedPlace.poiid || '',
   };
 }
 

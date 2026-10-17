@@ -66,6 +66,10 @@ function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
+function isBoolean(value) {
+  return typeof value === 'boolean';
+}
+
 function trimString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -80,9 +84,41 @@ function validateLength(value, maxLength, fieldName) {
   }
 }
 
+function normalizeSelectedPlace(selectedPlace) {
+  if (!isPlainObject(selectedPlace)) {
+    throw new GenerateStoryError('INVALID_INPUT', '临时地点缺少 selectedPlace');
+  }
+
+  const name = normalizeWhitespace(selectedPlace.name || '');
+  const address = trimString(selectedPlace.address || '');
+  const poiid = trimString(selectedPlace.poiid || '');
+  const latitude = Number(selectedPlace.latitude);
+  const longitude = Number(selectedPlace.longitude);
+
+  if (!name) {
+    throw new GenerateStoryError('INVALID_INPUT', '临时地点名称不能为空');
+  }
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    throw new GenerateStoryError('INVALID_INPUT', '临时地点坐标无效');
+  }
+
+  return {
+    name: name,
+    address: address,
+    latitude: latitude,
+    longitude: longitude,
+    poiid: poiid,
+  };
+}
+
 function validateEvent(event) {
   if (!isPlainObject(event)) {
     throw new GenerateStoryError('INVALID_INPUT', '故事生成参数格式不正确');
+  }
+
+  if (typeof event.isTemporary !== 'undefined' && !isBoolean(event.isTemporary)) {
+    throw new GenerateStoryError('INVALID_INPUT', 'isTemporary 必须是布尔值');
   }
 
   if (
@@ -109,11 +145,13 @@ function validateEvent(event) {
     throw new GenerateStoryError('INVALID_INPUT', 'city 必须是字符串');
   }
 
+  const isTemporary = event.isTemporary === true;
   const locationId = typeof event.locationId === 'string' ? trimString(event.locationId) : '';
   const locationName = normalizeWhitespace(event.locationName);
   const locationDescription = trimString(event.locationDescription || '');
   const city = normalizeWhitespace(event.city || '');
   const type = trimString(event.type);
+  let selectedPlace = null;
 
   if (!locationName) {
     throw new GenerateStoryError('INVALID_INPUT', 'locationName 不能为空');
@@ -123,15 +161,28 @@ function validateEvent(event) {
     throw new GenerateStoryError('INVALID_INPUT', '当前仅支持 AI说 或 民间传说');
   }
 
-  if (locationId) {
+  if (isTemporary) {
+    if (event.locationId !== null) {
+      throw new GenerateStoryError('INVALID_INPUT', '临时地点的 locationId 必须为 null');
+    }
+
+    selectedPlace = normalizeSelectedPlace(event.selectedPlace);
+  } else {
+    if (!locationId) {
+      throw new GenerateStoryError('INVALID_INPUT', '正式地点 locationId 不能为空');
+    }
+
     validateLength(locationId, MAX_LOCATION_ID_LENGTH, 'locationId');
   }
+
   validateLength(locationName, MAX_LOCATION_NAME_LENGTH, 'locationName');
   validateLength(locationDescription, MAX_LOCATION_DESCRIPTION_LENGTH, 'locationDescription');
   validateLength(city, MAX_CITY_LENGTH, 'city');
 
   return {
+    isTemporary: isTemporary,
     locationId: locationId || null,
+    selectedPlace: selectedPlace,
     locationName: locationName,
     locationDescription: locationDescription,
     city: city,
@@ -358,7 +409,9 @@ async function main(event) {
 
     return buildSuccess({
       storyId: createGeneratedStoryId(),
+      isTemporary: input.isTemporary,
       locationId: input.locationId,
+      selectedPlace: input.selectedPlace,
       type: input.type,
       title: normalizedStory.title,
       content: normalizedStory.content,

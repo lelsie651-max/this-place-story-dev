@@ -82,7 +82,7 @@ function getStorySourceLabel(story) {
 }
 
 function getStoryNote(story) {
-  if (story && story.generated && story.transientPlace) {
+  if (story && story.generated && (story.isTemporary || story.transientPlace)) {
     return '当前展示为本次选点生成的临时故事，仅供阅读参考，暂不支持收藏。';
   }
 
@@ -170,8 +170,9 @@ Page({
 
   async buildStoryViewData(story) {
     let location = null;
+    const isTemporary = !!(story && (story.isTemporary || story.transientPlace));
 
-    if (story.locationId) {
+    if (!isTemporary && story.locationId) {
       try {
         location = await locationService.getLocationById(story.locationId);
       } catch (locationError) {
@@ -190,9 +191,10 @@ Page({
         content: story.content,
         sourceLabel: getStorySourceLabel(story),
         note: getStoryNote(story),
-        collectible: !story.generated,
+        collectible: !story.generated && !isTemporary,
         generated: !!story.generated,
-        transientPlace: !!story.transientPlace,
+        isTemporary: isTemporary,
+        transientPlace: isTemporary,
       },
       contentParagraphs: (story.content || '').split('\n\n'),
     };

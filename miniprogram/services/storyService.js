@@ -58,6 +58,14 @@ function normalizeStory(doc) {
   };
 }
 
+function validateRequiredLocationId(locationId, actionText) {
+  if (typeof locationId !== 'string' || !locationId.trim()) {
+    throw new Error((actionText || '当前操作') + '需要正式地点的有效 locationId。');
+  }
+
+  return locationId.trim();
+}
+
 function pickRandomStory(stories) {
   if (!stories || stories.length === 0) {
     return null;
@@ -155,6 +163,7 @@ async function getStoryById(storyId) {
 
 async function listStoriesByLocation(locationId) {
   const db = getDatabase();
+  const normalizedLocationId = validateRequiredLocationId(locationId, '按地点读取故事');
 
   if (!db) {
     throw new Error('CloudBase database is unavailable.');
@@ -164,7 +173,7 @@ async function listStoriesByLocation(locationId) {
     const result = await db
       .collection(getCollections().stories)
       .where({
-        locationId: locationId,
+        locationId: normalizedLocationId,
         status: 'published',
       })
       .orderBy('createdAt', 'desc')
@@ -178,6 +187,7 @@ async function listStoriesByLocation(locationId) {
 
 async function getRandomStoryByLocationAndType(locationId, type) {
   const db = getDatabase();
+  const normalizedLocationId = validateRequiredLocationId(locationId, '按地点和类型读取故事');
 
   if (!db) {
     throw new Error('CloudBase database is unavailable.');
@@ -187,7 +197,7 @@ async function getRandomStoryByLocationAndType(locationId, type) {
     const result = await db
       .collection(getCollections().stories)
       .where({
-        locationId: locationId,
+        locationId: normalizedLocationId,
         type: type,
         status: 'published',
       })
@@ -206,6 +216,7 @@ async function getRandomStoryByLocationAndType(locationId, type) {
 
 async function getRandomPresetStoryByLocationAndType(locationId, type) {
   const db = getDatabase();
+  const normalizedLocationId = validateRequiredLocationId(locationId, '按地点和类型读取预设故事');
 
   if (!db) {
     throw new Error('CloudBase database is unavailable.');
@@ -215,7 +226,7 @@ async function getRandomPresetStoryByLocationAndType(locationId, type) {
     const result = await db
       .collection(getCollections().stories)
       .where({
-        locationId: locationId,
+        locationId: normalizedLocationId,
         type: type,
         status: 'published',
       })
@@ -236,6 +247,7 @@ async function getRandomPresetStoryByLocationAndType(locationId, type) {
 
 async function getRandomUserStoryByLocation(locationId) {
   const db = getDatabase();
+  const normalizedLocationId = validateRequiredLocationId(locationId, '按地点读取网友投稿');
 
   if (!db) {
     throw new Error('CloudBase database is unavailable.');
@@ -245,7 +257,7 @@ async function getRandomUserStoryByLocation(locationId) {
     const result = await db
       .collection(getCollections().stories)
       .where({
-        locationId: locationId,
+        locationId: normalizedLocationId,
         status: 'published',
       })
       .orderBy('createdAt', 'desc')

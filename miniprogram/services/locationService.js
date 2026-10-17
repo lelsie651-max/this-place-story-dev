@@ -89,6 +89,14 @@ function normalizeStorySummary(doc) {
   };
 }
 
+function validateRequiredLocationId(locationId, actionText) {
+  if (typeof locationId !== 'string' || !locationId.trim()) {
+    throw new Error((actionText || '当前操作') + '需要正式地点的有效 locationId。');
+  }
+
+  return locationId.trim();
+}
+
 function normalizeSelectedPlace(rawPlace) {
   if (!rawPlace || typeof rawPlace !== 'object') {
     return {
@@ -259,13 +267,14 @@ async function listLocations() {
 
 async function getLocationById(locationId) {
   const db = getDatabase();
+  const normalizedLocationId = validateRequiredLocationId(locationId, '读取地点详情');
 
   if (!db) {
     throw new Error('CloudBase database is unavailable.');
   }
 
   try {
-    const result = await db.collection(getCollections().locations).doc(locationId).get();
+    const result = await db.collection(getCollections().locations).doc(normalizedLocationId).get();
 
     if (result.data) {
       return normalizeLocation(result.data);
@@ -282,7 +291,7 @@ async function getLocationById(locationId) {
     const fallbackResult = await db
       .collection(getCollections().locations)
       .where({
-        id: locationId,
+        id: normalizedLocationId,
       })
       .limit(1)
       .get();
@@ -299,6 +308,7 @@ async function getLocationById(locationId) {
 
 async function getStoriesByLocationId(locationId) {
   const db = getDatabase();
+  const normalizedLocationId = validateRequiredLocationId(locationId, '读取地点故事列表');
 
   if (!db) {
     throw new Error('CloudBase database is unavailable.');
@@ -308,7 +318,7 @@ async function getStoriesByLocationId(locationId) {
     const result = await db
       .collection(getCollections().stories)
       .where({
-        locationId: locationId,
+        locationId: normalizedLocationId,
         status: 'published',
       })
       .orderBy('createdAt', 'desc')

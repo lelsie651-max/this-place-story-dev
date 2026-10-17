@@ -110,14 +110,74 @@ function createStoryModes(options) {
   });
 }
 
-function buildAiStoryRequestPayload(locationDetail, storyDisplayType) {
+function buildTemporarySelectedPlace(locationDetail) {
+  if (!locationDetail) {
+    return null;
+  }
+
+  const selectedPlace = locationDetail.selectedPlace || {};
+
   return {
-    locationId: locationDetail.id || null,
+    name: selectedPlace.name || locationDetail.name || '',
+    address: selectedPlace.address || locationDetail.address || '',
+    latitude: selectedPlace.latitude,
+    longitude: selectedPlace.longitude,
+    poiid: selectedPlace.poiid || locationDetail.poiid || '',
+  };
+}
+
+function validateAiStoryRequestPayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('故事生成参数不完整，请重新选择地点。');
+  }
+
+  if (payload.isTemporary === true) {
+    if (payload.locationId !== null) {
+      throw new Error('临时地点不应携带正式 locationId。');
+    }
+
+    if (!payload.selectedPlace || typeof payload.selectedPlace !== 'object') {
+      throw new Error('临时地点信息已失效，请重新选择地点。');
+    }
+
+    if (!String(payload.selectedPlace.name || '').trim()) {
+      throw new Error('临时地点名称缺失，请重新选择地点。');
+    }
+
+    return payload;
+  }
+
+  if (typeof payload.locationId !== 'string' || !payload.locationId.trim()) {
+    throw new Error('正式地点缺少有效 locationId。');
+  }
+
+  return payload;
+}
+
+function buildAiStoryRequestPayload(locationDetail, storyDisplayType) {
+  const isTemporary = !!(locationDetail && (locationDetail.isTemporary || locationDetail.transientPlace));
+
+  if (isTemporary) {
+    return validateAiStoryRequestPayload({
+      locationId: null,
+      isTemporary: true,
+      selectedPlace: buildTemporarySelectedPlace(locationDetail),
+      locationName: locationDetail.name || '',
+      locationDescription: locationDetail.intro || '',
+      city: locationDetail.city || '',
+      type: storyDisplayType,
+    });
+  }
+
+  return validateAiStoryRequestPayload({
+    locationId: locationDetail && locationDetail.id ? locationDetail.id : '',
+    isTemporary: false,
+    selectedPlace: null,
     locationName: locationDetail.name || '',
     locationDescription: locationDetail.intro || '',
     city: locationDetail.city || '',
     type: storyDisplayType,
-  };
+  });
 }
 
 function buildGeneratedStoryForPage(resultStory, locationDetail) {
@@ -129,9 +189,11 @@ function buildGeneratedStoryForPage(resultStory, locationDetail) {
     content: resultStory.content,
     source: resultStory.source,
     generated: true,
+    isTemporary: !!(locationDetail.isTemporary || locationDetail.transientPlace),
     locationName: locationDetail.name || '',
     city: locationDetail.city || '',
     locationAddress: locationDetail.address || '',
+    selectedPlace: buildTemporarySelectedPlace(locationDetail),
     transientPlace: !!locationDetail.transientPlace,
   };
 }
@@ -231,6 +293,8 @@ Page({
       this.setData({
         locationDetail: {
           id: location.id,
+          locationId: location.id,
+          isTemporary: false,
           transientPlace: false,
           name: location.name || '未命名地点',
           city: location.city || '',
@@ -278,7 +342,9 @@ Page({
 
       this.setData({
         locationDetail: {
-          id: selectedPlace.id || '',
+          id: null,
+          locationId: null,
+          isTemporary: true,
           transientPlace: true,
           source: selectedPlace.source || 'wechat_chooseLocation',
           name: selectedPlace.name || '未命名地点',
@@ -286,6 +352,8 @@ Page({
           address: selectedPlace.address || '',
           latitude: selectedPlace.latitude,
           longitude: selectedPlace.longitude,
+          poiid: selectedPlace.poiid || '',
+          selectedPlace: buildTemporarySelectedPlace(selectedPlace),
           cityText: formatCityText(selectedPlace),
           intro: formatLocationIntro(selectedPlace),
           heroIntro: formatHeroIntro(selectedPlace),
@@ -367,7 +435,9 @@ Page({
       });
 
       let story = null;
-      const isTransientPlace = !!this.data.locationDetail.transientPlace;
+      const isTransientPlace = !!(
+        this.data.locationDetail.transientPlace || this.data.locationDetail.isTemporary
+      );
 
       if (type === 'ai_comment') {
         const generatedStory = await this.generateAiStory(type);
