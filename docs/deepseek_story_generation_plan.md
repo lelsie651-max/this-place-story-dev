@@ -26,20 +26,25 @@
 
 `pages/location/location`
 -> 用户点击 `AI说`
--> 读取 mock `magnifyingGlass`
--> 额度充足时显示请求遮罩
+-> 读取当前用户 `magnifyingGlass`
+-> 先向 `consumeMagnifyingGlass` 做服务端资格预检
+-> 资格通过后显示请求遮罩
 -> `wx.cloud.callFunction({ name: "generateStory" })`
 -> 云函数调用 DeepSeek
 -> 标准化 JSON 故事结果
+-> `consumeMagnifyingGlass` 服务端确认扣减 1 次放大镜
 -> 写入 `app.globalData.pendingGeneratedStory`
 -> 打开 `pages/story/story?generatedStory=1`
 
 `民间传说` 保持现有流程：
 
 `location`
+-> `consumeMagnifyingGlass` 服务端资格预检
 -> 优先查询当前地点预设故事
--> 命中后直接进入 `story`
+-> 命中后由 `consumeMagnifyingGlass` 服务端确认扣减
+-> 直接进入 `story`
 -> 未命中时调用 `generateStory`
+-> AI 成功后由 `consumeMagnifyingGlass` 服务端确认扣减
 -> 生成结果以 `generatedStory=1` 进入 `pages/story/story`
 
 `网友说` 当前流程：
@@ -114,8 +119,8 @@
 {
   "ok": false,
   "error": {
-    "code": "AI_USER_LIMIT",
-    "message": "今日 AI 故事生成次数已用完，请明天再来。"
+    "code": "AI_GLOBAL_LIMIT",
+    "message": "当前 AI 服务较忙，请稍后再试。"
   }
 }
 ```
@@ -125,7 +130,6 @@
 - `INVALID_INPUT`
 - `CONFIG_ERROR`
 - `UNAUTHORIZED`
-- `AI_USER_LIMIT`
 - `AI_GLOBAL_LIMIT`
 - `AI_CIRCUIT_OPEN`
 - `AI_REQUEST_IN_PROGRESS`
@@ -162,7 +166,7 @@ API Key 来源：
 
 当前平台与项目双重保护要求：
 
-- 项目侧通过 `generateStory` 的服务端限额控制本项目请求量
+- 项目侧通过 `generateStory` 的服务端技术限额控制本项目 AI 请求量
 - DeepSeek 账户侧仍需额外配置余额提醒、消费预警或 API 使用限制
 - 如果 DeepSeek 控制台没有硬性消费上限，则项目侧全局每日上限是最后一道保护
 - 任何余额不足、服务商错误、超时或解析失败都不能扣放大镜
@@ -202,9 +206,10 @@ CloudBase 云函数平台超时要求：
 
 当前 `generateStory` 只在服务端执行 AI 调用保护，前端不会单独承担这些限制。
 
+这里的 AI 请求计数只用于技术保护和费用监控，不等同于放大镜使用次数。
+
 当前集中常量：
 
-- 单用户每日最多 `10` 次 AI 上游请求
 - 全局每日最多 `200` 次 AI 上游请求
 - 单次上游请求超时 `60 秒`
 - 单次地点输入长度上限
@@ -218,12 +223,12 @@ CloudBase 云函数平台超时要求：
 
 当前最小可靠实现：
 
-- 以 `date + userId` 记录用户侧每日计数
+- 以 `date + userId` 记录 AI 请求统计与短时锁
 - 以 `date` 记录全局每日计数
 - 文档至少包含以下字段：
   - `date`
   - `userId`
-  - `userCount`
+  - `userCount`（当前作为该用户 AI 请求统计）
   - `globalCount`
   - `updatedAt`
 - 用户侧文档还会记录短时间重复请求保护所需的锁字段
@@ -233,7 +238,7 @@ CloudBase 云函数平台超时要求：
 
 - 只有真正准备发起 DeepSeek 上游请求时，才消耗一次 AI 调用次数
 - JSON 标准化失败后的重试，会再次发起上游请求，因此会再次计入 AI 调用次数
-- 放大镜仍然只在整次故事生成成功后扣除一次
+- 放大镜使用次数在 `consumeMagnifyingGlass` 中单独处理
 
 当前熔断开关：
 
@@ -247,7 +252,56 @@ CloudBase 云函数平台超时要求：
 - 云函数端按 `userId + 请求内容` 加短时间锁
 - 同一用户短时间内重复点击，不会并发发起多次 DeepSeek 请求
 
-## 7. 故事详情页接收策略
+## 7. 放大镜使用规则
+
+当前用户限制依据：
+
+- 放大镜成功使用次数
+
+当前已实现规则：
+
+- 每个用户每天全部地点、全部可消耗标签合计最多 `10` 次
+- 每个用户每天同一地点、同一标签最多 `3` 次
+- `民间传说` 命中预设故事时：
+  - 不调用 AI
+  - 仍然消耗 `1` 个放大镜
+- `AI说` 成功时消耗 `1` 个放大镜
+- `网友说` 不调用放大镜，不纳入本规则
+
+当前服务端处理：
+
+- 云函数：`consumeMagnifyingGlass`
+- 读取身份：`wx.cloud.getWXContext().OPENID`
+- 不接受客户端传入 `userId`
+- 统一执行：
+  - 当前用户放大镜余额检查
+  - 当日总次数 `< 10`
+  - 当前地点 + 当前标签次数 `< 3`
+  - 成功后事务扣减 `magnifyingGlass - 1`
+  - 成功后更新当日总次数与地点标签次数
+
+当前记录集合：
+
+- `users`
+- `magnifying_glass_usage_daily`
+
+当前错误码：
+
+- `MAGNIFYING_GLASS_EMPTY`
+- `MAGNIFYING_GLASS_DAILY_LIMIT`
+- `MAGNIFYING_GLASS_LOCATION_TYPE_LIMIT`
+- `MAGNIFYING_GLASS_CONCURRENT_REQUEST`
+
+当前失败规则：
+
+- 预检失败不扣放大镜
+- 预设查询失败不扣放大镜
+- AI 超时不扣放大镜
+- AI 返回非法 JSON 不扣放大镜
+- AI 服务错误不扣放大镜
+- 快速重复点击不会重复扣减
+
+## 8. 故事详情页接收策略
 
 当前生成结果 **不落库** 到 CloudBase `stories`。
 
@@ -286,28 +340,6 @@ CloudBase 云函数平台超时要求：
 - `deepseek` 显示为“AI生成”
 - `user` 显示为“网友投稿”
 
-## 8. 放大镜规则
-
-当前规则：
-
-- 只有故事请求成功后才扣 1 枚放大镜
-- 余额为 `0` 时不调用云函数
-- AI 生成失败时不扣
-- 没有可用结果时不扣
-- 达到单用户每日上限时不扣
-- 达到全局每日上限时不扣
-- 熔断开启时不扣
-- 超时或非法 JSON 时不扣
-
-当前共享规则：
-
-- 每次成功探索一篇故事都扣 1 枚放大镜
-- 失败不扣额度
-
-当前额度来源：
-
-- `miniprogram/services/userService.js` 中的 mock 用户
-
 ## 9. 失败处理
 
 小程序端失败处理：
@@ -320,11 +352,13 @@ CloudBase 云函数平台超时要求：
 示例：
 
 - 缺少 Key -> `AI服务暂未配置`
-- 单用户限流 -> `今日 AI 故事次数已用完，请明天再来`
 - 全局限流 -> `当前 AI 服务较忙，请稍后再试`
 - 熔断 -> `AI 故事服务暂时维护中`
 - 超时 -> `故事生成超时，请稍后再试`
 - 提供商失败或标准化失败 -> `AI 故事暂时生成失败，请稍后再试`
+- 放大镜为空 -> `放大镜不足，暂时无法继续探索。`
+- 当日总次数已满 -> `今天的探索次数已用完，请明天再来。`
+- 同地点同标签达到 3 次 -> `这个地点的该类故事今天已经探索 3 次了。`
 
 技术约束：
 
@@ -343,4 +377,3 @@ CloudBase 云函数平台超时要求：
 - 生成结果落库
 - AI 缓存池
 - 月度限制
-- 正式用户额度持久化

@@ -211,6 +211,51 @@ function createAiServiceError(code, message) {
   return error;
 }
 
+function createStoryRequestId() {
+  return 'mg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+function createStableLocationHash(rawText) {
+  const text = String(rawText || '');
+  let hash = 0;
+
+  for (let index = 0; index < text.length; index += 1) {
+    hash = ((hash << 5) - hash) + text.charCodeAt(index);
+    hash |= 0;
+  }
+
+  return Math.abs(hash).toString(36);
+}
+
+function buildMagnifyingGlassLocationKey(locationDetail) {
+  if (!locationDetail) {
+    throw new Error('地点信息暂时不可用');
+  }
+
+  if (locationDetail.id) {
+    return String(locationDetail.id).trim();
+  }
+
+  const selectedPlace = buildTemporarySelectedPlace(locationDetail) || {};
+  const rawText = [
+    selectedPlace.name || locationDetail.name || '',
+    selectedPlace.address || locationDetail.address || '',
+    selectedPlace.latitude,
+    selectedPlace.longitude,
+    selectedPlace.poiid || locationDetail.poiid || '',
+  ].join('|');
+
+  return 'temporary:' + createStableLocationHash(rawText);
+}
+
+function buildMagnifyingGlassPayload(locationDetail, storyDisplayType) {
+  return {
+    locationKey: buildMagnifyingGlassLocationKey(locationDetail),
+    storyType: storyDisplayType,
+    requestId: createStoryRequestId(),
+  };
+}
+
 function getUserFacingAiErrorMessage(error) {
   const code = error && error.code ? String(error.code) : '';
   const rawMessage = error && error.message ? String(error.message) : '';
@@ -220,7 +265,7 @@ function getUserFacingAiErrorMessage(error) {
     .replace(/^Failed to load user story by location from CloudBase:\s*/, '');
 
   if (code === 'AI_USER_LIMIT') {
-    return '今日 AI 故事次数已用完，请明天再来';
+    return '今日 AI 生成请求已达到保护上限，请稍后再试';
   }
 
   if (code === 'AI_GLOBAL_LIMIT') {
@@ -245,6 +290,22 @@ function getUserFacingAiErrorMessage(error) {
 
   if (code === 'UNAUTHORIZED') {
     return '当前用户身份读取失败，请稍后再试';
+  }
+
+  if (code === 'MAGNIFYING_GLASS_EMPTY') {
+    return '放大镜不足，暂时无法继续探索。';
+  }
+
+  if (code === 'MAGNIFYING_GLASS_DAILY_LIMIT') {
+    return '今天的探索次数已用完，请明天再来。';
+  }
+
+  if (code === 'MAGNIFYING_GLASS_LOCATION_TYPE_LIMIT') {
+    return '这个地点的该类故事今天已经探索 3 次了。';
+  }
+
+  if (code === 'MAGNIFYING_GLASS_CONCURRENT_REQUEST') {
+    return '当前探索处理中，请稍后再试。';
   }
 
   if (!normalizedMessage) {
@@ -475,6 +536,10 @@ Page({
       return;
     }
 
+    let usagePayload = null;
+    let usagePrepared = false;
+    let usageConsumed = false;
+
     try {
       if (type === 'traveler') {
         this.openTravelerStoriesPage();
@@ -516,6 +581,13 @@ Page({
         return;
       }
 
+      usagePayload = buildMagnifyingGlassPayload(
+        this.data.locationDetail,
+        getStoryDisplayTypeByModeKey(type)
+      );
+      await userService.prepareMagnifyingGlassUsage(usagePayload);
+      usagePrepared = true;
+
       this.setData({
         requesting: true,
         requestingTypeLabel: label || '故事',
@@ -553,7 +625,8 @@ Page({
         }
       }
 
-      const updatedProfile = await userService.consumeMagnifyingGlass(1);
+      const updatedProfile = await userService.consumeMagnifyingGlass(usagePayload);
+      usageConsumed = true;
 
       this.setData({
         remainingMagnifyingGlass: updatedProfile.magnifyingGlass || 0,
@@ -569,6 +642,17 @@ Page({
         });
       });
     } catch (error) {
+      if (usagePrepared && !usageConsumed && usagePayload) {
+        try {
+          await userService.releaseMagnifyingGlassRequest(usagePayload);
+        } catch (releaseError) {
+          console.warn('[location] release magnifying glass request failed', {
+            code: releaseError && releaseError.code ? releaseError.code : 'INTERNAL_ERROR',
+            message: releaseError && releaseError.message ? releaseError.message : '',
+          });
+        }
+      }
+
       console.error('[location] story request failed', {
         code: error && error.code ? error.code : 'INTERNAL_ERROR',
         message: error && error.message ? error.message : '',

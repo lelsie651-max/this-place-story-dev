@@ -28,7 +28,6 @@ const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
 const DEEPSEEK_CHAT_PATH = '/chat/completions';
 const DEEPSEEK_MODEL = 'deepseek-flash';
 const AI_GUARD_LIMITS = {
-  USER_DAILY_LIMIT: 10,
   GLOBAL_DAILY_LIMIT: 200,
   REQUEST_TIMEOUT_MS: 60000,
   MAX_PROVIDER_INPUT_CHARS: 500,
@@ -49,7 +48,6 @@ const ALLOWED_ERROR_CODES = {
   INVALID_INPUT: true,
   CONFIG_ERROR: true,
   UNAUTHORIZED: true,
-  AI_USER_LIMIT: true,
   AI_GLOBAL_LIMIT: true,
   AI_CIRCUIT_OPEN: true,
   AI_REQUEST_IN_PROGRESS: true,
@@ -662,10 +660,6 @@ async function consumeAiQuota(lockToken) {
 
       const userCount = getNumericValue(existingUserDoc.userCount);
       const globalCount = getNumericValue(existingGlobalDoc && existingGlobalDoc.globalCount);
-
-      if (userCount >= AI_GUARD_LIMITS.USER_DAILY_LIMIT) {
-        throw new GenerateStoryError('AI_USER_LIMIT', '今日 AI 故事生成次数已用完，请明天再来。');
-      }
 
       if (globalCount >= AI_GUARD_LIMITS.GLOBAL_DAILY_LIMIT) {
         throw new GenerateStoryError('AI_GLOBAL_LIMIT', '当前 AI 服务较忙，请稍后再试。');
