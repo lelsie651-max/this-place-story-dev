@@ -14,9 +14,7 @@ const STORY_TYPE_LABELS = {
 const STORY_SOURCE_LABELS = {
   preset: '预设库',
   user: '网友投稿',
-  ai_observer: '预设库',
-  deepseek: 'DeepSeek 生成',
-  folk_archive: '预设库',
+  deepseek: 'AI生成',
 };
 
 function isAiStoryType(story) {
@@ -52,32 +50,28 @@ function getStorySourceLabel(story) {
     return '已收录内容';
   }
 
-  if (story.source === 'preset') {
-    return '预设库';
-  }
-
-  if (story.source === 'user') {
-    return '网友投稿';
-  }
-
   if (STORY_SOURCE_LABELS[story.source]) {
     return STORY_SOURCE_LABELS[story.source];
   }
 
-  if (story.type === '民间传说') {
-    return 'DeepSeek 生成';
+  if (story.source === 'ai_observer') {
+    return 'AI生成';
   }
 
-  if (story.type === 'ai_comment') {
-    return '预设库';
-  }
-
-  if (story.type === 'folk') {
+  if (story.source === 'folk_archive') {
     return '预设库';
   }
 
   if (story.type === 'traveler' || story.type === '网友说') {
     return '网友投稿';
+  }
+
+  if (story.type === 'ai_comment' || story.type === 'AI说' || story.type === '民间传说') {
+    return 'AI生成';
+  }
+
+  if (story.type === 'folk') {
+    return '预设库';
   }
 
   return '已收录内容';
@@ -86,6 +80,10 @@ function getStorySourceLabel(story) {
 function getStoryNote(story) {
   if (story && story.generated) {
     return '当前展示为 AI 生成内容，仅供阅读参考，暂不支持收藏。';
+  }
+
+  if (story && story.source === 'deepseek') {
+    return '当前展示为 AI 生成内容，仅供阅读参考。';
   }
 
   if (isAiStoryType(story)) {

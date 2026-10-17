@@ -195,6 +195,21 @@ CloudBase 云函数平台超时要求：
 - 当前 AI 生成故事不支持收藏
 - 民间传说的 AI 回退结果同样不落库，且必须保留 `source = deepseek`
 
+### 6.1 source 兼容映射
+
+当前前后端统一按以下规则理解真实来源：
+
+- `folk_archive` -> `preset`
+- `ai_observer` -> `deepseek`
+- `deepseek` -> `deepseek`
+- `user` -> `user`
+
+其中：
+
+- `preset` 显示为“预设库”
+- `deepseek` 显示为“AI生成”
+- `user` 显示为“网友投稿”
+
 ## 7. 放大镜规则
 
 当前规则：

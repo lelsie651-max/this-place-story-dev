@@ -10,6 +10,9 @@
 - `stories.manual.json`
 - `locations.manual.jsonl`
 - `stories.manual.jsonl`
+- `locations.folk_fallback_test.csv`
+- `locations.folk_fallback_test.json`
+- `folk_fallback_test_location.md`
 
 说明：
 
@@ -105,3 +108,19 @@
 - 在 `location` 页能看到对应地点下的故事列表
 - 在 `story` 页能完成收藏
 - 从 `story` 返回 `location`，再返回 `discovery`
+
+## Sprint 10-B 开发验证点
+
+如果需要验证“民间传说无预设内容时自动回退 AI”，请使用：
+
+- `locations.folk_fallback_test.csv`
+- 或 `locations.folk_fallback_test.json`
+
+对应地点：
+
+- 名称：`开发验证点·民间传说回退`
+- locationId：`loc_dev_folk_fallback_01`
+
+详细导入、真机验证和清理步骤见：
+
+- `folk_fallback_test_location.md`

@@ -3,12 +3,44 @@ const { getCollections, getDatabase } = require('./cloud');
 const PRESET_SOURCE_VALUES = {
   preset: true,
   folk_archive: true,
+};
+
+const AI_SOURCE_VALUES = {
   ai_observer: true,
+  deepseek: true,
 };
 
 const USER_SOURCE_VALUES = {
   user: true,
 };
+
+function normalizeStorySource(doc) {
+  if (!doc || typeof doc !== 'object') {
+    return '';
+  }
+
+  if (PRESET_SOURCE_VALUES[doc.source]) {
+    return 'preset';
+  }
+
+  if (AI_SOURCE_VALUES[doc.source]) {
+    return 'deepseek';
+  }
+
+  if (USER_SOURCE_VALUES[doc.source]) {
+    return 'user';
+  }
+
+  if (!doc.source) {
+    if (doc.type === 'traveler' || doc.type === '网友说') {
+      return 'user';
+    }
+
+    return 'preset';
+  }
+
+  return doc.source;
+}
 
 function normalizeStory(doc) {
   return {
@@ -18,7 +50,7 @@ function normalizeStory(doc) {
     title: doc.title,
     summary: doc.summary,
     content: doc.content,
-    source: doc.source,
+    source: normalizeStorySource(doc),
     language: doc.language,
     authorId: doc.authorId,
     status: doc.status,
@@ -40,11 +72,7 @@ function isPresetStory(doc) {
     return false;
   }
 
-  if (!doc.source) {
-    return true;
-  }
-
-  return !!PRESET_SOURCE_VALUES[doc.source];
+  return normalizeStorySource(doc) === 'preset';
 }
 
 function isUserStory(doc) {
@@ -52,11 +80,7 @@ function isUserStory(doc) {
     return false;
   }
 
-  if (USER_SOURCE_VALUES[doc.source]) {
-    return true;
-  }
-
-  return doc.type === 'traveler' || doc.type === '网友说';
+  return normalizeStorySource(doc) === 'user';
 }
 
 async function listStories() {

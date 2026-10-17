@@ -265,8 +265,8 @@
 
 当前 source 兼容值与映射关系：
 
-- `preset` / `folk_archive` / `ai_observer` -> 预设库
-- `deepseek` -> AI 生成
+- `preset` / `folk_archive` -> 预设库
+- `ai_observer` / `deepseek` -> AI 生成
 - `user` -> 网友投稿
 
 ### 6.3 已确认但尚未实现
@@ -469,7 +469,7 @@
 
 - 民间传说：
   - 先查 `locationId + type = folk + status = published`
-  - 仅预设来源命中时直接展示
+  - 仅 `source = preset / folk_archive` 的预设来源命中时直接展示
   - 未命中时调用 `generateStory`
   - AI 回退生成结果的展示模式仍为 `民间传说`
   - AI 回退生成结果的真实来源必须是 `deepseek`

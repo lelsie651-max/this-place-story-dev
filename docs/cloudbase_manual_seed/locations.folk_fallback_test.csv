@@ -1,0 +1,2 @@
+_id,name,city,province,country,latitude,longitude,level,intro,description,status,createdAt
+loc_dev_folk_fallback_01,开发验证点·民间传说回退,深圳,广东,中国,22.5431,114.0579,dev_test_site,仅用于验证“民间传说”在无预设故事时是否自动回退到 AI 生成。,请不要为该地点导入任何 type=folk 且 status=published 的故事；保留地点记录即可用于回退验证。,published,2026-10-17T09:00:00.000Z

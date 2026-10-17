@@ -1,0 +1,17 @@
+[
+  {
+    "_id": "loc_dev_folk_fallback_01",
+    "name": "开发验证点·民间传说回退",
+    "city": "深圳",
+    "province": "广东",
+    "country": "中国",
+    "latitude": 22.5431,
+    "longitude": 114.0579,
+    "level": "dev_test_site",
+    "tags": ["开发验证", "AI回退"],
+    "intro": "仅用于验证“民间传说”在无预设故事时是否自动回退到 AI 生成。",
+    "description": "请不要为该地点导入任何 type=folk 且 status=published 的故事；保留地点记录即可用于回退验证。",
+    "status": "published",
+    "createdAt": "2026-10-17T09:00:00.000Z"
+  }
+]
