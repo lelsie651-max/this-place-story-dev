@@ -132,51 +132,6 @@
   content: " ›";
 }
 
-.traveler-empty-card {
-  margin: 16rpx 0 28rpx;
-  padding: 28rpx;
-  border-radius: 24rpx;
-  background: rgba(255, 247, 235, 0.86);
-  border: 1rpx solid rgba(140, 94, 52, 0.12);
-}
-
-.traveler-empty-title {
-  color: #5d3a20;
-  font-size: 32rpx;
-  font-weight: 600;
-}
-
-.traveler-empty-text {
-  margin-top: 14rpx;
-  color: #7a6048;
-  font-size: 28rpx;
-  line-height: 1.8;
-}
-
-.traveler-empty-actions {
-  display: flex;
-  gap: 20rpx;
-  margin-top: 26rpx;
-}
-
-.traveler-action {
-  flex: 1;
-  margin: 0;
-  min-height: 80rpx;
-  border-radius: 999rpx;
-  border: 1rpx solid rgba(140, 94, 52, 0.18);
-  background: rgba(255, 247, 235, 0.92);
-  color: #6b4527;
-  font-size: 28rpx;
-  line-height: 80rpx;
-}
-
-.traveler-action.primary {
-  background: linear-gradient(135deg, #c99259, #ad7340);
-  color: #fffaf2;
-  border-color: transparent;
-}
-
 .featured {
   background: linear-gradient(180deg, rgba(255, 248, 236, 0.98), rgba(244, 228, 199, 0.92));
   border-color: rgba(155, 105, 55, 0.24);

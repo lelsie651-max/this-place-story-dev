@@ -4,6 +4,7 @@
     "pages/explore/explore",
     "pages/discovery/discovery",
     "pages/location/location",
+    "pages/userStories/userStories",
     "pages/story/story",
     "pages/profile/profile",
     "pages/publish/publish",

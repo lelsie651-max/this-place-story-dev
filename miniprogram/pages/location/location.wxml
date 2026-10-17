@@ -57,14 +57,6 @@
       <view class="panel-text">
         先选一种讲法，再开始这一轮探索。成功找到一篇故事后，会消耗 1 次放大镜。{{locationDetail.transientPlace ? '当前临时地点只支持民间传说与 AI说，生成结果不会写入正式故事库。': ''}}
       </view>
-      <view wx:if="{{travelerEmptyStateVisible}}" class="traveler-empty-card">
-        <view class="traveler-empty-title">{{travelerEmptyStateTemporary ? '暂时没有网友提供故事哦！' : '暂时没有网友提供故事哦！'}}</view>
-        <view class="traveler-empty-text">{{travelerEmptyStateTemporary ? '这个地点还没有加入地点库，暂时不能投稿。' : '你可以先分享一个版本，审核通过后这里就会出现第一条“网友说”。'}}</view>
-        <view class="traveler-empty-actions">
-          <button class="traveler-action primary" bindtap="handleShareTravelerStory">我来分享</button>
-          <button class="traveler-action" bindtap="goBack">返回</button>
-        </view>
-      </view>
       <view
         wx:for="{{storyModes}}"
         wx:key="key"

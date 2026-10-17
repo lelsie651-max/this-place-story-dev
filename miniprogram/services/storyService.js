@@ -279,6 +279,32 @@ async function getRandomUserStoryByLocation(locationId) {
   }
 }
 
+async function listPublishedUserStoriesByLocation(locationId) {
+  const db = getDatabase();
+  const normalizedLocationId = validateRequiredLocationId(locationId, '按地点读取网友投稿列表');
+
+  if (!db) {
+    throw new Error('CloudBase database is unavailable.');
+  }
+
+  try {
+    const result = await db
+      .collection(getCollections().stories)
+      .where({
+        locationId: normalizedLocationId,
+        status: 'published',
+      })
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    return (result.data || [])
+      .filter(isUserStory)
+      .map(normalizeStory);
+  } catch (error) {
+    throw new Error('Failed to load user stories by location from CloudBase: ' + error.message);
+  }
+}
+
 async function submitTravelerStory(payload) {
   const locationId = validateRequiredLocationId(payload && payload.locationId, '提交网友投稿');
   const title = trimString(payload && payload.title);
@@ -334,6 +360,7 @@ module.exports = {
   getRandomPresetStoryByLocationAndType,
   getRandomStoryByLocationAndType,
   getRandomUserStoryByLocation,
+  listPublishedUserStoriesByLocation,
   submitTravelerStory,
   listStories,
   listStoriesByLocation,

@@ -156,6 +156,11 @@ Page({
         content: content,
       });
 
+      const app = getApp();
+      if (app && app.globalData) {
+        app.globalData.pendingUserStoriesSubmissionNotice = result.message || '投稿已提交，审核通过后会展示。';
+      }
+
       wx.showToast({
         title: result.message || '投稿已提交，审核通过后会展示。',
         icon: 'none',

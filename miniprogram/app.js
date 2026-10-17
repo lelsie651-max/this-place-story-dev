@@ -6,6 +6,8 @@ App({
     pendingGeneratedStory: null,
     pendingSelectedPlace: null,
     pendingPublishLocation: null,
+    pendingUserStoriesLocation: null,
+    pendingUserStoriesSubmissionNotice: '',
   },
 
   onLaunch() {
