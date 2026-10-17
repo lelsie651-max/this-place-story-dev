@@ -25,6 +25,7 @@
 - `stories.sprint12.manual.template.csv`
 - `stories.sprint12.manual.template.jsonl`
 - `sprint12_import_steps.md`
+- `validate_story_import.js`
 
 说明：
 
@@ -270,6 +271,8 @@ Sprint 12 包的约束如下：
 
 - 不在地点模板中伪造真实 CloudBase `_id`
 - 故事模板里的 `locationId` 必须先人工回填真实 `locations._id`
+- 如果 `stories` 文件里仍保留 `<填写真实 locations._id>`，禁止直接导入
+- 导入前建议先运行 `validate_story_import.js` 做本地校验
 - 六个正式推荐地点都需要至少 1 条 `folk` 预设故事
 - 测试点只导地点，不导任何 `type = folk` 且 `status = published` 的故事
 - `source = folk_archive` 才表示预设内容
@@ -281,6 +284,15 @@ Sprint 12 包的约束如下：
 - 更容易保留 `tags` 数组结构
 - 更接近当前代码实际使用的字段类型
 - 能减少 CSV 把数组字段转成字符串的风险
+
+`validate_story_import.js` 当前会校验：
+
+- `locationId` 必须是非空字符串
+- `locationId` 不能包含“填写真实”
+- `locationId` 不能还是模板占位符
+- `type` 必须为 `folk`
+- `status` 必须为 `published`
+- `source` 必须为 `folk_archive`
 
 如果 CloudBase 控制台无法安全 upsert，请按 `sprint12_import_steps.md` 中的人工检查顺序执行：
 

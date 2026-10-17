@@ -478,6 +478,7 @@
 - 当前 Demo 在 `stories` 层随机选择一篇
 
 当前预设故事导入模板以 `docs/cloudbase_manual_seed/stories.sprint12.manual.template.*` 为准，导入前必须把模板中的 `locationId` 占位符替换成真实 `locations._id`。
+如果 stories 文件里仍保留 `<填写真实 locations._id>`，禁止直接导入；当前推荐先使用 `docs/cloudbase_manual_seed/validate_story_import.js` 做本地导入前校验。
 
 ### 7.7 当前三种入口路径
 

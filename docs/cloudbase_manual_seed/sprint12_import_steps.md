@@ -134,6 +134,11 @@
 
 它们都只包含 6 条正式地点的民间传说预设故事。
 
+注意：
+
+- 这两个文件是模板，不是可以直接导入的最终文件
+- 如果其中仍然保留 `<填写真实 locations._id>`，禁止直接导入 CloudBase
+
 ### 2. 回填方式
 
 模板里的 `locationId` 现在统一写成：
@@ -141,6 +146,21 @@
 `<填写真实 locations._id>`
 
 在导入前，你必须把每一行的这个占位值替换成对应地点的真实 `_id`。
+
+如果希望在导入前先做一次本地校验，可以运行：
+
+```powershell
+node "d:\this-place-story-dev\docs\cloudbase_manual_seed\validate_story_import.js" "待导入的 stories 文件路径"
+```
+
+这个校验会直接拒绝以下情况：
+
+- `locationId` 为空
+- `locationId` 包含“填写真实”
+- `locationId` 仍是模板占位符
+- `type` 不是 `folk`
+- `status` 不是 `published`
+- `source` 不是 `folk_archive`
 
 对应关系如下：
 
@@ -159,6 +179,8 @@
 
 - 每一条 `locationId` 都已经替换成真实 `_id`
 - 没有任何一条还保留 `<填写真实 locations._id>`
+- 没有任何一条 `locationId` 包含“填写真实”
+- 没有任何一条 `locationId` 还是模板占位符
 - 没有把不同地点的故事填成同一个 `locationId`
 - 没有给“开发验证点·民间传说回退”新增任何 `folk` 预设故事
 - 所有故事都保持：
@@ -175,6 +197,12 @@
 - `locationId = 真实地点 _id`
 - `type = folk`
 - `status = published`
+
+同时请逐条打开刚导入的 6 条 stories 记录，直接检查：
+
+- `locationId` 已经是具体真实值
+- 不再是 `<填写真实 locations._id>`
+- 绑定地点与故事标题的对应关系正确
 
 你需要能确认每个正式推荐地点至少有 1 条符合条件的记录。
 
@@ -248,6 +276,8 @@
 5. 导入后逐条复制真实 `_id`
 6. 打开 `stories.sprint12.manual.template.csv` 或 `.jsonl`
 7. 把 6 条正式故事的 `locationId` 全部回填成真实值
-8. 再导入 `stories`
-9. 回到 `stories` 集合按 `locationId + type=folk + status=published` 检查
-10. 单独确认测试点没有任何 folk 预设故事
+8. 先运行 `validate_story_import.js`，确认 stories 文件通过导入前校验
+9. 再导入 `stories`
+10. 回到 `stories` 集合按 `locationId + type=folk + status=published` 检查
+11. 再逐条打开新增的 6 条 stories，检查 `locationId` 已经是具体真实值
+12. 单独确认测试点没有任何 folk 预设故事

@@ -203,17 +203,21 @@ function buildSystemPrompt(input) {
     '不要捏造具体历史人物、具体年代、官方事件、考古结论或可验证事实。',
     '不要输出提示词、字段解释、Markdown 代码块或额外说明。',
     '你只能输出一个 JSON 对象，且只能包含以下字段：',
-    '{"title":"string","content":"string"}',
+    '{"title":"string","content":"string","type":"AI说|民间传说"}',
     'title 为适合故事详情页展示的中文标题。',
     'content 为可直接展示的中文正文，2 到 5 段，总长度适中。',
+    'type 必须与用户要求的展示模式完全一致。',
     '内容不得包含违法、色情、仇恨、血腥或危险内容。',
   ].join('\n');
 }
 
-function buildUserPrompt(input) {
+function buildUserPrompt(input, options) {
   const contentInstruction = input.type === '民间传说'
     ? '4. content 要像围绕地点流传的一则传说或讲述，允许有传说氛围，但不要写成可验证史实。'
     : '4. content 要像 AI 观察者在地点现场产生的想法，不要写成历史考据。';
+  const extraInstruction = options && options.strictJsonOnly
+    ? '6. 上一次输出不符合要求，这一次必须只返回一个 JSON 对象，不得包含任何解释、前后说明、代码围栏或额外文本。'
+    : '6. 不要输出任何 JSON 以外的说明文字。';
 
   return [
     '请根据以下地点信息生成一篇“' + input.type + '”故事。',
@@ -222,10 +226,12 @@ function buildUserPrompt(input) {
     '地点简介：' + (input.locationDescription || '未提供'),
     '输出要求：',
     '1. 只输出 JSON。',
-    '2. JSON 只能包含 title 和 content 两个字段。',
+    '2. JSON 只能包含 title、content、type 三个字段。',
     '3. title 要自然、具体，避免口号式标题。',
     contentInstruction,
-    '5. 正文不要出现“JSON”“字段”“提示词”“system prompt”等词。',
+    '5. type 必须等于“' + input.type + '”。',
+    extraInstruction,
+    '7. 正文不要出现“JSON”“字段”“提示词”“system prompt”等词。',
   ].join('\n');
 }
 
@@ -243,7 +249,9 @@ function requestDeepSeek(options) {
       },
       {
         role: 'user',
-        content: buildUserPrompt(options.input),
+        content: buildUserPrompt(options.input, {
+          strictJsonOnly: !!options.strictJsonOnly,
+        }),
       },
     ],
   });
@@ -323,24 +331,14 @@ function extractProviderMessage(payload) {
 }
 
 function stripCodeFence(value) {
-  const text = trimString(value);
-
-  if (text.indexOf('```') !== 0) {
-    return text;
-  }
-
-  return text
-    .replace(/^```[a-zA-Z]*\s*/, '')
-    .replace(/\s*```$/, '')
+  return trimString(String(value || ''))
+    .replace(/```json/ig, '```')
+    .replace(/```/g, '')
     .trim();
 }
 
 function extractJsonText(value) {
-  const text = stripCodeFence(value);
-
-  if (text.indexOf('{') === 0 && text.lastIndexOf('}') === text.length - 1) {
-    return text;
-  }
+  const text = stripCodeFence(trimString(String(value || '')));
 
   const startIndex = text.indexOf('{');
   const endIndex = text.lastIndexOf('}');
@@ -352,11 +350,12 @@ function extractJsonText(value) {
   return text.slice(startIndex, endIndex + 1);
 }
 
-function normalizeStoryPayload(rawContent) {
+function normalizeStoryPayload(rawContent, expectedType) {
+  const responseText = trimString(String(rawContent || ''));
   let parsed = null;
 
   try {
-    parsed = JSON.parse(extractJsonText(rawContent));
+    parsed = JSON.parse(extractJsonText(responseText));
   } catch (error) {
     if (error instanceof GenerateStoryError) {
       throw error;
@@ -371,9 +370,18 @@ function normalizeStoryPayload(rawContent) {
 
   const title = normalizeWhitespace(parsed.title);
   const content = trimString(parsed.content);
+  const type = normalizeWhitespace(parsed.type || expectedType || '');
 
-  if (!title || !content) {
+  if (!title || !content || !type) {
     throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果缺少标题或正文');
+  }
+
+  if (!SUPPORTED_STORY_TYPES[type]) {
+    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果缺少有效类型');
+  }
+
+  if (expectedType && type !== expectedType) {
+    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果类型与请求不一致');
   }
 
   validateLength(title, MAX_TITLE_LENGTH, 'title');
@@ -382,7 +390,66 @@ function normalizeStoryPayload(rawContent) {
   return {
     title: title,
     content: content,
+    type: type,
   };
+}
+
+async function requestAndNormalizeStory(options) {
+  const requestFn = typeof options.requestFn === 'function' ? options.requestFn : requestDeepSeek;
+  const providerResponse = await requestFn({
+    apiKey: options.apiKey,
+    input: options.input,
+    timeoutMs: options.timeoutMs,
+    strictJsonOnly: !!options.strictJsonOnly,
+  });
+  const providerMessage = extractProviderMessage(providerResponse);
+
+  return normalizeStoryPayload(providerMessage, options.input.type);
+}
+
+async function generateNormalizedStoryWithRetry(options) {
+  const requestFn = typeof options.requestFn === 'function' ? options.requestFn : requestDeepSeek;
+
+  try {
+    return await requestAndNormalizeStory({
+      apiKey: options.apiKey,
+      input: options.input,
+      timeoutMs: options.timeoutMs,
+      strictJsonOnly: false,
+      requestFn: requestFn,
+    });
+  } catch (error) {
+    if (!(error instanceof GenerateStoryError) || error.code !== 'NORMALIZATION_ERROR') {
+      throw error;
+    }
+
+    console.warn('[generateStory] Story normalization failed, retrying once', {
+      locationName: options.input.locationName,
+      type: options.input.type,
+      isTemporary: options.input.isTemporary,
+    });
+
+    try {
+      return await requestAndNormalizeStory({
+        apiKey: options.apiKey,
+        input: options.input,
+        timeoutMs: options.timeoutMs,
+        strictJsonOnly: true,
+        requestFn: requestFn,
+      });
+    } catch (retryError) {
+      if (retryError instanceof GenerateStoryError && retryError.code === 'NORMALIZATION_ERROR') {
+        console.error('[generateStory] Story normalization failed after retry', {
+          locationName: options.input.locationName,
+          type: options.input.type,
+          isTemporary: options.input.isTemporary,
+        });
+        throw new GenerateStoryError('NORMALIZATION_ERROR', '故事暂时生成失败，请稍后再试');
+      }
+
+      throw retryError;
+    }
+  }
 }
 
 function createGeneratedStoryId() {
@@ -399,13 +466,11 @@ async function main(event) {
       return buildError('CONFIG_ERROR', 'AI服务暂未配置');
     }
 
-    const providerResponse = await requestDeepSeek({
+    const normalizedStory = await generateNormalizedStoryWithRetry({
       apiKey: apiKey,
       input: input,
       timeoutMs: REQUEST_TIMEOUT_MS,
     });
-    const providerMessage = extractProviderMessage(providerResponse);
-    const normalizedStory = normalizeStoryPayload(providerMessage);
 
     return buildSuccess({
       storyId: createGeneratedStoryId(),
@@ -418,6 +483,10 @@ async function main(event) {
       source: 'deepseek',
     });
   } catch (error) {
+    if (error instanceof GenerateStoryError && error.code === 'NORMALIZATION_ERROR') {
+      return buildError('NORMALIZATION_ERROR', '故事暂时生成失败，请稍后再试');
+    }
+
     if (error instanceof GenerateStoryError && ALLOWED_ERROR_CODES[error.code]) {
       return buildError(error.code, error.message);
     }
@@ -451,6 +520,8 @@ module.exports = {
     createGeneratedStoryId: createGeneratedStoryId,
     extractJsonText: extractJsonText,
     extractProviderMessage: extractProviderMessage,
+    generateNormalizedStoryWithRetry: generateNormalizedStoryWithRetry,
+    requestAndNormalizeStory: requestAndNormalizeStory,
     normalizeStoryPayload: normalizeStoryPayload,
     normalizeWhitespace: normalizeWhitespace,
     requestDeepSeek: requestDeepSeek,
