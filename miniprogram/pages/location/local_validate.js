@@ -179,6 +179,15 @@ function createHarness(config) {
               title: '测试标题',
               content: '测试正文第一段。\n\n测试正文第二段。',
               source: 'deepseek',
+              storyMeta: {
+                identityKey: 'night_monitoring_program',
+                displayName: '夜巡监控乙机',
+                role: '夜班巡逻与监控复核程序',
+                emotionalState: '冷静调查',
+                narrativeStance: '调查',
+                voiceStyle: '冷静调查型',
+                narrativeFormat: '调查记录',
+              },
             },
           },
         });
@@ -298,6 +307,8 @@ async function testAiSuccess() {
     assert.strictEqual(ctx.counters.release, 0);
     assert.strictEqual(ctx.state.magnifyingGlass, 4);
     assert.strictEqual(ctx.counters.generate, 1);
+    assert.ok(currentApp.globalData.pendingGeneratedStory);
+    assert.strictEqual(currentApp.globalData.pendingGeneratedStory.storyMeta.displayName, '夜巡监控乙机');
   });
 }
 

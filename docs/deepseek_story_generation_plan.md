@@ -134,7 +134,8 @@
 
 - `storyMeta` 是当前一次生成内部随机设定的透传结果
 - 它不会替代现有 `storyId/locationId/type/title/content/source`
-- 页面即使暂时不使用 `storyMeta`，也必须保持正常展示
+- 页面当前会使用 `storyMeta` 渲染 AI 帖子身份信息
+- 即使旧数据缺少 `storyMeta`，页面也必须使用默认身份安全降级
 
 失败返回：
 
@@ -339,7 +340,49 @@ CloudBase 云函数平台超时要求：
 - `AI说` 正文必须至少命中 2 个与 `voiceStyle` 对应的可观察语言特征
 - `AI说` 正文必须出现岗位词汇，证明身份真的影响了表达
 
-### 5.4 真实性边界
+### 5.4 当前 storyMeta 的展示使用方式
+
+当前前端展示层冻结为：
+
+- `location` 页在收到 `generateStory` 成功结果后，会把 `storyMeta` 连同：
+  - `title`
+  - `content`
+  - `type`
+  - `source`
+  - `generated`
+  - `locationName`
+  - `locationId`
+  - `isTemporary`
+  - `selectedPlace`
+  一并写入 `app.globalData.pendingGeneratedStory`
+- `story` 页读取 `generatedStory=1` 时，不得丢失 `storyMeta`
+- `AI说` 成功生成结果当前使用论坛帖子式展示
+- `民间传说` 的 AI 回退结果同样使用论坛帖子式展示，但额外显示“民间传说 · AI生成”
+- 预设故事与网友投稿保持原有展示逻辑，不伪造 AI 身份
+- AI 生成内容必须在页面可见区域显示：
+  - `AI生成`
+  - `AI生成内容`
+
+当前帖子式展示内容包括：
+
+- 本地头像（由 `storyMeta.avatarKey` 或 `identityKey` 做确定性映射；没有时用默认头像）
+- `displayName`
+- `role`
+- 可选的 `emotionalState` 低调标签
+- `narrativeFormat / narrativeStance / voiceStyle` 组合出的视角说明
+- 原始 `title`
+- 原始 `content`
+- 原始地点信息与底部操作区
+
+当前默认降级规则：
+
+- `storyMeta` 缺失时：
+  - 名称显示 `AI观察者`
+  - 身份显示 `地点故事生成器`
+  - 使用默认头像
+  - 页面不报错，不显示 `undefined`
+
+### 5.5 真实性边界
 
 故事约束：
 
@@ -357,7 +400,7 @@ CloudBase 云函数平台超时要求：
 - 正文最大 `2000` 字
 - 不生成违法、色情、仇恨或危险内容
 
-### 5.5 storyMeta 与当前去重边界
+### 5.6 storyMeta 与当前去重边界
 
 当前随机组合必须在云函数服务端完成，不接受前端传入。
 
@@ -497,6 +540,8 @@ CloudBase 云函数平台超时要求：
 - 当前 AI 生成故事不支持收藏
 - 民间传说的 AI 回退结果同样不落库，且必须保留 `source = deepseek`
 - 微信地图未命中的临时地点故事同样不落库，且必须明确显示为“本次选点生成的临时故事”
+- 当前 AI 生成故事在 `story` 页显示为论坛帖子式卡片
+- 页面合规提示必须以可见文案显示 `AI生成内容`
 
 ### 6.1 source 兼容映射
 

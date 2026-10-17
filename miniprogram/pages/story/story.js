@@ -16,9 +16,120 @@ const STORY_SOURCE_LABELS = {
   user: '网友投稿',
   deepseek: 'AI生成',
 };
+const DEFAULT_AI_DISPLAY_NAME = 'AI观察者';
+const DEFAULT_AI_ROLE = '地点故事生成器';
+const DEFAULT_AI_PERSPECTIVE = '观察记录视角';
+const DEFAULT_AI_AVATAR_KEY = 'default_observer';
+const AI_AVATAR_PRESETS = {
+  access_control_system: {
+    emoji: '🚪',
+    paletteClass: 'avatar-preset-access',
+  },
+  hr_risk_model: {
+    emoji: '🗂',
+    paletteClass: 'avatar-preset-hr',
+  },
+  cleaning_robot: {
+    emoji: '🧹',
+    paletteClass: 'avatar-preset-cleaning',
+  },
+  broadcast_system: {
+    emoji: '📢',
+    paletteClass: 'avatar-preset-broadcast',
+  },
+  delivery_route_system: {
+    emoji: '🛵',
+    paletteClass: 'avatar-preset-delivery',
+  },
+  night_monitoring_program: {
+    emoji: '🌙',
+    paletteClass: 'avatar-preset-night',
+  },
+  museum_docent_model: {
+    emoji: '🏛',
+    paletteClass: 'avatar-preset-museum',
+  },
+  bank_risk_program: {
+    emoji: '💳',
+    paletteClass: 'avatar-preset-bank',
+  },
+  abandoned_legacy_system: {
+    emoji: '💾',
+    paletteClass: 'avatar-preset-legacy',
+  },
+  default_observer: {
+    emoji: '🤖',
+    paletteClass: 'avatar-preset-default',
+  },
+};
 
 function isAiStoryType(story) {
   return !!story && (story.type === 'ai_comment' || story.type === 'AI说');
+}
+
+function trimString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeStoryMeta(story) {
+  return isPlainObject(story && story.storyMeta) ? story.storyMeta : null;
+}
+
+function isAiGeneratedStory(story) {
+  if (!story || story.source !== 'deepseek') {
+    return false;
+  }
+
+  return !!(story.generated || normalizeStoryMeta(story) || isAiStoryType(story));
+}
+
+function getAvatarPreset(storyMeta) {
+  const avatarKey = trimString(storyMeta && storyMeta.avatarKey);
+  const identityKey = trimString(storyMeta && storyMeta.identityKey);
+  const presetKey = avatarKey || identityKey || DEFAULT_AI_AVATAR_KEY;
+
+  return {
+    key: presetKey,
+    config: AI_AVATAR_PRESETS[presetKey] || AI_AVATAR_PRESETS[DEFAULT_AI_AVATAR_KEY],
+  };
+}
+
+function buildAiPerspectiveLabel(storyMeta) {
+  const narrativeFormat = trimString(storyMeta && storyMeta.narrativeFormat);
+  const narrativeStance = trimString(storyMeta && storyMeta.narrativeStance);
+  const voiceStyle = trimString(storyMeta && storyMeta.voiceStyle);
+
+  if (narrativeFormat && narrativeStance) {
+    return narrativeFormat + ' · ' + narrativeStance;
+  }
+
+  if (narrativeFormat && voiceStyle) {
+    return narrativeFormat + ' · ' + voiceStyle;
+  }
+
+  return narrativeFormat || narrativeStance || voiceStyle || DEFAULT_AI_PERSPECTIVE;
+}
+
+function buildAiPostViewData(story, typeLabel) {
+  const storyMeta = normalizeStoryMeta(story);
+  const avatarPreset = getAvatarPreset(storyMeta);
+  const emotionalState = trimString(storyMeta && storyMeta.emotionalState);
+
+  return {
+    displayName: trimString(storyMeta && storyMeta.displayName) || DEFAULT_AI_DISPLAY_NAME,
+    role: trimString(storyMeta && storyMeta.role) || DEFAULT_AI_ROLE,
+    emotionalState: emotionalState,
+    perspectiveLabel: buildAiPerspectiveLabel(storyMeta),
+    avatarEmoji: avatarPreset.config.emoji,
+    avatarPaletteClass: avatarPreset.config.paletteClass,
+    avatarKey: avatarPreset.key,
+    modeBadge: typeLabel === '民间传说' ? '民间传说 · AI生成' : '',
+    complianceLabel: 'AI生成内容',
+  };
 }
 
 function formatLocationText(location) {
@@ -195,6 +306,11 @@ Page({
         generated: !!story.generated,
         isTemporary: isTemporary,
         transientPlace: isTemporary,
+        storyMeta: normalizeStoryMeta(story),
+        isAiGenerated: isAiGeneratedStory(story),
+        aiPost: isAiGeneratedStory(story)
+          ? buildAiPostViewData(story, STORY_TYPE_LABELS[story.type] || story.type)
+          : null,
       },
       contentParagraphs: (story.content || '').split('\n\n'),
     };

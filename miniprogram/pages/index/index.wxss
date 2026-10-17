@@ -46,9 +46,17 @@
 }
 
 .hero-subtitle {
-  margin-bottom: 20rpx;
+  margin-bottom: 12rpx;
   color: #8b5e34;
   font-size: 32rpx;
+}
+
+.hero-slogan {
+  margin-bottom: 22rpx;
+  color: #5b3922;
+  font-size: 34rpx;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .hero-copy {

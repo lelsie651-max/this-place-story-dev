@@ -7,6 +7,7 @@
     <view class="section-label">THIS PLACE HAS LEGENDS</view>
     <view class="hero-title">此地有传说</view>
     <view class="hero-subtitle">一个会讲故事的AI地图</view>
+    <view class="hero-slogan">让地点拥有不同的声音</view>
     <view class="hero-copy">
       每一个地点都可能藏着另一种讲法。你只需要从这里出发，去听听世界怎么开口。
     </view>

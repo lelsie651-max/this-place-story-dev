@@ -195,6 +195,7 @@ function buildGeneratedStoryForPage(resultStory, locationDetail) {
     content: resultStory.content,
     source: resultStory.source,
     generated: true,
+    storyMeta: resultStory.storyMeta || null,
     isTemporary: !!(locationDetail.isTemporary || locationDetail.transientPlace),
     locationName: locationDetail.name || '',
     city: locationDetail.city || '',

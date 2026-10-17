@@ -6,33 +6,76 @@
   </view>
 
   <block wx:elif="{{currentStory}}">
-    <view class="tag">{{currentStory.typeLabel}}</view>
-    <view class="page-title story-title">{{currentStory.title}}</view>
-    <view class="page-subtitle location-text">📍 {{currentStory.location}}</view>
+    <block wx:if="{{currentStory.isAiGenerated}}">
+      <view class="story-forum-card panel">
+        <view class="forum-header">
+          <view class="forum-avatar {{currentStory.aiPost.avatarPaletteClass}}">
+            <text class="forum-avatar-emoji">{{currentStory.aiPost.avatarEmoji}}</text>
+          </view>
+          <view class="forum-header-main">
+            <view class="forum-author-row">
+              <text class="forum-display-name">{{currentStory.aiPost.displayName}}</text>
+              <text class="forum-dot">·</text>
+              <text class="forum-role">{{currentStory.aiPost.role}}</text>
+            </view>
+            <view class="forum-badge-row">
+              <text class="forum-badge forum-badge-ai">AI生成</text>
+              <text wx:if="{{currentStory.aiPost.modeBadge}}" class="forum-badge forum-badge-mode">{{currentStory.aiPost.modeBadge}}</text>
+              <text wx:if="{{currentStory.aiPost.emotionalState}}" class="forum-badge forum-badge-emotion">{{currentStory.aiPost.emotionalState}}</text>
+            </view>
+            <view class="forum-perspective">{{currentStory.aiPost.perspectiveLabel}}</view>
+          </view>
+        </view>
 
-    <view class="story-card panel">
-      <view class="panel-title">故事正文</view>
-      <view class="story-content">
-        <view wx:for="{{contentParagraphs}}" wx:key="index" class="story-paragraph">
-          {{item}}
+        <view class="forum-title">{{currentStory.title}}</view>
+        <view class="forum-location">📍 {{currentStory.location}}</view>
+
+        <view class="story-content forum-content">
+          <view wx:for="{{contentParagraphs}}" wx:key="index" class="story-paragraph">
+            {{item}}
+          </view>
+        </view>
+
+        <view class="forum-footer">
+          <view class="forum-footer-tags">
+            <text class="forum-footer-tag">{{currentStory.typeLabel}}</text>
+            <text class="forum-footer-tag">{{currentStory.sourceLabel}}</text>
+            <text wx:if="{{currentStory.transientPlace}}" class="forum-footer-tag forum-footer-tag-temporary">本次选点临时故事</text>
+          </view>
+          <view class="forum-compliance">{{currentStory.aiPost.complianceLabel}}</view>
         </view>
       </view>
-    </view>
+    </block>
 
-    <view class="story-meta panel">
-      <view wx:if="{{currentStory.transientPlace}}" class="meta-row">
-        <text class="meta-label">地点状态</text>
-        <text class="meta-value">本次选点临时故事</text>
+    <block wx:else>
+      <view class="tag">{{currentStory.typeLabel}}</view>
+      <view class="page-title story-title">{{currentStory.title}}</view>
+      <view class="page-subtitle location-text">📍 {{currentStory.location}}</view>
+
+      <view class="story-card panel">
+        <view class="panel-title">故事正文</view>
+        <view class="story-content">
+          <view wx:for="{{contentParagraphs}}" wx:key="index" class="story-paragraph">
+            {{item}}
+          </view>
+        </view>
       </view>
-      <view class="meta-row">
-        <text class="meta-label">故事来源</text>
-        <text class="meta-value">{{currentStory.sourceLabel}}</text>
+
+      <view class="story-meta panel">
+        <view wx:if="{{currentStory.transientPlace}}" class="meta-row">
+          <text class="meta-label">地点状态</text>
+          <text class="meta-value">本次选点临时故事</text>
+        </view>
+        <view class="meta-row">
+          <text class="meta-label">故事来源</text>
+          <text class="meta-value">{{currentStory.sourceLabel}}</text>
+        </view>
+        <view class="meta-row">
+          <text class="meta-label">展示模式</text>
+          <text class="meta-value">{{currentStory.typeLabel}}</text>
+        </view>
       </view>
-      <view class="meta-row">
-        <text class="meta-label">展示模式</text>
-        <text class="meta-value">{{currentStory.typeLabel}}</text>
-      </view>
-    </view>
+    </block>
 
     <view class="actions">
       <button wx:if="{{currentStory.collectible}}" class="action-button" bindtap="handleCollect" loading="{{favoriteSubmitting}}">
