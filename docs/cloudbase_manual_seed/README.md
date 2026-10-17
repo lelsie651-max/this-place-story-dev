@@ -20,6 +20,11 @@
 - `stories.sprint11.manual.json`
 - `stories.sprint11.manual.jsonl`
 - `sprint11_import_steps.md`
+- `locations.sprint12.manual.csv`
+- `locations.sprint12.manual.jsonl`
+- `stories.sprint12.manual.template.csv`
+- `stories.sprint12.manual.template.jsonl`
+- `sprint12_import_steps.md`
 
 说明：
 
@@ -63,6 +68,14 @@
 - `authorId`
 - `status`
 - `createdAt`
+
+说明：
+
+- 预设地点来源是 CloudBase `locations`
+- `discovery` 读取的是 `status = published` 的地点
+- `民间传说` 优先读取 `folk` 预设故事
+- 无预设时才回退 DeepSeek
+- 微信 `wx.chooseLocation` 未命中系统地点时生成的是临时故事，不写入正式 `stories`
 
 ## 关联关系
 
@@ -216,3 +229,43 @@
 - 或需要按名称/真实 `_id` 手动核对后再导入的情况
 
 如果需要真正的远端 upsert 导入，而不是手动导入，本仓库当前还没有接入直接操作你 CloudBase 实库的自动脚本。
+
+## Sprint 12 最终导入包
+
+Sprint 12 提供的是最终推荐地点导入包，优先使用以下文件：
+
+- `locations.sprint12.manual.csv`
+- `locations.sprint12.manual.jsonl`
+- `stories.sprint12.manual.template.csv`
+- `stories.sprint12.manual.template.jsonl`
+- `sprint12_import_steps.md`
+
+本轮正式推荐地点共 6 个：
+
+- 深圳大鹏所城
+- 深圳赤湾天后宫
+- 惠州西湖
+- 惠州十里银滩
+- 广州陈家祠
+- 杭州西湖断桥
+
+另外保留 1 个开发验证地点：
+
+- 开发验证点·民间传说回退
+
+Sprint 12 包的约束如下：
+
+- 不在地点模板中伪造真实 CloudBase `_id`
+- 故事模板里的 `locationId` 必须先人工回填真实 `locations._id`
+- 六个正式推荐地点都需要至少 1 条 `folk` 预设故事
+- 测试点只导地点，不导任何 `type = folk` 且 `status = published` 的故事
+- `source = folk_archive` 才表示预设内容
+- 禁止使用 `ai_observer` 或 `deepseek` 作为预设导入来源
+
+如果 CloudBase 控制台无法安全 upsert，请按 `sprint12_import_steps.md` 中的人工检查顺序执行：
+
+1. 先按地点名称检查是否已存在
+2. 已存在就复用原 `_id`
+3. 不存在才导入地点
+4. 记录真实 `_id`
+5. 再回填 stories 模板并导入

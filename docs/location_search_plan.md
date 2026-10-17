@@ -32,6 +32,8 @@
 - 查询条件为 `status = "published"`
 - 页面加载时读取最近已发布地点
 - 搜索框只对页面内存中的 `allLocations` 做本地筛选
+- 当前推荐地点的手动导入模板以 `docs/cloudbase_manual_seed/locations.sprint12.manual.*` 为准
+- 当前推荐地点里的民间传说预设模板以 `docs/cloudbase_manual_seed/stories.sprint12.manual.template.*` 为准
 
 ### 2.2 当前实现的准确定位
 
@@ -386,6 +388,8 @@
 - `wx.choosePoi` 不进入正式流程
 - `wx.getLocation` 当前不接入正式流程
 - 当前不写入 CloudBase 新地点或临时故事
+- `wx.chooseLocation` 未命中系统地点时生成的是临时故事，不写入正式 `stories`
+- 开发验证点“开发验证点·民间传说回退”只导入 `locations`，不导入任何 `folk` 预设故事
 
 ### 7.2 当前职责划分
 

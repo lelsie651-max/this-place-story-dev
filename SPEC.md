@@ -323,6 +323,7 @@
 当前页面层对地点来源的冻结约束：
 
 - 默认列表是系统推荐地点，来源于 CloudBase `locations`
+- 当前推荐地点的手动导入模板以 `docs/cloudbase_manual_seed/locations.sprint12.manual.*` 为准
 - 当前搜索框只对已加载推荐地点做本地筛选
 - 当前未接入外部 POI 搜索结果
 - `wx.chooseLocation` 返回的 `name`、`address`、`latitude`、`longitude` 当前已用于：
@@ -332,6 +333,7 @@
 - `locations._id` 仍然是系统内部地点身份
 - 用户选择新地点后，先匹配已有 `locations`，未命中时进入临时地点状态
 - 当前不自动创建正式 `locations`
+- Sprint 12 的开发验证点“开发验证点·民间传说回退”同样属于 `locations` 集合中的 `published` 地点，应可被 `discovery` 加载与搜索
 
 #### `wx.chooseLocation` 标准输入契约
 
@@ -475,6 +477,8 @@
 
 - 当前 Demo 在 `stories` 层随机选择一篇
 
+当前预设故事导入模板以 `docs/cloudbase_manual_seed/stories.sprint12.manual.template.*` 为准，导入前必须把模板中的 `locationId` 占位符替换成真实 `locations._id`。
+
 ### 7.7 当前三种入口路径
 
 - 民间传说：
@@ -483,6 +487,7 @@
   - 未命中时调用 `generateStory`
   - AI 回退生成结果的展示模式仍为 `民间传说`
   - AI 回退生成结果的真实来源必须是 `deepseek`
+  - 开发验证点“开发验证点·民间传说回退”在正式导入时不得存在任何 `type = folk` 且 `status = published` 的预设故事
 
 - AI说：
   - 始终调用 `generateStory`
@@ -493,6 +498,12 @@
   - 只读取网友投稿内容
   - 不调用 `generateStory`
   - 当前优先识别 `source = user`，并兼容现有 `traveler` 类型值
+
+微信 `wx.chooseLocation` 未命中的地点当前只生成临时故事：
+
+- 不写入正式 `stories`
+- 不进入正式收藏链路
+- 不改变 CloudBase 中已导入的预设地点与预设故事
 
 ---
 
