@@ -95,6 +95,18 @@ function formatTags(location) {
   return '地点线索整理中';
 }
 
+function formatLocationAddress(location) {
+  if (!location) {
+    return '';
+  }
+
+  if (location.address) {
+    return location.address;
+  }
+
+  return [location.province, location.city, location.name].filter(Boolean).join('');
+}
+
 function createStoryModes(options) {
   const settings = options || {};
 
@@ -102,8 +114,7 @@ function createStoryModes(options) {
     const clonedMode = Object.assign({}, mode);
 
     if (settings.transientPlace && clonedMode.key === 'traveler') {
-      clonedMode.enabled = false;
-      clonedMode.statusText = '临时地点暂不支持';
+      clonedMode.statusText = '可查看投稿入口';
     }
 
     return clonedMode;
@@ -230,6 +241,8 @@ Page({
     storyModes: createStoryModes(),
     loading: true,
     errorMessage: '',
+    travelerEmptyStateVisible: false,
+    travelerEmptyStateTemporary: false,
     remainingMagnifyingGlass: 0,
     requesting: false,
     requestingTypeLabel: '',
@@ -262,6 +275,15 @@ Page({
     });
   },
 
+  clearTravelerEmptyState() {
+    if (this.data.travelerEmptyStateVisible) {
+      this.setData({
+        travelerEmptyStateVisible: false,
+        travelerEmptyStateTemporary: false,
+      });
+    }
+  },
+
   async loadMagnifyingGlassCount() {
     try {
       const profile = await userService.getCurrentUserProfile();
@@ -278,6 +300,8 @@ Page({
     this.setData({
       loading: true,
       errorMessage: '',
+      travelerEmptyStateVisible: false,
+      travelerEmptyStateTemporary: false,
     });
 
     try {
@@ -298,7 +322,11 @@ Page({
           transientPlace: false,
           name: location.name || '未命名地点',
           city: location.city || '',
-          address: '',
+          province: location.province || '',
+          country: location.country || '',
+          address: formatLocationAddress(location),
+          latitude: location.latitude,
+          longitude: location.longitude,
           cityText: formatCityText(location),
           intro: formatLocationIntro(location),
           heroIntro: formatHeroIntro(location),
@@ -308,6 +336,8 @@ Page({
         storyModes: createStoryModes(),
         remainingMagnifyingGlass: profile.magnifyingGlass || 0,
         loading: false,
+        travelerEmptyStateVisible: false,
+        travelerEmptyStateTemporary: false,
       });
     } catch (error) {
       this.setData({
@@ -315,6 +345,8 @@ Page({
         storyModes: createStoryModes(),
         loading: false,
         errorMessage: error.message || '地点详情加载失败，请稍后再试。',
+        travelerEmptyStateVisible: false,
+        travelerEmptyStateTemporary: false,
       });
     }
   },
@@ -366,6 +398,8 @@ Page({
         remainingMagnifyingGlass: profile.magnifyingGlass || 0,
         loading: false,
         errorMessage: '',
+        travelerEmptyStateVisible: false,
+        travelerEmptyStateTemporary: false,
       });
     } catch (error) {
       this.setData({
@@ -373,8 +407,46 @@ Page({
         storyModes: createStoryModes(),
         loading: false,
         errorMessage: '临时地点加载失败，请重新选择地点。',
+        travelerEmptyStateVisible: false,
+        travelerEmptyStateTemporary: false,
       });
     }
+  },
+
+  handleShareTravelerStory() {
+    const locationDetail = this.data.locationDetail;
+
+    if (!locationDetail) {
+      wx.showToast({
+        title: '地点信息暂时不可用',
+        icon: 'none',
+      });
+      return;
+    }
+
+    if (locationDetail.isTemporary || locationDetail.transientPlace || !locationDetail.id) {
+      wx.showToast({
+        title: '这个地点还没有加入地点库，暂时不能投稿。',
+        icon: 'none',
+      });
+      return;
+    }
+
+    const app = getApp();
+
+    if (app && app.globalData) {
+      app.globalData.pendingPublishLocation = {
+        locationId: locationDetail.id,
+        locationName: locationDetail.name || '',
+        address: locationDetail.address || '',
+        latitude: locationDetail.latitude,
+        longitude: locationDetail.longitude,
+      };
+    }
+
+    wx.navigateTo({
+      url: '/pages/publish/publish?source=location',
+    });
   },
 
   async handleSelectStoryType(event) {
@@ -393,6 +465,7 @@ Page({
     }
 
     this.requestLock = true;
+    this.clearTravelerEmptyState();
 
     try {
       let profile = null;
@@ -460,10 +533,28 @@ Page({
         }
       } else if (type === 'traveler') {
         if (isTransientPlace) {
-          throw new Error('临时地点暂不支持网友说');
+          this.setData({
+            travelerEmptyStateVisible: true,
+            travelerEmptyStateTemporary: true,
+          });
+          return;
         }
 
-        story = await storyService.getRandomUserStoryByLocation(this.data.locationDetail.id);
+        try {
+          story = await storyService.getRandomUserStoryByLocation(this.data.locationDetail.id);
+        } catch (userStoryError) {
+          const rawMessage = userStoryError && userStoryError.message ? String(userStoryError.message) : '';
+
+          if (rawMessage.indexOf('这里暂时还没有网友投稿。') !== -1) {
+            this.setData({
+              travelerEmptyStateVisible: true,
+              travelerEmptyStateTemporary: false,
+            });
+            return;
+          }
+
+          throw userStoryError;
+        }
       } else {
         try {
           story = await storyService.getRandomStoryByLocationAndType(this.data.locationDetail.id, type);

@@ -1,4 +1,7 @@
 <view class="page">
+  <view class="top-bar">
+    <button class="back-button" bindtap="goBack">返回</button>
+  </view>
   <view class="section-label">PUBLISH</view>
   <view class="page-title">分享你的传说</view>
   <view class="page-subtitle">
@@ -7,8 +10,10 @@
 
   <view class="panel field-card" bindtap="chooseLocation">
     <view class="field-label">📍 选择地点</view>
-    <view class="field-value">{{locationName}}</view>
-    <view class="field-note">地点选择功能准备中，当前先保留示例地点。</view>
+    <view class="field-value">{{locationName || '请先从地点页进入投稿'}}</view>
+    <view wx:if="{{locationAddress}}" class="field-address">{{locationAddress}}</view>
+    <view wx:if="{{locationId}}" class="field-note">当前地点已从地点页自动带入，投稿会绑定这个正式地点。</view>
+    <view wx:else class="field-note">当前没有正式地点上下文，请先从地点页进入投稿。</view>
   </view>
 
   <view class="panel field-card">
@@ -18,7 +23,9 @@
       placeholder="给你的故事起一个名字"
       value="{{storyTitle}}"
       bindinput="onTitleInput"
+      maxlength="40"
     />
+    <view class="field-note">标题不超过 40 字。</view>
   </view>
 
   <view class="panel field-card">
@@ -28,9 +35,10 @@
       placeholder="写下你听来的故事，或你在这里感受到的传说。"
       value="{{storyContent}}"
       bindinput="onContentInput"
-      maxlength="-1"
+      maxlength="2000"
     />
+    <view class="field-note">正文不超过 2000 字。</view>
   </view>
 
-  <button class="action-button" bindtap="submitStory">提交内容</button>
+  <button class="action-button" bindtap="submitStory" loading="{{submitting}}">提交内容</button>
 </view>

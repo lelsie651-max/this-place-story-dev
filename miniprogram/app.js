@@ -5,6 +5,7 @@ App({
     cloudReady: false,
     pendingGeneratedStory: null,
     pendingSelectedPlace: null,
+    pendingPublishLocation: null,
   },
 
   onLaunch() {

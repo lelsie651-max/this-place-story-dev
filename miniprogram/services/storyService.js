@@ -58,6 +58,10 @@ function normalizeStory(doc) {
   };
 }
 
+function trimString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 function validateRequiredLocationId(locationId, actionText) {
   if (typeof locationId !== 'string' || !locationId.trim()) {
     throw new Error((actionText || '当前操作') + '需要正式地点的有效 locationId。');
@@ -275,12 +279,62 @@ async function getRandomUserStoryByLocation(locationId) {
   }
 }
 
+async function submitTravelerStory(payload) {
+  const locationId = validateRequiredLocationId(payload && payload.locationId, '提交网友投稿');
+  const title = trimString(payload && payload.title);
+  const content = trimString(payload && payload.content);
+
+  if (!title) {
+    throw new Error('请输入故事标题。');
+  }
+
+  if (!content) {
+    throw new Error('请输入故事正文。');
+  }
+
+  if (typeof wx === 'undefined' || !wx.cloud || typeof wx.cloud.callFunction !== 'function') {
+    throw new Error('投稿服务暂时不可用，请稍后再试。');
+  }
+
+  try {
+    const result = await new Promise(function callSubmitStory(resolve, reject) {
+      wx.cloud.callFunction({
+        name: 'submitStory',
+        data: {
+          locationId: locationId,
+          title: title,
+          content: content,
+        },
+        success: resolve,
+        fail: reject,
+      });
+    });
+
+    const functionResult = result && result.result ? result.result : null;
+
+    if (!functionResult || functionResult.ok !== true || !functionResult.storyId) {
+      const message = functionResult && functionResult.error && functionResult.error.message
+        ? functionResult.error.message
+        : '投稿提交失败，请稍后再试。';
+      throw new Error(message);
+    }
+
+    return {
+      storyId: functionResult.storyId,
+      message: functionResult.message || '投稿已提交，审核通过后会展示。',
+    };
+  } catch (error) {
+    throw new Error(error && error.message ? error.message : '投稿提交失败，请稍后再试。');
+  }
+}
+
 module.exports = {
   getStoryById,
   getStoryByType,
   getRandomPresetStoryByLocationAndType,
   getRandomStoryByLocationAndType,
   getRandomUserStoryByLocation,
+  submitTravelerStory,
   listStories,
   listStoriesByLocation,
 };
