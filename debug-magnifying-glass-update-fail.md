@@ -32,14 +32,36 @@
   - client request/response summary for `wx.cloud.callFunction`
   - location page prepare/consume/release lifecycle summaries
   - cloud function action entry, transaction stage, collection names, and sanitized error object
+- Static validation:
+  - `node --check cloudfunctions/consumeMagnifyingGlass/index.js` ✅
+  - `node --check miniprogram/services/userService.js` ✅
+  - `node --check miniprogram/pages/location/location.js` ✅
+  - `git diff --check` ✅
+- 2026-10-17 additional findings:
+  - Current workspace `HEAD` is now `4891152` (`修复“放大镜状态更新失败”`), no longer `615b5f7`.
+  - `4891152` does not change magnifying-glass business logic; it only adds client/cloud debug logs and this debug record.
+  - Current project env is still `cloud1-d8gpv2fu5feccd009` and frontend still calls `consumeMagnifyingGlass` with `{ action, locationKey, storyType, requestId }`.
+  - Local WeChat DevTools cache confirms the latest frontend bundle already contains:
+    - `[location][debug] prepare/consume/release ...`
+    - `[userService][debug] callCloudFunction request/response ...`
+    - `[consumeMagnifyingGlass][debug] ...`
+  - Local WeChat DevTools logs only show compile/reload traces; no captured runtime `ok/code/message` for the failing request, and no CloudBase function exception stack has been recovered locally.
+  - `WeappRemote` logs contain only remote-debug channel noise, not CloudBase business logs.
 
 ## Verification Conclusion
 - Static evidence before runtime reproduction:
   - The exact user-facing message `放大镜状态更新失败，请稍后再试` currently maps to the generic `DATABASE_ERROR` wrapper in `prepareUsage()`.
   - The current contract uses `requestId + locationKey + storyType`, not `reservationId`.
   - Temporary-place `locationKey` is generated only on the client and is opaque to the cloud function.
+  - Temporary-place `locationKey` is still built as `temporary:` + hash(`name|address|latitude|longitude|poiid`), not yet the stricter contract requested by the user.
+  - No runtime evidence currently proves whether the real failure is:
+    - collection missing / permission error
+    - transaction API failure
+    - deployment mismatch
+    - temporary-location input edge case
+  - Therefore hypotheses A-E remain unconfirmed.
 
 ## Final Evidence Gate
 - **Evidence Sources**: CloudBase deployed function metadata, CloudBase function logs, local code audit, git state
-- **progress_status**: collecting
+- **progress_status**: blocked_on_runtime_evidence
 - **Hypothesis Conclusions**: A=Pending, B=Pending, C=Pending, D=Pending, E=Pending
