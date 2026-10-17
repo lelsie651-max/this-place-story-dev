@@ -227,6 +227,59 @@ function createStableLocationHash(rawText) {
   return Math.abs(hash).toString(36);
 }
 
+function normalizeLocationKeyText(value) {
+  const normalizedValue = String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ');
+
+  if (!normalizedValue) {
+    return '';
+  }
+
+  const lowerCaseValue = normalizedValue.toLowerCase();
+
+  if (lowerCaseValue === 'null' || lowerCaseValue === 'undefined') {
+    return '';
+  }
+
+  return normalizedValue;
+}
+
+function normalizeLocationKeyCoordinate(value) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return '';
+  }
+
+  return numericValue.toFixed(6);
+}
+
+function buildTemporaryMagnifyingGlassLocationKey(locationDetail) {
+  const selectedPlace = buildTemporarySelectedPlace(locationDetail) || {};
+  const poiid = normalizeLocationKeyText(selectedPlace.poiid || locationDetail.poiid || '');
+
+  if (poiid) {
+    return 'temporary:poiid:' + poiid;
+  }
+
+  const normalizedName = normalizeLocationKeyText(selectedPlace.name || locationDetail.name || '');
+  const normalizedAddress = normalizeLocationKeyText(selectedPlace.address || locationDetail.address || '');
+  const normalizedLatitude = normalizeLocationKeyCoordinate(selectedPlace.latitude);
+  const normalizedLongitude = normalizeLocationKeyCoordinate(selectedPlace.longitude);
+
+  if (!normalizedName || !normalizedLatitude || !normalizedLongitude) {
+    throw new Error('当前地点信息不完整，请重新选择地点。');
+  }
+
+  return 'temporary:coord:' + createStableLocationHash([
+    normalizedName,
+    normalizedAddress,
+    normalizedLatitude,
+    normalizedLongitude,
+  ].join('|'));
+}
+
 // #region debug-point mg-update-location-debug
 function summarizeUsagePayloadForDebug(payload) {
   const data = payload && typeof payload === 'object' ? payload : {};
@@ -260,28 +313,28 @@ function buildMagnifyingGlassLocationKey(locationDetail) {
     throw new Error('地点信息暂时不可用');
   }
 
-  if (locationDetail.id) {
-    return String(locationDetail.id).trim();
+  const formalLocationId = normalizeLocationKeyText(locationDetail.id);
+
+  if (formalLocationId) {
+    return formalLocationId;
   }
 
-  const selectedPlace = buildTemporarySelectedPlace(locationDetail) || {};
-  const rawText = [
-    selectedPlace.name || locationDetail.name || '',
-    selectedPlace.address || locationDetail.address || '',
-    selectedPlace.latitude,
-    selectedPlace.longitude,
-    selectedPlace.poiid || locationDetail.poiid || '',
-  ].join('|');
-
-  return 'temporary:' + createStableLocationHash(rawText);
+  return buildTemporaryMagnifyingGlassLocationKey(locationDetail);
 }
 
 function buildMagnifyingGlassPayload(locationDetail, storyDisplayType) {
-  return {
-    locationKey: buildMagnifyingGlassLocationKey(locationDetail),
-    storyType: storyDisplayType,
-    requestId: createStoryRequestId(),
-  };
+  try {
+    return {
+      locationKey: buildMagnifyingGlassLocationKey(locationDetail),
+      storyType: storyDisplayType,
+      requestId: createStoryRequestId(),
+    };
+  } catch (error) {
+    throw createAiServiceError(
+      'MAGNIFYING_GLASS_INVALID_LOCATION_KEY',
+      error && error.message ? error.message : '当前地点信息不完整，请重新选择地点。'
+    );
+  }
 }
 
 function getUserFacingAiErrorMessage(error) {
@@ -334,6 +387,14 @@ function getUserFacingAiErrorMessage(error) {
 
   if (code === 'MAGNIFYING_GLASS_CONCURRENT_REQUEST') {
     return '当前探索处理中，请稍后再试。';
+  }
+
+  if (code === 'MAGNIFYING_GLASS_INVALID_LOCATION_KEY') {
+    return '当前地点信息不完整，请重新选择地点。';
+  }
+
+  if (code === 'MAGNIFYING_GLASS_USAGE_COLLECTION_ERROR' || code === 'MAGNIFYING_GLASS_DATABASE_ERROR') {
+    return '放大镜服务暂时不可用，请稍后再试。';
   }
 
   if (!normalizedMessage) {

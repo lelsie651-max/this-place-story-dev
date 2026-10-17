@@ -703,6 +703,41 @@
 - `magnifying_glass_usage_daily` 集合中的每日使用记录
 - `consumeMagnifyingGlass` 云函数统一执行预检、确认扣减与短时间并发保护
 
+当前 `consumeMagnifyingGlass` 的请求契约为：
+
+```json
+{
+  "action": "prepare|consume|release|profile",
+  "locationKey": "稳定地点键",
+  "storyType": "民间传说|AI说",
+  "requestId": "本次探索唯一请求 ID"
+}
+```
+
+当前冻结要求：
+
+- `prepare`、`consume`、`release` 必须复用同一个 `requestId`
+- 不允许在 `prepare` 与 `consume` 之间切换 `locationKey`
+- 正式地点：
+  - `locationKey = 真实 locations._id`
+- 临时微信地点：
+  - 优先使用非空 `poiid`
+  - 没有 `poiid` 时，使用规范化后的 `name + address + latitude + longitude` 生成稳定键
+  - 不得传 `undefined`
+  - 不得传空字符串
+  - 不得把 `null` 变成字符串 `"null"`
+  - 不得把临时地点伪装成正式 `locationId`
+
+当前放大镜错误码至少包括：
+
+- `MAGNIFYING_GLASS_EMPTY`
+- `MAGNIFYING_GLASS_DAILY_LIMIT`
+- `MAGNIFYING_GLASS_LOCATION_TYPE_LIMIT`
+- `MAGNIFYING_GLASS_CONCURRENT_REQUEST`
+- `MAGNIFYING_GLASS_INVALID_LOCATION_KEY`
+- `MAGNIFYING_GLASS_USAGE_COLLECTION_ERROR`
+- `MAGNIFYING_GLASS_DATABASE_ERROR`
+
 ### 10.4 当前 Demo 已实现的 AI 服务端保护
 
 当前 `generateStory` 已集中定义以下服务端限制：

@@ -51,6 +51,9 @@ const ALLOWED_ERROR_CODES = {
   INVALID_INPUT: true,
   UNAUTHORIZED: true,
   DATABASE_ERROR: true,
+  MAGNIFYING_GLASS_INVALID_LOCATION_KEY: true,
+  MAGNIFYING_GLASS_USAGE_COLLECTION_ERROR: true,
+  MAGNIFYING_GLASS_DATABASE_ERROR: true,
   INTERNAL_ERROR: true,
   MAGNIFYING_GLASS_EMPTY: true,
   MAGNIFYING_GLASS_DAILY_LIMIT: true,
@@ -169,6 +172,38 @@ function isMissingDocumentError(error) {
   );
 }
 
+function isCollectionMissingError(error) {
+  const message = error && error.message ? String(error.message).toLowerCase() : '';
+
+  return (
+    message.indexOf('collection') !== -1
+    && (
+      message.indexOf('not exists') !== -1
+      || message.indexOf('does not exist') !== -1
+      || message.indexOf('不存在') !== -1
+      || message.indexOf('not found') !== -1
+    )
+  );
+}
+
+function createDatabaseError(stage, error, fallbackMessage) {
+  const message = error && error.message ? String(error.message) : '';
+  const lowerStage = String(stage || '').toLowerCase();
+  const isUsageStage = lowerStage.indexOf('usage') !== -1 || message.indexOf(USAGE_COLLECTION) !== -1;
+
+  if (isUsageStage && isCollectionMissingError(error)) {
+    return new MagnifyingGlassError(
+      'MAGNIFYING_GLASS_USAGE_COLLECTION_ERROR',
+      '放大镜服务暂时不可用，请稍后再试。'
+    );
+  }
+
+  return new MagnifyingGlassError(
+    'MAGNIFYING_GLASS_DATABASE_ERROR',
+    fallbackMessage
+  );
+}
+
 async function safeGetDocument(actor, collectionName, docId) {
   try {
     const result = await actor.collection(collectionName).doc(docId).get();
@@ -205,6 +240,55 @@ async function findUserDocumentByOpenId(actor, openId) {
   };
 }
 
+async function resolveUserDocumentState(openId) {
+  const stableUserDocId = createUserDocId(openId);
+  const stableUserDoc = await safeGetDocument(db, USERS_COLLECTION, stableUserDocId);
+
+  if (stableUserDoc && trimString(stableUserDoc.openid) === openId) {
+    return {
+      userDocId: stableUserDocId,
+      userDoc: stableUserDoc,
+      isNew: false,
+    };
+  }
+
+  const existingUserRecord = await findUserDocumentByOpenId(db, openId);
+
+  if (existingUserRecord && existingUserRecord._id) {
+    return {
+      userDocId: existingUserRecord._id,
+      userDoc: existingUserRecord.data,
+      isNew: false,
+    };
+  }
+
+  return {
+    userDocId: stableUserDocId,
+    userDoc: buildUserDocument(openId, null, USER_DEFAULTS.magnifyingGlass),
+    isNew: true,
+  };
+}
+
+async function hydrateUserStateById(actor, openId, resolvedUserState) {
+  const latestUserDoc = await safeGetDocument(actor, USERS_COLLECTION, resolvedUserState.userDocId);
+
+  if (latestUserDoc) {
+    return {
+      userDocId: resolvedUserState.userDocId,
+      userDoc: latestUserDoc,
+      isNew: false,
+    };
+  }
+
+  return {
+    userDocId: resolvedUserState.userDocId,
+    userDoc: resolvedUserState && resolvedUserState.userDoc
+      ? resolvedUserState.userDoc
+      : buildUserDocument(openId, null, USER_DEFAULTS.magnifyingGlass),
+    isNew: true,
+  };
+}
+
 function validateAction(rawAction) {
   const action = trimString(rawAction || 'profile');
 
@@ -217,13 +301,25 @@ function validateAction(rawAction) {
 
 function validateLocationKey(locationKey) {
   const normalizedLocationKey = trimString(locationKey);
+  const lowerCaseLocationKey = normalizedLocationKey.toLowerCase();
 
   if (!normalizedLocationKey) {
-    throw new MagnifyingGlassError('INVALID_INPUT', 'locationKey 不能为空');
+    throw new MagnifyingGlassError('MAGNIFYING_GLASS_INVALID_LOCATION_KEY', '当前地点信息不完整，请重新选择地点。');
   }
 
   if (normalizedLocationKey.length > MAGNIFYING_GLASS_RULES.MAX_LOCATION_KEY_LENGTH) {
-    throw new MagnifyingGlassError('INVALID_INPUT', 'locationKey 长度超出限制');
+    throw new MagnifyingGlassError('MAGNIFYING_GLASS_INVALID_LOCATION_KEY', '当前地点信息不完整，请重新选择地点。');
+  }
+
+  if (
+    lowerCaseLocationKey === 'null'
+    || lowerCaseLocationKey === 'undefined'
+    || lowerCaseLocationKey === 'temporary:'
+    || lowerCaseLocationKey.indexOf('undefined') !== -1
+    || lowerCaseLocationKey.indexOf('|null|') !== -1
+    || lowerCaseLocationKey.indexOf('|undefined|') !== -1
+  ) {
+    throw new MagnifyingGlassError('MAGNIFYING_GLASS_INVALID_LOCATION_KEY', '当前地点信息不完整，请重新选择地点。');
   }
 
   return normalizedLocationKey;
@@ -432,7 +528,7 @@ async function getProfile(openId) {
   let stage = 'ensure-user';
 
   try {
-    const userState = await ensureUserDocument(db, openId);
+    const userState = await resolveUserDocumentState(openId);
     stage = 'get-usage-doc';
     const usageDoc = await safeGetDocument(db, USAGE_COLLECTION, usageDocId);
 
@@ -461,7 +557,7 @@ async function getProfile(openId) {
       throw error;
     }
 
-    throw new MagnifyingGlassError('DATABASE_ERROR', '放大镜信息读取失败，请稍后再试');
+    throw createDatabaseError(stage, error, '放大镜服务暂时不可用，请稍后再试。');
   }
 }
 
@@ -474,12 +570,14 @@ async function prepareUsage(event, openId) {
   const dateKey = getDateKey(nowMs);
   const usageDocId = createUsageDocId(dateKey, openId);
   const locationTypeCountKey = createLocationTypeKey(event.locationKey, event.storyType);
-  let stage = 'start-transaction';
+  let stage = 'resolve-user-state';
 
   try {
+    const resolvedUserState = await resolveUserDocumentState(openId);
+    stage = 'start-transaction';
     return await db.runTransaction(async function prepareTransaction(transaction) {
-      stage = 'ensure-user';
-      const userState = await ensureUserDocument(transaction, openId);
+      stage = 'load-user-doc';
+      const userState = await hydrateUserStateById(transaction, openId, resolvedUserState);
       stage = 'get-usage-doc';
       const existingUsage = await safeGetDocument(transaction, USAGE_COLLECTION, usageDocId);
       const requestLockUntil = getNumericValue(existingUsage && existingUsage.requestLockUntil);
@@ -553,7 +651,7 @@ async function prepareUsage(event, openId) {
       throw error;
     }
 
-    throw new MagnifyingGlassError('DATABASE_ERROR', '放大镜状态更新失败，请稍后再试');
+    throw createDatabaseError(stage, error, '放大镜服务暂时不可用，请稍后再试。');
   }
 }
 
@@ -566,12 +664,14 @@ async function consumeUsage(event, openId) {
   const dateKey = getDateKey(nowMs);
   const usageDocId = createUsageDocId(dateKey, openId);
   const locationTypeCountKey = createLocationTypeKey(event.locationKey, event.storyType);
-  let stage = 'start-transaction';
+  let stage = 'resolve-user-state';
 
   try {
+    const resolvedUserState = await resolveUserDocumentState(openId);
+    stage = 'start-transaction';
     return await db.runTransaction(async function consumeTransaction(transaction) {
-      stage = 'ensure-user';
-      const userState = await ensureUserDocument(transaction, openId);
+      stage = 'load-user-doc';
+      const userState = await hydrateUserStateById(transaction, openId, resolvedUserState);
       stage = 'get-usage-doc';
       const existingUsage = await safeGetDocument(transaction, USAGE_COLLECTION, usageDocId);
       const recentRequestIds = Array.isArray(existingUsage && existingUsage.recentRequestIds)
@@ -673,7 +773,7 @@ async function consumeUsage(event, openId) {
       throw error;
     }
 
-    throw new MagnifyingGlassError('DATABASE_ERROR', '放大镜扣减失败，请稍后再试');
+    throw createDatabaseError(stage, error, '放大镜服务暂时不可用，请稍后再试。');
   }
 }
 
@@ -724,7 +824,7 @@ async function releaseUsage(event, openId) {
       throw error;
     }
 
-    throw new MagnifyingGlassError('DATABASE_ERROR', '放大镜状态释放失败，请稍后再试');
+    throw createDatabaseError(stage, error, '放大镜服务暂时不可用，请稍后再试。');
   }
 }
 

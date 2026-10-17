@@ -231,7 +231,7 @@ function validateUsagePayload(payload) {
   const requestId = trimString(payload.requestId);
 
   if (!locationKey) {
-    throw createServiceError('INVALID_INPUT', 'locationKey 不能为空。');
+    throw createServiceError('MAGNIFYING_GLASS_INVALID_LOCATION_KEY', '当前地点信息不完整，请重新选择地点。');
   }
 
   if (!storyType) {

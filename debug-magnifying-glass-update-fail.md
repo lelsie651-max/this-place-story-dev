@@ -1,6 +1,6 @@
 # Debug Session: magnifying-glass-update-fail
 - **Status**: [OPEN]
-- **progress_status**: collecting
+- **progress_status**: fix_applied_pending_runtime_verification
 - **Issue**: 真机测试临时微信地点时，探索成功后前端提示“放大镜状态更新失败，请稍后再试”，需要定位 consumeMagnifyingGlass 的真实失败原因，并确认 prepare/consume/release 契约、临时地点 locationKey 与 CloudBase 集合/部署状态。
 - **Evidence Source**: Existing CloudBase function logs / local command outputs
 - **Evidence Directory**: C:\Users\1\AppData\Local\Temp\this-place-story-dev-debug\magnifying-glass-update-fail
@@ -54,14 +54,35 @@
   - The current contract uses `requestId + locationKey + storyType`, not `reservationId`.
   - Temporary-place `locationKey` is generated only on the client and is opaque to the cloud function.
   - Temporary-place `locationKey` is still built as `temporary:` + hash(`name|address|latitude|longitude|poiid`), not yet the stricter contract requested by the user.
-  - No runtime evidence currently proves whether the real failure is:
-    - collection missing / permission error
-    - transaction API failure
-    - deployment mismatch
-    - temporary-location input edge case
-  - Therefore hypotheses A-E remain unconfirmed.
+  - Runtime screenshot evidence confirms the page receives:
+    - `ok: false`
+    - `code: DATABASE_ERROR`
+    - `message: 放大镜状态更新失败，请稍后再试`
+    - `usagePrepared: false`
+  - Official WeChat CloudBase transaction docs state that transactions do not support `where` batch/query operations, only single-record operations such as `collection.doc(...).get/update/set/add`.
+  - Current `consumeMagnifyingGlass` implementation had `ensureUserDocument(transaction, openId)` -> `findUserDocumentByOpenId(transaction, openId)` -> `transaction.collection('users').where(...).get()`, which matches the unsupported pattern and is the most likely root cause of the `prepare`-stage database failure.
+
+## Applied Fix
+- Reworked `consumeMagnifyingGlass` so `prepare/consume` no longer run `where(...).get()` inside a transaction.
+- Added a transaction-safe user resolution flow:
+  - resolve user doc id outside transaction
+  - hydrate by `doc(userDocId).get()` inside transaction
+- Added explicit error codes:
+  - `MAGNIFYING_GLASS_INVALID_LOCATION_KEY`
+  - `MAGNIFYING_GLASS_USAGE_COLLECTION_ERROR`
+  - `MAGNIFYING_GLASS_DATABASE_ERROR`
+- Updated temporary-place `locationKey` generation:
+  - formal location -> real `locations._id`
+  - temporary location -> prefer non-empty `poiid`
+  - otherwise use normalized `name/address/latitude/longitude` to build a stable key
+- Updated front-end message mapping and `SPEC.md` accordingly.
 
 ## Final Evidence Gate
 - **Evidence Sources**: CloudBase deployed function metadata, CloudBase function logs, local code audit, git state
-- **progress_status**: blocked_on_runtime_evidence
-- **Hypothesis Conclusions**: A=Pending, B=Pending, C=Pending, D=Pending, E=Pending
+- **progress_status**: fix_applied_pending_runtime_verification
+- **Hypothesis Conclusions**:
+  - A=REJECTED for the reproduced screenshot path as primary cause, though the locationKey contract was still tightened.
+  - B=REJECTED for this path; `requestId` stayed on one payload object through prepare/consume/release.
+  - C=INCONCLUSIVE; collection existence is still not directly proven from CloudBase logs.
+  - D=INCONCLUSIVE; deployed-version mismatch still needs post-fix deployment verification.
+  - E=CONFIRMED; the failing stage is `prepare`, and the root cause is most likely the unsupported transaction-internal `where(...).get()` pattern.
