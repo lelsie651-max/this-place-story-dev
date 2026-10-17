@@ -85,8 +85,12 @@ function validateEvent(event) {
     throw new GenerateStoryError('INVALID_INPUT', '故事生成参数格式不正确');
   }
 
-  if (typeof event.locationId !== 'string') {
-    throw new GenerateStoryError('INVALID_INPUT', 'locationId 必须是字符串');
+  if (
+    typeof event.locationId !== 'undefined' &&
+    event.locationId !== null &&
+    typeof event.locationId !== 'string'
+  ) {
+    throw new GenerateStoryError('INVALID_INPUT', 'locationId 必须是字符串或空值');
   }
 
   if (typeof event.locationName !== 'string') {
@@ -105,15 +109,11 @@ function validateEvent(event) {
     throw new GenerateStoryError('INVALID_INPUT', 'city 必须是字符串');
   }
 
-  const locationId = trimString(event.locationId);
+  const locationId = typeof event.locationId === 'string' ? trimString(event.locationId) : '';
   const locationName = normalizeWhitespace(event.locationName);
   const locationDescription = trimString(event.locationDescription || '');
   const city = normalizeWhitespace(event.city || '');
   const type = trimString(event.type);
-
-  if (!locationId) {
-    throw new GenerateStoryError('INVALID_INPUT', 'locationId 不能为空');
-  }
 
   if (!locationName) {
     throw new GenerateStoryError('INVALID_INPUT', 'locationName 不能为空');
@@ -123,13 +123,15 @@ function validateEvent(event) {
     throw new GenerateStoryError('INVALID_INPUT', '当前仅支持 AI说 或 民间传说');
   }
 
-  validateLength(locationId, MAX_LOCATION_ID_LENGTH, 'locationId');
+  if (locationId) {
+    validateLength(locationId, MAX_LOCATION_ID_LENGTH, 'locationId');
+  }
   validateLength(locationName, MAX_LOCATION_NAME_LENGTH, 'locationName');
   validateLength(locationDescription, MAX_LOCATION_DESCRIPTION_LENGTH, 'locationDescription');
   validateLength(city, MAX_CITY_LENGTH, 'city');
 
   return {
-    locationId: locationId,
+    locationId: locationId || null,
     locationName: locationName,
     locationDescription: locationDescription,
     city: city,

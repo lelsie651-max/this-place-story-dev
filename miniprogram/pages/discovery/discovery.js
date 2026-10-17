@@ -47,6 +47,22 @@ function buildSearchFields(location) {
   ].filter(Boolean);
 }
 
+function buildTransientLocationDetail(selectedPlace) {
+  return {
+    transientPlace: true,
+    source: selectedPlace.source,
+    id: '',
+    name: selectedPlace.name || '未命名地点',
+    city: '',
+    address: selectedPlace.address || '',
+    latitude: selectedPlace.latitude,
+    longitude: selectedPlace.longitude,
+    intro: selectedPlace.address || '本次地点来自微信地图选点，将按临时地点处理。',
+    rawSelectedPlace: selectedPlace.rawPlace || null,
+    poiid: selectedPlace.poiid || '',
+  };
+}
+
 Page({
   data: {
     allLocations: [],
@@ -56,6 +72,7 @@ Page({
     emptyState: false,
     emptyMessage: '暂时没有发现新的地点',
     errorMessage: '',
+    chooseLocationLoading: false,
   },
 
   onLoad() {
@@ -85,6 +102,8 @@ Page({
           rawDescription: location.description || '',
           level: location.level || '',
           tags: location.tags || [],
+          latitude: location.latitude,
+          longitude: location.longitude,
           searchFields: buildSearchFields(location),
         };
       });
@@ -149,6 +168,77 @@ Page({
 
     wx.navigateTo({
       url: '/pages/location/location?locationId=' + locationId,
+    });
+  },
+
+  handleChooseLocation() {
+    if (this.data.chooseLocationLoading) {
+      return;
+    }
+
+    if (typeof wx === 'undefined' || typeof wx.chooseLocation !== 'function') {
+      wx.showToast({
+        title: '当前微信版本暂不支持地图选点',
+        icon: 'none',
+      });
+      return;
+    }
+
+    this.setData({
+      chooseLocationLoading: true,
+    });
+
+    wx.chooseLocation({
+      success: (result) => {
+        const normalizedResult = locationService.normalizeSelectedPlace(result);
+
+        if (normalizedResult.status !== 'valid' || !normalizedResult.selectedPlace) {
+          wx.showToast({
+            title: normalizedResult.matchReason || '当前地点信息无效，请重新选择',
+            icon: 'none',
+          });
+          return;
+        }
+
+        const matchResult = locationService.matchSelectedPlaceToLocations(
+          normalizedResult.selectedPlace,
+          this.data.allLocations || []
+        );
+
+        if (matchResult.status === 'matched' && matchResult.locationId) {
+          wx.navigateTo({
+            url: '/pages/location/location?locationId=' + matchResult.locationId,
+          });
+          return;
+        }
+
+        const app = getApp();
+
+        if (app && app.globalData) {
+          app.globalData.pendingSelectedPlace = buildTransientLocationDetail(normalizedResult.selectedPlace);
+        }
+
+        wx.navigateTo({
+          url: '/pages/location/location?transientPlace=1',
+        });
+      },
+      fail: (error) => {
+        const errMsg = error && error.errMsg ? String(error.errMsg) : '';
+
+        if (errMsg.indexOf('cancel') !== -1) {
+          return;
+        }
+
+        wx.showToast({
+          title: '地图选点暂时不可用，请稍后重试',
+          icon: 'none',
+        });
+      },
+      complete: () => {
+        this.setData({
+          chooseLocationLoading: false,
+        });
+      },
     });
   },
 });

@@ -18,6 +18,10 @@
       <view wx:if="{{searchKeyword}}" class="clear-button" bindtap="clearSearchKeyword">清除</view>
     </view>
     <view class="search-hint">仅在当前已加载的地点中筛选，不会发起新的地图或地点搜索。</view>
+    <button class="choose-location-button" bindtap="handleChooseLocation" loading="{{chooseLocationLoading}}">
+      在地图中选择地点
+    </button>
+    <view class="search-hint">也可以直接打开微信地图选点。命中已有地点时复用正式地点，未命中时按本次临时地点处理。</view>
   </view>
 
   <block wx:if="{{loading}}">

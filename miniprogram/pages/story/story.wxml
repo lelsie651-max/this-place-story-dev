@@ -20,6 +20,10 @@
     </view>
 
     <view class="story-meta panel">
+      <view wx:if="{{currentStory.transientPlace}}" class="meta-row">
+        <text class="meta-label">地点状态</text>
+        <text class="meta-value">本次选点临时故事</text>
+      </view>
       <view class="meta-row">
         <text class="meta-label">故事来源</text>
         <text class="meta-value">{{currentStory.sourceLabel}}</text>

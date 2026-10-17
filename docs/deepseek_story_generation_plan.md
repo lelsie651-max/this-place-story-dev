@@ -8,6 +8,7 @@
 
 - `AI说` 通过 CloudBase `generateStory` 调用真实 DeepSeek
 - `民间传说` 在没有预设故事时通过 `generateStory` 回退生成
+- 微信地图未命中的临时地点可直接进入 `AI说` 与 `民间传说` 生成链路
 - AI 生成失败不能影响现有民间传说流程
 
 当前非目标：
@@ -48,6 +49,16 @@
 -> 不调用 `generateStory`
 -> 没有投稿时提示空状态
 
+`微信地图未命中的临时地点` 当前流程：
+
+`discovery`
+-> `wx.chooseLocation`
+-> 未命中已有 `locations`
+-> 进入临时地点 `location`
+-> 点击 `民间传说` 或 `AI说`
+-> 调用 `generateStory`
+-> 以 `generatedStory=1` 进入 `pages/story/story`
+
 ---
 
 ## 3. 云函数契约
@@ -60,7 +71,7 @@
 
 ```json
 {
-  "locationId": "loc-nantou",
+  "locationId": "loc-nantou 或 null",
   "locationName": "南头古城",
   "locationDescription": "地点简介",
   "city": "深圳",
@@ -70,7 +81,7 @@
 
 输入规则：
 
-- `locationId` 必须是非空字符串
+- `locationId` 可为空；命中正式地点时传真实 `locations._id`，临时地点时传 `null`
 - `locationName` 必须是非空字符串
 - `locationDescription` 可为空
 - `city` 可为空
@@ -88,7 +99,7 @@
   "ok": true,
   "story": {
     "storyId": "generated-unique-id",
-    "locationId": "loc-nantou",
+    "locationId": "loc-nantou 或 null",
     "type": "AI说 或 民间传说",
     "title": "故事标题",
     "content": "故事正文",
@@ -194,6 +205,7 @@ CloudBase 云函数平台超时要求：
 - `story` 页消费后会清空这份临时数据
 - 当前 AI 生成故事不支持收藏
 - 民间传说的 AI 回退结果同样不落库，且必须保留 `source = deepseek`
+- 微信地图未命中的临时地点故事同样不落库，且必须明确显示为“本次选点生成的临时故事”
 
 ### 6.1 source 兼容映射
 

@@ -31,6 +31,10 @@ const STORY_MODE_DISPLAY_TYPES = {
 };
 
 function formatCityText(location) {
+  if (location.transientPlace && location.address) {
+    return location.address;
+  }
+
   const primary = [location.city, location.province].filter(Boolean).join(' · ');
 
   if (primary) {
@@ -41,6 +45,11 @@ function formatCityText(location) {
 }
 
 function formatLocationIntro(location) {
+  if (location.transientPlace) {
+    const addressText = location.address ? '微信地图返回地址：' + location.address + '。' : '';
+    return addressText + '当前地点尚未写入系统地点库，本次会按临时选定地点生成故事。';
+  }
+
   if (location.intro) {
     return location.intro;
   }
@@ -71,6 +80,10 @@ function formatHeroIntro(location) {
 }
 
 function formatTags(location) {
+  if (location.transientPlace) {
+    return '微信地图选点 / 临时地点';
+  }
+
   if (location.tags && location.tags.length > 0) {
     return location.tags.join(' / ');
   }
@@ -82,15 +95,24 @@ function formatTags(location) {
   return '地点线索整理中';
 }
 
-function createStoryModes() {
+function createStoryModes(options) {
+  const settings = options || {};
+
   return STORY_TYPES.map(function cloneStoryMode(mode) {
-    return Object.assign({}, mode);
+    const clonedMode = Object.assign({}, mode);
+
+    if (settings.transientPlace && clonedMode.key === 'traveler') {
+      clonedMode.enabled = false;
+      clonedMode.statusText = '临时地点暂不支持';
+    }
+
+    return clonedMode;
   });
 }
 
 function buildAiStoryRequestPayload(locationDetail, storyDisplayType) {
   return {
-    locationId: locationDetail.id,
+    locationId: locationDetail.id || null,
     locationName: locationDetail.name || '',
     locationDescription: locationDetail.intro || '',
     city: locationDetail.city || '',
@@ -109,6 +131,8 @@ function buildGeneratedStoryForPage(resultStory, locationDetail) {
     generated: true,
     locationName: locationDetail.name || '',
     city: locationDetail.city || '',
+    locationAddress: locationDetail.address || '',
+    transientPlace: !!locationDetail.transientPlace,
   };
 }
 
@@ -150,6 +174,11 @@ Page({
   },
 
   onLoad(options) {
+    if (options && options.transientPlace === '1') {
+      this.loadTransientLocationDetail();
+      return;
+    }
+
     if (!options || !options.locationId) {
       this.setData({
         loading: false,
@@ -202,13 +231,15 @@ Page({
       this.setData({
         locationDetail: {
           id: location.id,
+          transientPlace: false,
           name: location.name || '未命名地点',
           city: location.city || '',
+          address: '',
           cityText: formatCityText(location),
           intro: formatLocationIntro(location),
           heroIntro: formatHeroIntro(location),
           tagsText: formatTags(location),
-          storyCount: stories.length,
+          storyCountText: stories.length + ' 篇',
         },
         storyModes: createStoryModes(),
         remainingMagnifyingGlass: profile.magnifyingGlass || 0,
@@ -220,6 +251,60 @@ Page({
         storyModes: createStoryModes(),
         loading: false,
         errorMessage: error.message || '地点详情加载失败，请稍后再试。',
+      });
+    }
+  },
+
+  async loadTransientLocationDetail() {
+    const app = getApp();
+    const selectedPlace = app && app.globalData ? app.globalData.pendingSelectedPlace : null;
+
+    if (app && app.globalData) {
+      app.globalData.pendingSelectedPlace = null;
+    }
+
+    if (!selectedPlace) {
+      this.setData({
+        locationDetail: null,
+        storyModes: createStoryModes(),
+        loading: false,
+        errorMessage: '当前临时地点信息已失效，请重新选择地点。',
+      });
+      return;
+    }
+
+    try {
+      const profile = await userService.getCurrentUserProfile();
+
+      this.setData({
+        locationDetail: {
+          id: selectedPlace.id || '',
+          transientPlace: true,
+          source: selectedPlace.source || 'wechat_chooseLocation',
+          name: selectedPlace.name || '未命名地点',
+          city: selectedPlace.city || '',
+          address: selectedPlace.address || '',
+          latitude: selectedPlace.latitude,
+          longitude: selectedPlace.longitude,
+          cityText: formatCityText(selectedPlace),
+          intro: formatLocationIntro(selectedPlace),
+          heroIntro: formatHeroIntro(selectedPlace),
+          tagsText: formatTags(selectedPlace),
+          storyCountText: '本次选点临时生成',
+        },
+        storyModes: createStoryModes({
+          transientPlace: true,
+        }),
+        remainingMagnifyingGlass: profile.magnifyingGlass || 0,
+        loading: false,
+        errorMessage: '',
+      });
+    } catch (error) {
+      this.setData({
+        locationDetail: null,
+        storyModes: createStoryModes(),
+        loading: false,
+        errorMessage: '临时地点加载失败，请重新选择地点。',
       });
     }
   },
@@ -282,26 +367,39 @@ Page({
       });
 
       let story = null;
+      const isTransientPlace = !!this.data.locationDetail.transientPlace;
 
       if (type === 'ai_comment') {
         const generatedStory = await this.generateAiStory(type);
         story = generatedStory;
       } else if (type === 'folk') {
-        try {
-          story = await storyService.getRandomPresetStoryByLocationAndType(this.data.locationDetail.id, type);
-        } catch (presetError) {
-          const rawMessage = presetError && presetError.message ? String(presetError.message) : '';
-
-          if (rawMessage.indexOf('这个地点暂时还没有这种类型的预设故事。') === -1) {
-            throw presetError;
-          }
-
+        if (isTransientPlace) {
           story = await this.generateAiStory(type);
+        } else {
+          try {
+            story = await storyService.getRandomPresetStoryByLocationAndType(this.data.locationDetail.id, type);
+          } catch (presetError) {
+            const rawMessage = presetError && presetError.message ? String(presetError.message) : '';
+
+            if (rawMessage.indexOf('这个地点暂时还没有这种类型的预设故事。') === -1) {
+              throw presetError;
+            }
+
+            story = await this.generateAiStory(type);
+          }
         }
       } else if (type === 'traveler') {
+        if (isTransientPlace) {
+          throw new Error('临时地点暂不支持网友说');
+        }
+
         story = await storyService.getRandomUserStoryByLocation(this.data.locationDetail.id);
       } else {
-        story = await storyService.getRandomStoryByLocationAndType(this.data.locationDetail.id, type);
+        try {
+          story = await storyService.getRandomStoryByLocationAndType(this.data.locationDetail.id, type);
+        } catch (error) {
+          throw error;
+        }
       }
 
       const updatedProfile = await userService.consumeMagnifyingGlass(1);

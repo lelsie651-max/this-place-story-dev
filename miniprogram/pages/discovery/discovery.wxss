@@ -36,6 +36,17 @@
   line-height: 1.7;
 }
 
+.choose-location-button {
+  margin-top: 20rpx;
+  border: 1rpx solid rgba(140, 94, 52, 0.18);
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, rgba(255, 249, 241, 0.98), rgba(246, 234, 214, 0.96));
+  color: #6b4527;
+  font-size: 28rpx;
+  line-height: 84rpx;
+  box-shadow: 0 12rpx 28rpx rgba(107, 69, 39, 0.08);
+}
+
 .mode-card {
   position: relative;
   overflow: hidden;

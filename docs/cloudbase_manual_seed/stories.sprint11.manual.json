@@ -1,0 +1,74 @@
+[
+  {
+    "locationId": "REPLACE_WITH_DAPENG_LOCATION_ID",
+    "type": "folk",
+    "title": "海风替城门守夜",
+    "summary": "人们说夜里海风穿过大鹏所城城门时，会把守城人的脚步声一并带回来。",
+    "content": "大鹏所城靠海，也靠风。老辈人常说，真正替这座城守夜的，不只有值守的人，还有每晚准时穿过门洞的海风。\n\n风一进城，旧时巡守的脚步仿佛也跟着回来。有人相信，那不是幻听，而是海防旧事在提醒后来者：有些地方被记住，不只是因为它们还在，更因为它们仍被一遍遍提起。",
+    "source": "folk_archive",
+    "language": "zh-CN",
+    "authorId": "system_seed",
+    "status": "published",
+    "createdAt": "2026-10-17T10:10:00.000Z"
+  },
+  {
+    "locationId": "REPLACE_WITH_CHIWAN_LOCATION_ID",
+    "type": "folk",
+    "title": "潮声里的护航祈愿",
+    "summary": "庙门前的风总像在替远行的人重复一句愿望：去时平安，归时平安。",
+    "content": "关于赤湾天后宫，许多人记住的不是单一的故事，而是一代代出海前后留下的祈愿。\n\n老人们常说，真正护着人回来的不只是海路熟不熟，还有临走前在庙前停下来的那一刻。香火散去以后，潮声仍会把这份心愿留在岸边，像一段一直没有说完的守护。",
+    "source": "folk_archive",
+    "language": "zh-CN",
+    "authorId": "system_seed",
+    "status": "published",
+    "createdAt": "2026-10-17T10:20:00.000Z"
+  },
+  {
+    "locationId": "REPLACE_WITH_HUIZHOU_WEST_LAKE_LOCATION_ID",
+    "type": "folk",
+    "title": "湖面会替人藏起一句心事",
+    "summary": "有人相信，只要在傍晚沿湖走完一圈，西湖水面就会替你把最难说出口的话先收好。",
+    "content": "惠州西湖的传说不总是宏大，它更像是本地人口耳相传的小小确信。\n\n有人说，若在傍晚绕湖一圈，再站在风最轻的地方停一会儿，那些原本说不出口的话就会先被湖面收起来。等到人真正想明白了，再从另一段堤岸慢慢还回来。这种讲法听上去很轻，但也正因为轻，才被很多人记了很久。",
+    "source": "folk_archive",
+    "language": "zh-CN",
+    "authorId": "system_seed",
+    "status": "published",
+    "createdAt": "2026-10-17T10:30:00.000Z"
+  },
+  {
+    "locationId": "REPLACE_WITH_SHILI_YINTAN_LOCATION_ID",
+    "type": "folk",
+    "title": "被海浪带回来的名字",
+    "summary": "海边的人说，潮水退得最干净的时候，沙滩会把某些曾被喊过的名字重新带回来。",
+    "content": "十里银滩很长，长到许多故事都像被潮水反复拆开又重新拼回去。\n\n当地有人讲，真正安静的海边不是没有声音，而是浪声太多，把人的话都洗薄了。只有在某些退潮后的清晨，沙面才会短暂留下一个名字的回音。有人把它当成思念，有人把它当成海风的玩笑，但每次讲起时，语气都很认真。",
+    "source": "folk_archive",
+    "language": "zh-CN",
+    "authorId": "system_seed",
+    "status": "published",
+    "createdAt": "2026-10-17T10:40:00.000Z"
+  },
+  {
+    "locationId": "REPLACE_WITH_CHEN_CLAN_LOCATION_ID",
+    "type": "folk",
+    "title": "木雕会记住来过的人",
+    "summary": "老一辈说，屋檐下那些繁复纹样不是装饰，而是在默默记住走进祠堂的人。",
+    "content": "关于陈家祠，广州街坊里一直有一种温和的说法：祠堂里的木雕和砖雕不是静物，而是会替建筑记住人的目光。\n\n所以有人进来先看花鸟，有人抬头看檐角，有人只是站着发会儿呆。老人们说，那些细密的纹样之所以一直耐看，是因为它们不只是在表现工艺，也在悄悄收下每一次凝视。",
+    "source": "folk_archive",
+    "language": "zh-CN",
+    "authorId": "system_seed",
+    "status": "published",
+    "createdAt": "2026-10-17T10:50:00.000Z"
+  },
+  {
+    "locationId": "REPLACE_WITH_BROKEN_BRIDGE_LOCATION_ID",
+    "type": "folk",
+    "title": "桥未断，故事先被雪藏起来",
+    "summary": "人们说断桥真正令人记住的，从来不是断，而是它总在不同季节把传说悄悄换一种说法。",
+    "content": "西湖断桥的故事被讲了很多年，讲到后来，桥本身似乎已经成了一个会换季节的叙述者。\n\n晴天里它只是桥，落雪时却像忽然被旧传说点亮。有人说桥从来没断，断的是人一瞬间和现实的连线；等风景把人带进去以后，那条线又会慢慢接上。所以每逢雪意一起，断桥就会被重新讲一遍。",
+    "source": "folk_archive",
+    "language": "zh-CN",
+    "authorId": "system_seed",
+    "status": "published",
+    "createdAt": "2026-10-17T11:00:00.000Z"
+  }
+]

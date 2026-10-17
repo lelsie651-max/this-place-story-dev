@@ -145,6 +145,11 @@
 - 从 CloudBase 加载已发布地点
 - 默认展示系统推荐地点
 - 支持对当前已加载的地点进行本地关键词筛选
+- 提供“在地图中选择地点”入口
+- 通过 `wx.chooseLocation` 打开微信地图选点
+- 先标准化微信选点结果，再尝试匹配已有 `locations`
+- 命中已有地点时复用真实 `locations._id`
+- 未命中时进入临时选定地点状态
 - 展示地点列表
 - 点击地点后带 `locationId` 进入 `pages/location/location`
 
@@ -156,17 +161,16 @@
 
 - 当前已实现：系统推荐地点
 - 当前临时能力：对已加载推荐地点做本地筛选
-- 当前正式页面未接入：微信原生地点选择
-- 当前后续候选方案：`wx.chooseLocation`
+- 当前已接入：微信原生地点选择 `wx.chooseLocation`
 - 当前排除方案：`wx.choosePoi` 已完成真机验证，但因原始经纬度为 `0,0`，不进入正式流程
 - 当前不接入：`wx.getLocation` 不进入自动定位流程
 
 当前地点选择边界冻结为：
 
 - 推荐地点与本地筛选继续保留
+- 微信地图选点正式接入，但不替代推荐地点列表
 - 不实现全国 POI 文本搜索
 - 不依赖腾讯位置服务 WebService/API Key
-- `wx.chooseLocation` 当前只保留为后续能力方案，不接入正式审核版本
 - 微信原生选点结果不等同于自定义 POI 搜索 API
 
 #### 禁止事项
@@ -181,6 +185,8 @@
 
 - 展示地点名称、城市、简介、线索信息
 - 展示当前 mock 放大镜数量
+- 支持真实系统地点详情
+- 支持微信地图未命中后的临时选定地点
 - 提供故事类型选择：
   - `folk`
   - `ai_comment`
@@ -191,6 +197,7 @@
 - `folk` 当前先查询当前地点的预设故事，未命中时调用云函数 `generateStory`
 - `ai_comment` 当前始终调用云函数 `generateStory`
 - `traveler` 当前只查询网友投稿内容，不调用 AI
+- 临时选定地点当前只支持 `folk` 和 `ai_comment`
 
 #### 已冻结职责
 
@@ -198,7 +205,7 @@
 
 #### 当前 Demo 限定
 
-- `traveler` 当前保留为“即将开放”
+- 临时地点下的 `traveler` 当前禁用
 - 当前只会按地点 + 类型返回一篇故事
 
 #### 禁止事项
@@ -226,6 +233,7 @@
 - 页面通过 `app.globalData.pendingGeneratedStory` 暂存本次 AI 结果
 - `generatedStory=1` 入口只用于刚生成的单次阅读
 - 当前 AI 生成故事暂不支持收藏
+- 微信地图未命中的临时选点故事同样不落库，也不进入收藏链路
 
 ### 5.5 个人中心 `pages/profile/profile`
 
@@ -317,10 +325,12 @@
 - 默认列表是系统推荐地点，来源于 CloudBase `locations`
 - 当前搜索框只对已加载推荐地点做本地筛选
 - 当前未接入外部 POI 搜索结果
-- `wx.chooseLocation` 返回的 `name`、`address`、`latitude`、`longitude` 只保留为后续能力输入方案
+- `wx.chooseLocation` 返回的 `name`、`address`、`latitude`、`longitude` 当前已用于：
+  - 匹配已有 `locations`
+  - 或进入本次临时地点故事流程
 - `poiid` 只作为可选辅助字段，不作为系统主键
 - `locations._id` 仍然是系统内部地点身份
-- 用户选择新地点后，应先匹配已有 `locations`，再决定是否创建新地点
+- 用户选择新地点后，先匹配已有 `locations`，未命中时进入临时地点状态
 - 当前不自动创建正式 `locations`
 
 #### `wx.chooseLocation` 标准输入契约
@@ -377,7 +387,7 @@
 - `invalid_input`：地点名称为空、坐标非法、或选择结果缺少必要字段
 - `matched`：已能可靠判断对应已有 `locations`，返回真实 `locationId`
 - `candidate`：找到一个或多个可能匹配项，但不能直接进入已有地点
-- `unmatched`：当前没有可靠对应的 `locations`，也不能伪造 `locationId`
+- `unmatched`：当前没有可靠对应的 `locations`，也不能伪造 `locationId`，按临时地点处理
 
 #### 候选列表契约
 
@@ -618,7 +628,12 @@
 - `selectedPlace` 与正式 `locations` 必须明确区分
 - `locations._id` 仍然是系统内部地点身份
 - `poiid` 只作为辅助匹配字段，不作为系统主键
-- 当前只设计匹配契约，不执行 CloudBase 写入
+- 当前已实现：
+  - 标准化微信选点结果
+  - 尝试匹配已有 `locations`
+  - 命中时复用真实 `locations._id`
+  - 未命中时进入临时选定地点状态
+- 当前不执行 CloudBase 写入
 - 新地点自动创建属于后续独立 Sprint
 
 ---
@@ -630,6 +645,9 @@
 - 首页进入地点选择页
 - 地点列表展示
 - 对已加载地点的本地关键词筛选
+- `wx.chooseLocation` 打开微信地图选点
+- 微信选点命中已有地点时复用真实 `locationId`
+- 微信选点未命中时进入临时地点故事流程
 - 地点详情展示
 - 故事类型选择
 - 按地点和类型查询单篇故事
@@ -641,6 +659,7 @@
 - 收藏和取消收藏
 - 收藏数量展示
 - `AI说` 最小闭环：地点详情页调用 `generateStory`，成功后进入故事详情页
+- 微信地图未命中地点也可进入 `folk` / `AI说` 的 AI 生成链路
 - 故事详情页支持读取内存中的单次生成结果
 
 ---
@@ -665,8 +684,6 @@
 - 地图和 POI 搜索 API
 - 全国 POI 文本搜索
 - `wx.chooseLocation` 接入正式 UGC / 新故事入口
-- `wx.chooseLocation` 接入正式页面流程
-- `wx.chooseLocation` 与已有 `locations` 的正式匹配代码
 - 微信原生选点结果落库与正式 `locations` 复用
 - POI 去重与新地点落库的正式实现
 - 附近地点搜索
@@ -735,14 +752,14 @@
 最终产品中的地点入口仍需区分两层来源：
 
 - 系统推荐地点：来自已发布的 `locations`
-- 用户主动选点结果：后续候选入口为微信原生 `wx.chooseLocation`
+- 用户主动选点结果：当前正式入口为微信原生 `wx.chooseLocation`
 
-后者当前仍仅停留在文档冻结层，尚未接入正式 UGC、地点复用或故事流程，不得把当前本地筛选描述成已完成的地点搜索能力。
+当前本地筛选仍然只是推荐地点的临时辅助能力，不得把它描述成已完成的全国地点搜索。
 
 微信原生地点选择候选方案的当前约束为：
 
 - CloudBase 推荐地点与本地筛选继续保留
-- `wx.chooseLocation` 可作为后续功能方案，但当前不属于正式业务流程
+- `wx.chooseLocation` 当前已接入正式地点选择流程
 - `wx.choosePoi` 已完成真机验证，但当前原始经纬度为 `0,0`，不用于正式流程
 - `wx.getLocation` 当前不接入自动定位流程
 - 当前不实现全国 POI 文本搜索
@@ -752,20 +769,22 @@
 - `poiid` 只作为可选辅助字段，不作为系统主键
 - 当前不把微信返回结果伪装成 `providerPlaceId`
 - 当前不自动创建正式 `locations` 记录
+- 当前正式页面通过“临时地点”状态承接未命中的微信选点结果
 
 临时测试页说明：
 
 - 当前仓库已移除 `locationPickerTest` 测试页与相关前端入口
 - 当前正式页面不保留原生地点接口测试能力
-- 当前 `app.json` 不保留 `choosePoi` / `chooseLocation` 的 `requiredPrivateInfos` 或 `scope.userLocation` 配置
+- 当前 `app.json` 只保留 `chooseLocation` 所需的 `requiredPrivateInfos` 与 `scope.userLocation` 配置
+- 微信后台仍需补充 `chooseLocation` 相关隐私声明后才能用于正式提审
 
-`wx.chooseLocation` 的后续匹配边界冻结为：
+`wx.chooseLocation` 的当前匹配边界冻结为：
 
 - 先校验标准输入对象，再进入匹配判断
 - 只在 `matched` 时返回真实 `locationId`
 - `candidate` 只能进入候选确认，不得直接跳现有地点
-- `unmatched` 不得伪造 `locationId`
-- 当前不执行 CloudBase 查询或写入
+- `unmatched` 不得伪造 `locationId`，改为进入临时地点
+- 当前只执行前端内存态承接，不执行 CloudBase 写入
 - 距离阈值如需参与判断，必须作为待产品确认参数单独冻结
 
 ---

@@ -22,7 +22,7 @@
   <block wx:else>
     <view class="section-label">LOCATION VIEW</view>
     <view class="location-hero panel">
-      <view class="tag">已选地点</view>
+      <view class="tag">{{locationDetail.transientPlace ? '微信地图选点' : '已选地点'}}</view>
       <view class="page-title location-title">{{locationDetail.name}}</view>
       <view class="page-subtitle city-text">{{locationDetail.cityText}}</view>
       <view class="hero-intro">{{locationDetail.heroIntro}}</view>
@@ -34,13 +34,17 @@
     </view>
 
     <view class="panel meta-card">
+      <view wx:if="{{locationDetail.transientPlace}}" class="meta-row">
+        <text class="meta-label">地点状态</text>
+        <text class="meta-value">本次选点临时地点</text>
+      </view>
       <view class="meta-row">
         <text class="meta-label">地点线索</text>
         <text class="meta-value">{{locationDetail.tagsText}}</text>
       </view>
       <view class="meta-row">
-        <text class="meta-label">已发布故事</text>
-        <text class="meta-value">{{locationDetail.storyCount}} 篇</text>
+        <text class="meta-label">{{locationDetail.transientPlace ? '故事状态' : '已发布故事'}}</text>
+        <text class="meta-value">{{locationDetail.storyCountText}}</text>
       </view>
       <view class="meta-row">
         <text class="meta-label">放大镜</text>
@@ -51,7 +55,7 @@
     <view class="panel stories-card">
       <view class="panel-title">选择故事类型</view>
       <view class="panel-text">
-        先选一种讲法，再开始这一轮探索。成功找到一篇故事后，会消耗 1 次放大镜。
+        先选一种讲法，再开始这一轮探索。成功找到一篇故事后，会消耗 1 次放大镜。{{locationDetail.transientPlace ? '当前临时地点只支持民间传说与 AI说，生成结果不会写入正式故事库。': ''}}
       </view>
       <view
         wx:for="{{storyModes}}"
@@ -83,7 +87,7 @@
       </view>
       <view class="search-title">正在寻找{{requestingTypeLabel}}</view>
       <view class="search-text">
-        正沿着地点线索翻找一篇已发布故事，请稍等片刻。
+        正沿着地点线索整理一篇可阅读的故事，请稍等片刻。
       </view>
     </view>
   </view>

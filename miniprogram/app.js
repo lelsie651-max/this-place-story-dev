@@ -4,6 +4,7 @@ App({
   globalData: {
     cloudReady: false,
     pendingGeneratedStory: null,
+    pendingSelectedPlace: null,
   },
 
   onLaunch() {

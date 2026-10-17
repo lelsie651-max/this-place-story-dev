@@ -17,6 +17,14 @@
     "backgroundColor": "#efe4d2",
     "backgroundTextStyle": "light"
   },
+  "requiredPrivateInfos": [
+    "chooseLocation"
+  ],
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于在地图中选择地点，帮助你主动选择想听故事的地方。"
+    }
+  },
   "style": "v2",
   "sitemapLocation": "../sitemap.json"
 }

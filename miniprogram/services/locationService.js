@@ -1,5 +1,62 @@
 const { getCollections, getDatabase } = require('./cloud');
 
+const LOCATION_MATCH_DISTANCE_METERS = 1200;
+
+function normalizeText(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s·•,，。、“”"'‘’（）()【】\[\]《》:：;；/\\\-]/g, '');
+}
+
+function normalizeCoordinate(value) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return null;
+  }
+
+  return numericValue;
+}
+
+function isValidLatitude(value) {
+  return typeof value === 'number' && value >= -90 && value <= 90;
+}
+
+function isValidLongitude(value) {
+  return typeof value === 'number' && value >= -180 && value <= 180;
+}
+
+function hasValidCoordinates(latitude, longitude) {
+  return isValidLatitude(latitude) && isValidLongitude(longitude) && !(latitude === 0 && longitude === 0);
+}
+
+function toRadians(value) {
+  return value * Math.PI / 180;
+}
+
+function calculateDistanceMeters(latitudeA, longitudeA, latitudeB, longitudeB) {
+  if (!hasValidCoordinates(latitudeA, longitudeA) || !hasValidCoordinates(latitudeB, longitudeB)) {
+    return null;
+  }
+
+  const earthRadiusMeters = 6371000;
+  const deltaLatitude = toRadians(latitudeB - latitudeA);
+  const deltaLongitude = toRadians(longitudeB - longitudeA);
+  const originLatitude = toRadians(latitudeA);
+  const destinationLatitude = toRadians(latitudeB);
+  const haversine = Math.sin(deltaLatitude / 2) * Math.sin(deltaLatitude / 2)
+    + Math.cos(originLatitude) * Math.cos(destinationLatitude)
+    * Math.sin(deltaLongitude / 2) * Math.sin(deltaLongitude / 2);
+  const angularDistance = 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+
+  return Math.round(earthRadiusMeters * angularDistance);
+}
+
+function formatLocationAddress(location) {
+  return [location.province, location.city, location.name].filter(Boolean).join('');
+}
+
 function normalizeLocation(doc) {
   return {
     id: doc._id || doc.id,
@@ -29,6 +86,136 @@ function normalizeStorySummary(doc) {
     source: doc.source,
     status: doc.status,
     createdAt: doc.createdAt,
+  };
+}
+
+function normalizeSelectedPlace(rawPlace) {
+  if (!rawPlace || typeof rawPlace !== 'object') {
+    return {
+      status: 'invalid_input',
+      selectedPlace: null,
+      matchReason: '微信地图未返回有效地点信息',
+    };
+  }
+
+  const name = String(rawPlace.name || '').trim();
+  const address = String(rawPlace.address || '').trim();
+  const latitude = normalizeCoordinate(rawPlace.latitude);
+  const longitude = normalizeCoordinate(rawPlace.longitude);
+  const poiid = String(rawPlace.poiid || '').trim();
+
+  if (!name) {
+    return {
+      status: 'invalid_input',
+      selectedPlace: null,
+      matchReason: '微信返回的地点名称为空',
+    };
+  }
+
+  if (!hasValidCoordinates(latitude, longitude)) {
+    return {
+      status: 'invalid_input',
+      selectedPlace: null,
+      matchReason: '微信返回的坐标无效',
+    };
+  }
+
+  return {
+    status: 'valid',
+    selectedPlace: {
+      source: 'wechat_chooseLocation',
+      name: name,
+      address: address,
+      latitude: latitude,
+      longitude: longitude,
+      poiid: poiid,
+      rawPlace: rawPlace,
+    },
+  };
+}
+
+function matchSelectedPlaceToLocations(selectedPlace, locations) {
+  if (!selectedPlace) {
+    return {
+      status: 'invalid_input',
+      locationId: '',
+      selectedPlace: null,
+      matchReason: '缺少微信选点结果',
+      candidates: [],
+    };
+  }
+
+  const normalizedName = normalizeText(selectedPlace.name);
+  const normalizedAddress = normalizeText(selectedPlace.address);
+  const locationList = Array.isArray(locations) ? locations : [];
+  const exactMatches = [];
+  const candidateMatches = [];
+
+  locationList.forEach(function evaluateLocation(location) {
+    const locationName = normalizeText(location.name);
+    const locationAddress = normalizeText(formatLocationAddress(location));
+    const nameMatched = normalizedName && normalizedName === locationName;
+    const addressMatched = normalizedAddress && (
+      normalizedAddress.indexOf(locationName) !== -1 ||
+      normalizedAddress.indexOf(locationAddress) !== -1
+    );
+    const distanceMeters = calculateDistanceMeters(
+      selectedPlace.latitude,
+      selectedPlace.longitude,
+      normalizeCoordinate(location.latitude),
+      normalizeCoordinate(location.longitude)
+    );
+    const distanceMatched = typeof distanceMeters === 'number' && distanceMeters <= LOCATION_MATCH_DISTANCE_METERS;
+
+    if (nameMatched && (addressMatched || distanceMatched)) {
+      exactMatches.push({
+        location: location,
+        matchReason: addressMatched
+          ? '名称与地址能够可靠命中已有地点'
+          : '名称与坐标能够可靠命中已有地点',
+      });
+      return;
+    }
+
+    if (nameMatched || addressMatched) {
+      candidateMatches.push({
+        locationId: location.id,
+        name: location.name,
+        address: formatLocationAddress(location),
+        latitude: location.latitude,
+        longitude: location.longitude,
+        matchReason: '名称或地址与现有地点接近，但还不能直接复用正式地点',
+        confidence: distanceMatched ? 'medium' : 'low',
+      });
+    }
+  });
+
+  if (exactMatches.length === 1) {
+    return {
+      status: 'matched',
+      locationId: exactMatches[0].location.id,
+      selectedPlace: selectedPlace,
+      matchReason: exactMatches[0].matchReason,
+      candidates: [],
+    };
+  }
+
+  if (exactMatches.length > 1 || candidateMatches.length > 0) {
+    return {
+      status: 'candidate',
+      locationId: '',
+      selectedPlace: selectedPlace,
+      matchReason: '找到可能匹配的系统地点，但当前不直接复用正式地点',
+      candidates: candidateMatches,
+    };
+  }
+
+  return {
+    status: 'unmatched',
+    locationId: '',
+    selectedPlace: selectedPlace,
+    matchReason: '当前没有可靠命中的系统地点，将按临时选定地点处理',
+    candidates: [],
   };
 }
 
@@ -138,4 +325,6 @@ module.exports = {
   getPublishedLocations,
   getStoriesByLocationId,
   listLocations,
+  matchSelectedPlaceToLocations,
+  normalizeSelectedPlace,
 };

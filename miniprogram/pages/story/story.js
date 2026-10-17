@@ -38,6 +38,10 @@ function formatFallbackLocationText(story) {
     return '地点信息暂不可用';
   }
 
+  if (story.locationAddress && story.locationName) {
+    return story.locationName + ' · ' + story.locationAddress;
+  }
+
   if (story.city && story.locationName) {
     return story.city + '·' + story.locationName;
   }
@@ -78,6 +82,10 @@ function getStorySourceLabel(story) {
 }
 
 function getStoryNote(story) {
+  if (story && story.generated && story.transientPlace) {
+    return '当前展示为本次选点生成的临时故事，仅供阅读参考，暂不支持收藏。';
+  }
+
   if (story && story.generated) {
     return '当前展示为 AI 生成内容，仅供阅读参考，暂不支持收藏。';
   }
@@ -163,10 +171,12 @@ Page({
   async buildStoryViewData(story) {
     let location = null;
 
-    try {
-      location = await locationService.getLocationById(story.locationId);
-    } catch (locationError) {
-      console.warn('Failed to load location for story:', locationError);
+    if (story.locationId) {
+      try {
+        location = await locationService.getLocationById(story.locationId);
+      } catch (locationError) {
+        console.warn('Failed to load location for story:', locationError);
+      }
     }
 
     return {
@@ -182,6 +192,7 @@ Page({
         note: getStoryNote(story),
         collectible: !story.generated,
         generated: !!story.generated,
+        transientPlace: !!story.transientPlace,
       },
       contentParagraphs: (story.content || '').split('\n\n'),
     };
