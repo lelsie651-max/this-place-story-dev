@@ -253,6 +253,7 @@
 - “返回”优先使用 `wx.navigateBack()` 返回地点详情页
 - 正式地点与临时地点当前都允许从网友故事页进入投稿页
 - 临时地点无已发布投稿时，仍显示“暂时没有网友提供故事哦！”
+- 公共网友故事页仍然只展示 `status = published`
 
 #### 当前已冻结边界
 
@@ -287,6 +288,8 @@
   - 从网友故事页进入时返回网友故事页
   - 从首页进入时返回上一页
   - 并提示“投稿已提交，审核通过后会展示。”
+- 开发阶段会在控制台保留投稿失败的 `code` 和必要错误信息
+- 如果云函数未部署或仍是旧版本，会提示重新部署 `submitStory`
 
 #### 当前已冻结边界
 
@@ -305,7 +308,12 @@
 
 - 展示 mock 用户资产中的放大镜数量
 - 展示收藏数量
-- 提供图鉴、收藏等入口
+- 提供图鉴、收藏、我的投稿等入口
+- “我的投稿”入口当前进入独立页面查看自己的投稿记录与审核状态
+- 当前支持展示：
+  - `pending` -> 审核中
+  - `published` -> 已发布
+  - `rejected` -> 未通过
 
 #### 当前仅用于 Demo
 
@@ -565,12 +573,29 @@
   - 当前优先识别 `source = user`，并兼容现有 `traveler` 类型值
   - 正式地点无网友投稿时显示空状态与投稿入口
   - 临时地点不展示正式网友投稿，也不会误查其他地点
+  - `pending` 投稿不会出现在公共网友故事页
 
 微信 `wx.chooseLocation` 未命中的地点当前只生成临时故事：
 
 - 不写入正式 `stories`
 - 不进入正式收藏链路
 - 不改变 CloudBase 中已导入的预设地点与预设故事
+
+### 7.8 当前网友投稿写入与读取规则
+
+- `submitStory` 云函数固定写入：
+  - `type = traveler`
+  - `source = user`
+  - `status = pending`
+  - `authorId = wx.cloud.getWXContext().OPENID`
+- 正式地点投稿必须使用真实 `locations._id`
+- 临时地点投稿必须使用：
+  - `locationId = null`
+  - `isTemporary = true`
+  - `placeSnapshot`
+- 个人中心“我的投稿”通过 `getMyStories` 云函数读取当前用户自己的投稿
+- “我的投稿”展示 `pending / published / rejected`
+- 公共网友故事页只展示 `published`
 
 ---
 

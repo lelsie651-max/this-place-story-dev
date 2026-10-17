@@ -62,6 +62,16 @@ function trimString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function createServiceError(code, message) {
+  const error = new Error(message);
+
+  if (code) {
+    error.code = code;
+  }
+
+  return error;
+}
+
 function normalizePlaceSnapshot(snapshot) {
   if (!snapshot || typeof snapshot !== 'object') {
     return null;
@@ -370,19 +380,108 @@ async function submitTravelerStory(payload) {
 
     const functionResult = result && result.result ? result.result : null;
 
-    if (!functionResult || functionResult.ok !== true || !functionResult.storyId) {
+    if (!functionResult || typeof functionResult.ok !== 'boolean') {
+      throw createServiceError('DEPLOY_REQUIRED', '投稿服务尚未更新，请重新部署 submitStory 云函数。');
+    }
+
+    if (functionResult.ok !== true || !functionResult.storyId) {
+      const errorCode = functionResult && functionResult.error && functionResult.error.code
+        ? functionResult.error.code
+        : 'INTERNAL_ERROR';
       const message = functionResult && functionResult.error && functionResult.error.message
         ? functionResult.error.message
         : '投稿提交失败，请稍后再试。';
-      throw new Error(message);
+      throw createServiceError(errorCode, message);
     }
 
     return {
       storyId: functionResult.storyId,
+      status: functionResult.status || 'pending',
       message: functionResult.message || '投稿已提交，审核通过后会展示。',
     };
   } catch (error) {
-    throw new Error(error && error.message ? error.message : '投稿提交失败，请稍后再试。');
+    const rawMessage = error && error.message ? String(error.message) : '';
+    const errorCode = error && error.code ? String(error.code) : '';
+
+    if (
+      rawMessage.indexOf('FunctionName parameter could not be found') !== -1
+      || rawMessage.indexOf('找不到') !== -1
+      || rawMessage.indexOf('not found') !== -1
+    ) {
+      throw createServiceError('DEPLOY_REQUIRED', '投稿服务尚未更新，请重新部署 submitStory 云函数。');
+    }
+
+    throw createServiceError(errorCode || 'INTERNAL_ERROR', rawMessage || '投稿提交失败，请稍后再试。');
+  }
+}
+
+function normalizeMyStoryStatus(status) {
+  if (status === 'published') {
+    return '已发布';
+  }
+
+  if (status === 'rejected') {
+    return '未通过';
+  }
+
+  return '审核中';
+}
+
+async function getMyStories() {
+  if (typeof wx === 'undefined' || !wx.cloud || typeof wx.cloud.callFunction !== 'function') {
+    throw createServiceError('INTERNAL_ERROR', '投稿记录服务暂时不可用，请稍后再试。');
+  }
+
+  try {
+    const result = await new Promise(function callGetMyStories(resolve, reject) {
+      wx.cloud.callFunction({
+        name: 'getMyStories',
+        data: {},
+        success: resolve,
+        fail: reject,
+      });
+    });
+
+    const functionResult = result && result.result ? result.result : null;
+
+    if (!functionResult || typeof functionResult.ok !== 'boolean') {
+      throw createServiceError('DEPLOY_REQUIRED', '投稿记录服务尚未更新，请重新部署 getMyStories 云函数。');
+    }
+
+    if (functionResult.ok !== true) {
+      const errorCode = functionResult && functionResult.error && functionResult.error.code
+        ? functionResult.error.code
+        : 'INTERNAL_ERROR';
+      const message = functionResult && functionResult.error && functionResult.error.message
+        ? functionResult.error.message
+        : '投稿记录读取失败，请稍后再试。';
+      throw createServiceError(errorCode, message);
+    }
+
+    return (functionResult.stories || []).map(function normalizeMyStory(story) {
+      return {
+        id: story._id || story.id,
+        title: story.title || '',
+        content: story.content || '',
+        status: story.status || 'pending',
+        statusLabel: story.statusLabel || normalizeMyStoryStatus(story.status),
+        locationName: story.locationName || '',
+        createdAt: story.createdAt,
+      };
+    });
+  } catch (error) {
+    const rawMessage = error && error.message ? String(error.message) : '';
+    const errorCode = error && error.code ? String(error.code) : '';
+
+    if (
+      rawMessage.indexOf('FunctionName parameter could not be found') !== -1
+      || rawMessage.indexOf('找不到') !== -1
+      || rawMessage.indexOf('not found') !== -1
+    ) {
+      throw createServiceError('DEPLOY_REQUIRED', '投稿记录服务尚未更新，请重新部署 getMyStories 云函数。');
+    }
+
+    throw createServiceError(errorCode || 'INTERNAL_ERROR', rawMessage || '投稿记录读取失败，请稍后再试。');
   }
 }
 
@@ -393,6 +492,7 @@ module.exports = {
   getRandomStoryByLocationAndType,
   getRandomUserStoryByLocation,
   listPublishedUserStoriesByLocation,
+  getMyStories,
   submitTravelerStory,
   listStories,
   listStoriesByLocation,

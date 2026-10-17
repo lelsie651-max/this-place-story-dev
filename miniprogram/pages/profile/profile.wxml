@@ -44,10 +44,14 @@
           <view wx:if="{{item.key === 'favorites'}}" class="menu-subtext">
             已收藏 {{favoriteCount}} 条
           </view>
+          <view wx:if="{{item.key === 'stories'}}" class="menu-subtext">
+            已提交 {{myStoryCount}} 条
+          </view>
         </view>
       </view>
       <view class="menu-item-right">
         <view wx:if="{{item.key === 'favorites'}}" class="menu-count">{{favoriteCount}}</view>
+        <view wx:if="{{item.key === 'stories'}}" class="menu-count">{{myStoryCount}}</view>
         <view class="menu-arrow">›</view>
       </view>
     </view>

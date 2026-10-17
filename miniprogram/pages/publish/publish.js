@@ -9,7 +9,20 @@ function trimString(value) {
 }
 
 function getUserFacingErrorMessage(error) {
+  const code = trimString(error && error.code);
   const message = trimString(error && error.message);
+
+  if (code === 'DEPLOY_REQUIRED') {
+    return '投稿服务尚未更新，请重新部署 submitStory 云函数。';
+  }
+
+  if (code === 'UNAUTHORIZED') {
+    return '当前用户身份读取失败，请稍后再试。';
+  }
+
+  if (code === 'DATABASE_ERROR') {
+    return '投稿写入失败，请稍后再试。';
+  }
 
   if (!message) {
     return '投稿提交失败，请稍后再试。';
@@ -283,6 +296,10 @@ Page({
         });
       }, 600);
     } catch (error) {
+      console.error('[publish] submitStory failed', {
+        code: error && error.code ? error.code : 'INTERNAL_ERROR',
+        message: error && error.message ? error.message : '',
+      });
       wx.showToast({
         title: getUserFacingErrorMessage(error),
         icon: 'none',

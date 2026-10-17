@@ -29,7 +29,8 @@ const ALLOWED_ERROR_CODES = {
   INVALID_INPUT: true,
   LOCATION_NOT_FOUND: true,
   UNAUTHORIZED: true,
-  SYSTEM_ERROR: true,
+  DATABASE_ERROR: true,
+  INTERNAL_ERROR: true,
 };
 
 class SubmitStoryError extends Error {
@@ -44,6 +45,7 @@ function buildSuccess(storyId) {
   return {
     ok: true,
     storyId: storyId,
+    status: 'pending',
     message: '投稿已提交，审核通过后会展示。',
   };
 }
@@ -156,7 +158,7 @@ function validateEvent(event) {
 
 async function ensureLocationExists(locationId) {
   if (!db) {
-    throw new SubmitStoryError('SYSTEM_ERROR', '投稿服务暂时不可用');
+    throw new SubmitStoryError('INTERNAL_ERROR', '投稿服务暂时不可用');
   }
 
   try {
@@ -172,33 +174,49 @@ async function ensureLocationExists(locationId) {
       throw error;
     }
 
+    const message = error && error.message ? String(error.message) : '';
+
+    if (message.indexOf('permission') !== -1 || message.indexOf('Permission') !== -1) {
+      throw new SubmitStoryError('DATABASE_ERROR', '投稿写入权限异常，请检查云开发配置');
+    }
+
     throw new SubmitStoryError('LOCATION_NOT_FOUND', '当前地点不存在或暂时不可投稿');
   }
 }
 
 async function createTravelerStory(input, openId) {
   if (!db) {
-    throw new SubmitStoryError('SYSTEM_ERROR', '投稿服务暂时不可用');
+    throw new SubmitStoryError('INTERNAL_ERROR', '投稿服务暂时不可用');
   }
 
-  const result = await db.collection(STORIES_COLLECTION).add({
-    data: {
-      locationId: input.locationId,
-      isTemporary: !!input.isTemporary,
-      placeSnapshot: input.placeSnapshot,
-      title: input.title,
-      summary: buildSummary(input.content),
-      content: input.content,
-      type: 'traveler',
-      source: 'user',
-      status: 'pending',
-      language: 'zh-CN',
-      authorId: openId,
-      createdAt: db.serverDate(),
-    },
-  });
+  try {
+    const result = await db.collection(STORIES_COLLECTION).add({
+      data: {
+        locationId: input.locationId,
+        isTemporary: !!input.isTemporary,
+        placeSnapshot: input.placeSnapshot,
+        title: input.title,
+        summary: buildSummary(input.content),
+        content: input.content,
+        type: 'traveler',
+        source: 'user',
+        status: 'pending',
+        language: 'zh-CN',
+        authorId: openId,
+        createdAt: db.serverDate(),
+      },
+    });
 
-  return result && result._id ? result._id : '';
+    return result && result._id ? result._id : '';
+  } catch (error) {
+    const message = error && error.message ? String(error.message) : '';
+
+    if (message.indexOf('permission') !== -1 || message.indexOf('Permission') !== -1) {
+      throw new SubmitStoryError('DATABASE_ERROR', '投稿写入权限异常，请检查云开发配置');
+    }
+
+    throw new SubmitStoryError('DATABASE_ERROR', '投稿写入失败，请稍后再试');
+  }
 }
 
 exports.main = async function main(event) {
@@ -218,7 +236,7 @@ exports.main = async function main(event) {
     const storyId = await createTravelerStory(input, openId);
 
     if (!storyId) {
-      throw new SubmitStoryError('SYSTEM_ERROR', '投稿提交失败，请稍后再试');
+      throw new SubmitStoryError('DATABASE_ERROR', '投稿写入失败，请稍后再试');
     }
 
     return buildSuccess(storyId);
@@ -228,7 +246,7 @@ exports.main = async function main(event) {
     }
 
     console.error('[submitStory] Unexpected error', error);
-    return buildError('SYSTEM_ERROR', '投稿提交失败，请稍后再试');
+    return buildError('INTERNAL_ERROR', '投稿提交失败，请稍后再试');
   }
 };
 

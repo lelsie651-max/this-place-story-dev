@@ -1,14 +1,16 @@
 const favoriteService = require('../../services/favoriteService');
+const storyService = require('../../services/storyService');
 const userService = require('../../services/userService');
 
 Page({
   data: {
     favoriteCount: 0,
     magnifyingGlass: 0,
+    myStoryCount: 0,
     menuItems: [
       { key: 'atlas', label: '我的图鉴', icon: '🗺', route: '/pages/atlas/atlas' },
       { key: 'favorites', label: '我的收藏', icon: '🤍', route: '/pages/favorites/favorites' },
-      { key: 'stories', label: '我的故事', icon: '📖' },
+      { key: 'stories', label: '我的投稿', icon: '📖', route: '/pages/myStories/myStories' },
       { key: 'language', label: '语言设置', icon: '🌐' },
       { key: 'settings', label: '设置', icon: '⚙️' },
     ],
@@ -17,6 +19,7 @@ Page({
   onShow() {
     this.loadFavoriteCount();
     this.loadProfileAsset();
+    this.loadMyStoryCount();
   },
 
   async loadFavoriteCount() {
@@ -45,6 +48,21 @@ Page({
       console.warn('Failed to load profile asset:', error);
       this.setData({
         magnifyingGlass: 0,
+      });
+    }
+  },
+
+  async loadMyStoryCount() {
+    try {
+      const stories = await storyService.getMyStories();
+
+      this.setData({
+        myStoryCount: stories.length,
+      });
+    } catch (error) {
+      console.warn('Failed to load my story count:', error);
+      this.setData({
+        myStoryCount: 0,
       });
     }
   },
