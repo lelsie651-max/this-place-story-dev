@@ -39,6 +39,7 @@ const AI_GUARD_LIMITS = {
   MAX_TITLE_LENGTH: 80,
   MAX_CONTENT_LENGTH: 2000,
   REQUEST_LOCK_WINDOW_MS: 70000,
+  MAX_REQUEST_ID_LENGTH: 80,
 };
 const SUPPORTED_STORY_TYPES = {
   AI说: true,
@@ -265,9 +266,12 @@ const ALLOWED_ERROR_CODES = {
   AI_GLOBAL_LIMIT: true,
   AI_CIRCUIT_OPEN: true,
   AI_REQUEST_IN_PROGRESS: true,
-  AI_TIMEOUT: true,
-  AI_PROVIDER_ERROR: true,
+  PROVIDER_TIMEOUT: true,
+  PROVIDER_ERROR: true,
   NORMALIZATION_ERROR: true,
+  EMPTY_RESPONSE: true,
+  CLOUD_FUNCTION_ERROR: true,
+  UNKNOWN_ERROR: true,
 };
 
 class GenerateStoryError extends Error {
@@ -305,6 +309,30 @@ function isBoolean(value) {
 
 function trimString(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function createFallbackRequestId() {
+  return 'ai-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+function validateRequestId(requestId) {
+  const normalizedRequestId = trimString(requestId);
+
+  if (!normalizedRequestId) {
+    return createFallbackRequestId();
+  }
+
+  validateLength(normalizedRequestId, AI_GUARD_LIMITS.MAX_REQUEST_ID_LENGTH, 'requestId');
+  return normalizedRequestId;
+}
+
+function summarizeRequestForDebug(input) {
+  return {
+    requestId: trimString(input && input.requestId),
+    hasLocationId: !!trimString(input && input.locationId),
+    storyType: trimString(input && input.type),
+    isTemporary: !!(input && input.isTemporary),
+  };
 }
 
 function normalizeWhitespace(value) {
@@ -704,6 +732,7 @@ function validateEvent(event) {
   const locationDescription = trimString(event.locationDescription || '');
   const city = normalizeWhitespace(event.city || '');
   const type = trimString(event.type);
+  const requestId = validateRequestId(event.requestId);
   let selectedPlace = null;
 
   if (!locationName) {
@@ -734,6 +763,7 @@ function validateEvent(event) {
 
   const normalizedInput = {
     isTemporary: isTemporary,
+    requestId: requestId,
     locationId: locationId || null,
     selectedPlace: selectedPlace,
     locationName: locationName,
@@ -884,23 +914,26 @@ function requestDeepSeek(options) {
           if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
             console.error('[generateStory] Provider HTTP error', {
               statusCode: response.statusCode,
+              requestId: options && options.input ? trimString(options.input.requestId) : '',
             });
-            reject(new GenerateStoryError('AI_PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试'));
+            reject(new GenerateStoryError('PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试'));
             return;
           }
 
           try {
             resolve(JSON.parse(responseBody));
           } catch (error) {
-            console.error('[generateStory] Provider response parse failed');
-            reject(new GenerateStoryError('AI_PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试'));
+            console.error('[generateStory] Provider response parse failed', {
+              requestId: options && options.input ? trimString(options.input.requestId) : '',
+            });
+            reject(new GenerateStoryError('PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试'));
           }
         });
       }
     );
 
     request.setTimeout(options.timeoutMs, function onTimeout() {
-      request.destroy(new GenerateStoryError('AI_TIMEOUT', '故事生成超时，请稍后再试'));
+      request.destroy(new GenerateStoryError('PROVIDER_TIMEOUT', '故事生成超时，请稍后再试'));
     });
 
     request.on('error', function onError(error) {
@@ -911,8 +944,9 @@ function requestDeepSeek(options) {
 
       console.error('[generateStory] Provider request failed', {
         name: error && error.name ? error.name : 'Error',
+        requestId: options && options.input ? trimString(options.input.requestId) : '',
       });
-      reject(new GenerateStoryError('AI_PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试'));
+      reject(new GenerateStoryError('PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试'));
     });
 
     request.write(requestBody);
@@ -922,7 +956,7 @@ function requestDeepSeek(options) {
 
 function extractProviderMessage(payload) {
   if (!isPlainObject(payload) || !Array.isArray(payload.choices) || payload.choices.length === 0) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果格式不正确');
+    throw new GenerateStoryError('EMPTY_RESPONSE', 'AI故事暂时生成失败，请稍后再试');
   }
 
   const firstChoice = payload.choices[0];
@@ -930,7 +964,7 @@ function extractProviderMessage(payload) {
   const content = message && typeof message.content === 'string' ? message.content : '';
 
   if (!content) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果格式不正确');
+    throw new GenerateStoryError('EMPTY_RESPONSE', 'AI故事暂时生成失败，请稍后再试');
   }
 
   return content;
@@ -1055,8 +1089,9 @@ async function acquireRequestLock(input, userId) {
 
     console.error('[generateStory] Failed to acquire request lock', {
       name: error && error.name ? error.name : 'Error',
+      requestId: trimString(input && input.requestId),
     });
-    throw new GenerateStoryError('AI_PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试');
+    throw new GenerateStoryError('CLOUD_FUNCTION_ERROR', '故事服务暂时不可用，请稍后再试');
   }
 
   return {
@@ -1091,6 +1126,7 @@ async function releaseRequestLock(lockToken) {
   } catch (error) {
     console.warn('[generateStory] Failed to release request lock', {
       name: error && error.name ? error.name : 'Error',
+      requestId: lockToken && lockToken.requestId ? lockToken.requestId : '',
     });
   }
 }
@@ -1161,8 +1197,9 @@ async function consumeAiQuota(lockToken) {
 
     console.error('[generateStory] Failed to consume AI quota', {
       name: error && error.name ? error.name : 'Error',
+      requestId: lockToken && lockToken.requestId ? lockToken.requestId : '',
     });
-    throw new GenerateStoryError('AI_PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试');
+    throw new GenerateStoryError('CLOUD_FUNCTION_ERROR', '故事服务暂时不可用，请稍后再试');
   }
 }
 
@@ -1200,14 +1237,16 @@ async function generateNormalizedStoryWithRetry(options) {
       lockToken: options.lockToken,
     });
   } catch (error) {
-    if (!(error instanceof GenerateStoryError) || error.code !== 'NORMALIZATION_ERROR') {
+    if (
+      !(error instanceof GenerateStoryError)
+      || (error.code !== 'NORMALIZATION_ERROR' && error.code !== 'EMPTY_RESPONSE')
+    ) {
       throw error;
     }
 
     console.warn('[generateStory] Story normalization failed, retrying once', {
-      locationName: options.input.locationName,
-      type: options.input.type,
-      isTemporary: options.input.isTemporary,
+      request: summarizeRequestForDebug(options.input),
+      code: error.code,
     });
 
     try {
@@ -1222,13 +1261,15 @@ async function generateNormalizedStoryWithRetry(options) {
         lockToken: options.lockToken,
       });
     } catch (retryError) {
-      if (retryError instanceof GenerateStoryError && retryError.code === 'NORMALIZATION_ERROR') {
+      if (
+        retryError instanceof GenerateStoryError
+        && (retryError.code === 'NORMALIZATION_ERROR' || retryError.code === 'EMPTY_RESPONSE')
+      ) {
         console.error('[generateStory] Story normalization failed after retry', {
-          locationName: options.input.locationName,
-          type: options.input.type,
-          isTemporary: options.input.isTemporary,
+          request: summarizeRequestForDebug(options.input),
+          code: retryError.code,
         });
-        throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI故事暂时生成失败，请稍后再试');
+        throw new GenerateStoryError(retryError.code, 'AI故事暂时生成失败，请稍后再试');
       }
 
       throw retryError;
@@ -1242,6 +1283,7 @@ function createGeneratedStoryId() {
 
 async function main(event) {
   let requestLockToken = null;
+  const startedAt = Date.now();
 
   try {
     const input = validateEvent(event);
@@ -1265,6 +1307,7 @@ async function main(event) {
     }
 
     requestLockToken = await acquireRequestLock(input, openId);
+    requestLockToken.requestId = input.requestId;
 
     const normalizedStory = await generateNormalizedStoryWithRetry({
       apiKey: apiKey,
@@ -1286,14 +1329,25 @@ async function main(event) {
       storyMeta: cloneStoryMeta(storyMeta),
     });
   } catch (error) {
+    const requestId = trimString(event && event.requestId);
+
+    console.error('[generateStory] request failed', {
+      requestId: requestId,
+      code: error && error.code ? error.code : 'UNKNOWN_ERROR',
+      durationMs: Date.now() - startedAt,
+      phase: requestLockToken ? 'after_prepare' : 'before_prepare',
+      request: summarizeRequestForDebug(event),
+    });
+
     if (error instanceof GenerateStoryError && ALLOWED_ERROR_CODES[error.code]) {
       return buildError(error.code, error.message);
     }
 
     console.error('[generateStory] Unexpected error', {
       name: error && error.name ? error.name : 'Error',
+      requestId: requestId,
     });
-    return buildError('AI_PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试');
+    return buildError('UNKNOWN_ERROR', 'AI故事暂时生成失败，请稍后再试');
   } finally {
     await releaseRequestLock(requestLockToken);
   }

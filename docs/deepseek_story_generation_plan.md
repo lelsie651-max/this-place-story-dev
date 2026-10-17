@@ -27,25 +27,27 @@
 `pages/location/location`
 -> 用户点击 `AI说`
 -> 读取当前用户 `magnifyingGlass`
+-> 生成本次请求 `requestId`
 -> 先向 `consumeMagnifyingGlass` 做服务端资格预检
 -> 资格通过后显示请求遮罩
 -> `wx.cloud.callFunction({ name: "generateStory" })`
 -> 云函数调用 DeepSeek
 -> 标准化 JSON 故事结果
--> `consumeMagnifyingGlass` 服务端确认扣减 1 次放大镜
 -> 写入 `app.globalData.pendingGeneratedStory`
 -> 打开 `pages/story/story?generatedStory=1`
+-> 只有页面跳转成功后，才由 `consumeMagnifyingGlass` 服务端确认扣减 1 次放大镜
 
 `民间传说` 保持现有流程：
 
 `location`
+-> 生成本次请求 `requestId`
 -> `consumeMagnifyingGlass` 服务端资格预检
 -> 优先查询当前地点预设故事
--> 命中后由 `consumeMagnifyingGlass` 服务端确认扣减
 -> 直接进入 `story`
+-> 页面跳转成功后由 `consumeMagnifyingGlass` 服务端确认扣减
 -> 未命中时调用 `generateStory`
--> AI 成功后由 `consumeMagnifyingGlass` 服务端确认扣减
 -> 生成结果以 `generatedStory=1` 进入 `pages/story/story`
+-> 页面跳转成功后由 `consumeMagnifyingGlass` 服务端确认扣减
 
 `网友说` 当前流程：
 
@@ -76,6 +78,7 @@
 
 ```json
 {
+  "requestId": "本次请求唯一 ID",
   "locationId": "loc-nantou 或 null",
   "locationName": "南头古城",
   "locationDescription": "地点简介",
@@ -87,6 +90,7 @@
 输入规则：
 
 - `locationId` 可为空；命中正式地点时传真实 `locations._id`，临时地点时传 `null`
+- `requestId` 由前端生成并贯穿 `prepare / generateStory / consume / release`
 - `locationName` 必须是非空字符串
 - `locationDescription` 可为空
 - `city` 可为空
@@ -147,9 +151,12 @@
 - `AI_GLOBAL_LIMIT`
 - `AI_CIRCUIT_OPEN`
 - `AI_REQUEST_IN_PROGRESS`
-- `AI_TIMEOUT`
-- `AI_PROVIDER_ERROR`
+- `PROVIDER_TIMEOUT`
+- `PROVIDER_ERROR`
 - `NORMALIZATION_ERROR`
+- `EMPTY_RESPONSE`
+- `CLOUD_FUNCTION_ERROR`
+- `UNKNOWN_ERROR`
 
 ---
 
@@ -446,6 +453,7 @@ CloudBase 云函数平台超时要求：
 - AI 超时不扣放大镜
 - AI 返回非法 JSON 不扣放大镜
 - AI 服务错误不扣放大镜
+- 页面跳转失败不扣放大镜
 - 快速重复点击不会重复扣减
 
 ## 8. 故事详情页接收策略

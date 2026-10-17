@@ -10,6 +10,7 @@ const {
   generateNormalizedStoryWithRetry,
   GenerateStoryError,
   LAST_GENERATION_MEMORY,
+  validateEvent,
 } = generateStoryModule._private;
 
 function resetGenerationMemory() {
@@ -202,6 +203,57 @@ async function testNormalizationFailureStillThrowsStableError() {
   }
 }
 
+async function testEmptyResponseStillThrowsStableError() {
+  resetGenerationMemory();
+
+  const input = createInput('AI说');
+  const storyMeta = buildStoryMeta(input);
+  let callCount = 0;
+
+  try {
+    await generateNormalizedStoryWithRetry({
+      apiKey: 'demo-key',
+      input: input,
+      storyMeta: storyMeta,
+      timeoutMs: 1000,
+      skipQuotaConsumption: true,
+      lockToken: {
+        dateKey: '2099-01-01',
+        userId: 'user-demo',
+        userDocId: 'user-demo-doc',
+        globalDocId: 'global-demo-doc',
+        requestHash: 'hash-demo',
+      },
+      requestFn: async function requestFn() {
+        callCount += 1;
+        return {
+          choices: [],
+        };
+      },
+    });
+
+    assert.fail('Expected EMPTY_RESPONSE to be thrown');
+  } catch (error) {
+    assert.ok(error instanceof GenerateStoryError);
+    assert.strictEqual(error.code, 'EMPTY_RESPONSE');
+    assert.strictEqual(callCount, 2);
+  }
+}
+
+async function testValidateEventCarriesRequestId() {
+  const input = validateEvent({
+    requestId: 'mg-demo-123',
+    isTemporary: false,
+    locationId: 'loc-demo-001',
+    locationName: '南头古城',
+    locationDescription: '测试简介',
+    city: '深圳',
+    type: 'AI说',
+  });
+
+  assert.strictEqual(input.requestId, 'mg-demo-123');
+}
+
 async function run() {
   const tests = [
     ['AI meta and prompt', testAiMetaAndPrompt],
@@ -209,6 +261,8 @@ async function run() {
     ['Prompt modes differ', testPromptModesDiffer],
     ['Retry reuses same storyMeta', testRetryReusesSameStoryMeta],
     ['Normalization failure keeps fallback', testNormalizationFailureStillThrowsStableError],
+    ['Empty response keeps fallback', testEmptyResponseStillThrowsStableError],
+    ['Validate event carries requestId', testValidateEventCarriesRequestId],
   ];
 
   for (const [label, testFn] of tests) {

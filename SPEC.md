@@ -677,10 +677,11 @@
 
 1. 选择地点和类型
 2. 前端先读取当前用户放大镜余额
-3. 对 `folk` / `AI说` 先向 `consumeMagnifyingGlass` 做服务端资格预检
-4. 对 `folk` 先查预设故事，未命中时调用 `generateStory`；对 `AI说` 始终调用 `generateStory`
-5. 只有成功拿到一篇可展示故事后，才由 `consumeMagnifyingGlass` 服务端事务确认扣除一次放大镜
-6. 进入故事详情
+3. 前端生成本次探索 `requestId`
+4. 对 `folk` / `AI说` 先向 `consumeMagnifyingGlass` 做服务端资格预检
+5. 对 `folk` 先查预设故事，未命中时调用 `generateStory`；对 `AI说` 始终调用 `generateStory`
+6. 只有成功拿到一篇可展示故事且页面跳转成功后，才由 `consumeMagnifyingGlass` 服务端事务确认扣除一次放大镜
+7. 进入故事详情
 
 ### 10.3 当前 Demo 已实现的放大镜服务端规则
 
@@ -749,6 +750,7 @@
 - 正文最大 `2000` 字
 - 短时间重复请求锁
 - 全局熔断开关 `AI_CIRCUIT_OPEN`
+- 前端生成的 `requestId` 会贯穿 `prepare / generateStory / consume / release`
 
 当前计数与短锁使用 CloudBase `ai_usage_daily` 集合记录，不依赖云函数实例内存。
 
@@ -760,6 +762,7 @@
 
 - 请求失败
 - 没有故事
+- 页面跳转失败
 - 放大镜不足
 - AI 生成失败
 - AI 达到全局请求保护上限

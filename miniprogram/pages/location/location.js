@@ -158,10 +158,12 @@ function validateAiStoryRequestPayload(payload) {
 }
 
 function buildAiStoryRequestPayload(locationDetail, storyDisplayType) {
+  const requestId = arguments.length > 2 ? arguments[2] : '';
   const isTemporary = !!(locationDetail && (locationDetail.isTemporary || locationDetail.transientPlace));
 
   if (isTemporary) {
     return validateAiStoryRequestPayload({
+      requestId: requestId,
       locationId: null,
       isTemporary: true,
       selectedPlace: buildTemporarySelectedPlace(locationDetail),
@@ -173,6 +175,7 @@ function buildAiStoryRequestPayload(locationDetail, storyDisplayType) {
   }
 
   return validateAiStoryRequestPayload({
+    requestId: requestId,
     locationId: locationDetail && locationDetail.id ? locationDetail.id : '',
     isTemporary: false,
     selectedPlace: null,
@@ -201,11 +204,17 @@ function buildGeneratedStoryForPage(resultStory, locationDetail) {
   };
 }
 
-function createAiServiceError(code, message) {
+function createAiServiceError(code, message, details) {
   const error = new Error(message || 'AI故事暂时生成失败，请稍后再试');
 
   if (code) {
     error.code = code;
+  }
+
+  if (details && typeof details === 'object') {
+    Object.keys(details).forEach(function assignDetail(key) {
+      error[key] = details[key];
+    });
   }
 
   return error;
@@ -295,18 +304,59 @@ function summarizeLocationDetailForDebug(locationDetail) {
   const detail = locationDetail && typeof locationDetail === 'object' ? locationDetail : {};
 
   return {
-    id: detail.id || null,
+    hasLocationId: !!detail.id,
     isTemporary: !!detail.isTemporary,
     transientPlace: !!detail.transientPlace,
-    name: detail.name || '',
-    address: detail.address || '',
-    latitude: detail.latitude,
-    longitude: detail.longitude,
-    poiid: detail.poiid || '',
-    selectedPlace: buildTemporarySelectedPlace(detail),
+    hasSelectedPlace: !!buildTemporarySelectedPlace(detail),
   };
 }
 // #endregion debug-point mg-update-location-debug
+
+function buildAiRequestDebugInfo(options) {
+  const detail = options && options.locationDetail ? options.locationDetail : {};
+
+  return {
+    requestId: options && options.requestId ? options.requestId : '',
+    phase: options && options.phase ? options.phase : '',
+    durationMs: typeof (options && options.durationMs) === 'number' ? options.durationMs : 0,
+    code: options && options.code ? options.code : '',
+    type: options && options.type ? options.type : '',
+    hasLocationId: !!detail.id,
+    isTemporary: !!(detail.isTemporary || detail.transientPlace),
+    didPrepare: !!(options && options.didPrepare),
+    didConsume: !!(options && options.didConsume),
+    didRelease: !!(options && options.didRelease),
+  };
+}
+
+function validateDisplayableStory(story, expectedType, options) {
+  if (!story || typeof story !== 'object') {
+    throw createAiServiceError('NORMALIZATION_ERROR', '故事暂时生成失败，请稍后再试', {
+      phase: options && options.phase ? options.phase : 'story_validation',
+      requestId: options && options.requestId ? options.requestId : '',
+    });
+  }
+
+  const title = typeof story.title === 'string' ? story.title.trim() : '';
+  const content = typeof story.content === 'string' ? story.content.trim() : '';
+  const type = typeof story.type === 'string' ? story.type.trim() : '';
+
+  if (!title || !content) {
+    throw createAiServiceError('NORMALIZATION_ERROR', '故事暂时生成失败，请稍后再试', {
+      phase: options && options.phase ? options.phase : 'story_validation',
+      requestId: options && options.requestId ? options.requestId : '',
+    });
+  }
+
+  if (expectedType && type !== expectedType) {
+    throw createAiServiceError('NORMALIZATION_ERROR', '故事暂时生成失败，请稍后再试', {
+      phase: options && options.phase ? options.phase : 'story_validation',
+      requestId: options && options.requestId ? options.requestId : '',
+    });
+  }
+
+  return story;
+}
 
 function buildMagnifyingGlassLocationKey(locationDetail) {
   if (!locationDetail) {
@@ -357,16 +407,24 @@ function getUserFacingAiErrorMessage(error) {
     return 'AI 故事服务暂时维护中';
   }
 
-  if (code === 'AI_TIMEOUT') {
+  if (code === 'PROVIDER_TIMEOUT' || code === 'AI_TIMEOUT') {
     return '故事生成超时，请稍后再试';
   }
 
-  if (code === 'AI_PROVIDER_ERROR' || code === 'NORMALIZATION_ERROR') {
+  if (code === 'PROVIDER_ERROR' || code === 'AI_PROVIDER_ERROR') {
+    return 'AI 故事暂时生成失败，请稍后再试';
+  }
+
+  if (code === 'NORMALIZATION_ERROR' || code === 'EMPTY_RESPONSE') {
     return 'AI 故事暂时生成失败，请稍后再试';
   }
 
   if (code === 'AI_REQUEST_IN_PROGRESS') {
     return '故事生成处理中，请稍后再试';
+  }
+
+  if (code === 'CLOUD_FUNCTION_ERROR') {
+    return '故事服务暂时不可用，请稍后再试';
   }
 
   if (code === 'UNAUTHORIZED') {
@@ -628,6 +686,7 @@ Page({
     let usagePayload = null;
     let usagePrepared = false;
     let usageConsumed = false;
+    const requestStartedAt = Date.now();
 
     try {
       if (type === 'traveler') {
@@ -674,18 +733,21 @@ Page({
         this.data.locationDetail,
         getStoryDisplayTypeByModeKey(type)
       );
-      console.warn('[location][debug] prepare start', {
+      console.warn('[location][debug] prepare start', buildAiRequestDebugInfo({
+        requestId: usagePayload.requestId,
+        phase: 'prepare_start',
         type: type,
-        label: label || '',
-        locationDetail: summarizeLocationDetailForDebug(this.data.locationDetail),
-        usagePayload: summarizeUsagePayloadForDebug(usagePayload),
-      });
+        locationDetail: this.data.locationDetail,
+      }));
       await userService.prepareMagnifyingGlassUsage(usagePayload);
       usagePrepared = true;
-      console.warn('[location][debug] prepare success', {
+      console.warn('[location][debug] prepare success', buildAiRequestDebugInfo({
+        requestId: usagePayload.requestId,
+        phase: 'prepare_success',
         type: type,
-        usagePayload: summarizeUsagePayloadForDebug(usagePayload),
-      });
+        locationDetail: this.data.locationDetail,
+        didPrepare: usagePrepared,
+      }));
 
       this.setData({
         requesting: true,
@@ -698,11 +760,10 @@ Page({
       );
 
       if (type === 'ai_comment') {
-        const generatedStory = await this.generateAiStory(type);
-        story = generatedStory;
+        story = await this.generateAiStory(type, usagePayload.requestId);
       } else if (type === 'folk') {
         if (isTransientPlace) {
-          story = await this.generateAiStory(type);
+          story = await this.generateAiStory(type, usagePayload.requestId);
         } else {
           try {
             story = await storyService.getRandomPresetStoryByLocationAndType(this.data.locationDetail.id, type);
@@ -713,7 +774,7 @@ Page({
               throw presetError;
             }
 
-            story = await this.generateAiStory(type);
+            story = await this.generateAiStory(type, usagePayload.requestId);
           }
         }
       } else {
@@ -724,31 +785,14 @@ Page({
         }
       }
 
-      console.warn('[location][debug] consume start', {
-        type: type,
-        usagePayload: summarizeUsagePayloadForDebug(usagePayload),
-        storyGenerated: !!(story && story.generated),
-        storyId: story && story.id ? story.id : '',
-      });
-      const updatedProfile = await userService.consumeMagnifyingGlass(usagePayload);
-      usageConsumed = true;
-      console.warn('[location][debug] consume success', {
-        type: type,
-        usagePayload: summarizeUsagePayloadForDebug(usagePayload),
-        magnifyingGlass: updatedProfile && typeof updatedProfile.magnifyingGlass === 'number'
-          ? updatedProfile.magnifyingGlass
-          : null,
-        dailyTotalCount: updatedProfile && typeof updatedProfile.dailyTotalCount === 'number'
-          ? updatedProfile.dailyTotalCount
-          : null,
-        locationTypeCount: updatedProfile && typeof updatedProfile.locationTypeCount === 'number'
-          ? updatedProfile.locationTypeCount
-          : null,
-      });
-
-      this.setData({
-        remainingMagnifyingGlass: updatedProfile.magnifyingGlass || 0,
-      });
+      story = validateDisplayableStory(
+        story,
+        getStoryDisplayTypeByModeKey(type),
+        {
+          requestId: usagePayload.requestId,
+          phase: 'story_validation',
+        }
+      );
 
       await new Promise(function navigateToStory(resolve, reject) {
         wx.navigateTo({
@@ -756,37 +800,86 @@ Page({
             ? '/pages/story/story?generatedStory=1'
             : '/pages/story/story?storyId=' + story.id,
           success: resolve,
-          fail: reject,
+          fail: function onFail() {
+            reject(createAiServiceError('UNKNOWN_ERROR', '故事暂时打开失败，请稍后再试', {
+              requestId: usagePayload.requestId,
+              phase: 'navigate_failed',
+              durationMs: Date.now() - requestStartedAt,
+            }));
+          },
         });
       });
+
+      console.warn('[location][debug] consume start', buildAiRequestDebugInfo({
+        requestId: usagePayload.requestId,
+        phase: 'consume_start',
+        type: type,
+        locationDetail: this.data.locationDetail,
+        didPrepare: usagePrepared,
+      }));
+      const updatedProfile = await userService.consumeMagnifyingGlass(usagePayload);
+      usageConsumed = true;
+      console.warn('[location][debug] consume success', buildAiRequestDebugInfo({
+        requestId: usagePayload.requestId,
+        phase: 'consume_success',
+        type: type,
+        locationDetail: this.data.locationDetail,
+        didPrepare: usagePrepared,
+        didConsume: usageConsumed,
+      }));
+
+      this.setData({
+        remainingMagnifyingGlass: updatedProfile.magnifyingGlass || 0,
+      });
     } catch (error) {
+      let releaseSucceeded = false;
+
       if (usagePrepared && !usageConsumed && usagePayload) {
         try {
-          console.warn('[location][debug] release start', {
+          console.warn('[location][debug] release start', buildAiRequestDebugInfo({
+            requestId: usagePayload.requestId,
+            phase: 'release_start',
             type: type,
-            usagePayload: summarizeUsagePayloadForDebug(usagePayload),
-          });
+            locationDetail: this.data.locationDetail,
+            didPrepare: usagePrepared,
+            didConsume: usageConsumed,
+          }));
           await userService.releaseMagnifyingGlassRequest(usagePayload);
-          console.warn('[location][debug] release success', {
+          releaseSucceeded = true;
+          console.warn('[location][debug] release success', buildAiRequestDebugInfo({
+            requestId: usagePayload.requestId,
+            phase: 'release_success',
             type: type,
-            usagePayload: summarizeUsagePayloadForDebug(usagePayload),
-          });
+            locationDetail: this.data.locationDetail,
+            didPrepare: usagePrepared,
+            didConsume: usageConsumed,
+            didRelease: releaseSucceeded,
+          }));
         } catch (releaseError) {
           console.warn('[location] release magnifying glass request failed', {
+            requestId: usagePayload.requestId,
             code: releaseError && releaseError.code ? releaseError.code : 'INTERNAL_ERROR',
-            message: releaseError && releaseError.message ? releaseError.message : '',
-            usagePayload: summarizeUsagePayloadForDebug(usagePayload),
+            phase: 'release_failed',
+            didPrepare: usagePrepared,
+            didConsume: usageConsumed,
+            didRelease: false,
           });
         }
       }
 
       console.error('[location] story request failed', {
-        code: error && error.code ? error.code : 'INTERNAL_ERROR',
-        message: error && error.message ? error.message : '',
+        requestId: usagePayload && usagePayload.requestId ? usagePayload.requestId : '',
+        code: error && error.code ? error.code : 'UNKNOWN_ERROR',
+        phase: error && error.phase ? error.phase : 'request_failed',
+        durationMs: typeof (error && error.durationMs) === 'number'
+          ? error.durationMs
+          : (Date.now() - requestStartedAt),
         type: type,
-        usagePayload: summarizeUsagePayloadForDebug(usagePayload),
-        usagePrepared: usagePrepared,
-        usageConsumed: usageConsumed,
+        hasLocationId: !!(this.data.locationDetail && this.data.locationDetail.id),
+        isTemporary: !!(this.data.locationDetail && (this.data.locationDetail.isTemporary || this.data.locationDetail.transientPlace)),
+        didPrepare: usagePrepared,
+        didConsume: usageConsumed,
+        didRelease: releaseSucceeded,
       });
       const message = getUserFacingAiErrorMessage(error);
 
@@ -803,21 +896,34 @@ Page({
     }
   },
 
-  async generateAiStory(storyModeKey) {
+  async generateAiStory(storyModeKey, requestId) {
     if (typeof wx === 'undefined' || !wx.cloud || typeof wx.cloud.callFunction !== 'function') {
-      throw new Error('AI服务暂时不可用，请稍后重试');
+      throw createAiServiceError('CLOUD_FUNCTION_ERROR', '故事服务暂时不可用，请稍后再试', {
+        requestId: requestId || '',
+        phase: 'cloud_unavailable',
+        durationMs: 0,
+      });
     }
 
     const payload = buildAiStoryRequestPayload(
       this.data.locationDetail,
-      getStoryDisplayTypeByModeKey(storyModeKey)
+      getStoryDisplayTypeByModeKey(storyModeKey),
+      requestId || ''
     );
+    const startedAt = Date.now();
     const functionResult = await new Promise(function callGenerateStory(resolve, reject) {
       wx.cloud.callFunction({
         name: 'generateStory',
         data: payload,
         success: resolve,
-        fail: reject,
+        fail: function onFail(error) {
+          reject(createAiServiceError('CLOUD_FUNCTION_ERROR', '故事服务暂时不可用，请稍后再试', {
+            requestId: requestId || payload.requestId || '',
+            phase: 'cloud_call_failed',
+            durationMs: Date.now() - startedAt,
+            originalCode: error && error.code ? String(error.code) : '',
+          }));
+        },
       });
     });
     const result = functionResult && functionResult.result ? functionResult.result : null;
@@ -825,15 +931,23 @@ Page({
     if (!result || result.ok !== true || !result.story) {
       const errorCode = result && result.error && result.error.code
         ? result.error.code
-        : 'AI_PROVIDER_ERROR';
+        : 'CLOUD_FUNCTION_ERROR';
       const message = result && result.error && result.error.message
         ? result.error.message
-        : 'AI故事暂时生成失败，请稍后再试';
-      throw createAiServiceError(errorCode, message);
+        : '故事服务暂时不可用，请稍后再试';
+      throw createAiServiceError(errorCode, message, {
+        requestId: requestId || payload.requestId || '',
+        phase: 'generate_story_result',
+        durationMs: Date.now() - startedAt,
+      });
     }
 
     const app = getApp();
     const generatedStory = buildGeneratedStoryForPage(result.story, this.data.locationDetail);
+    validateDisplayableStory(generatedStory, payload.type, {
+      requestId: requestId || payload.requestId || '',
+      phase: 'generate_story_validation',
+    });
 
     if (app && app.globalData) {
       app.globalData.pendingGeneratedStory = generatedStory;
