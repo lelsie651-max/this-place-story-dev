@@ -26,6 +26,27 @@
         <view class="asset-unit">枚</view>
       </view>
     </view>
+
+    <view wx:if="{{adRewardAvailable}}" class="reward-divider"></view>
+
+    <view wx:if="{{adRewardAvailable}}" class="reward-panel">
+      <view class="reward-summary">
+        <view>
+          <view class="reward-title">今日广告奖励：{{adRewardDailyCount}} / {{adRewardDailyLimit}}</view>
+          <view class="reward-note">完整看完视频后可获得 1 枚放大镜</view>
+        </view>
+        <view class="reward-badge">+1</view>
+      </view>
+
+      <button
+        class="reward-button {{(adRewardButtonLoading || adRewardDailyCount >= adRewardDailyLimit) ? 'reward-button-disabled' : ''}}"
+        loading="{{adRewardButtonLoading}}"
+        disabled="{{adRewardButtonLoading || adRewardDailyCount >= adRewardDailyLimit}}"
+        bindtap="handleWatchAdTap"
+      >
+        {{adRewardDailyCount >= adRewardDailyLimit ? '今日广告奖励已用完' : '看视频获得 1 枚放大镜'}}
+      </button>
+    </view>
   </view>
 
   <view class="function-label">功能入口</view>

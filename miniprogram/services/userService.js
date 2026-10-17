@@ -8,6 +8,7 @@ const CURRENT_USER = {
   magnifyingGlass: 5,
   createdAt: '2026-10-12T10:10:00.000Z',
 };
+const AD_REWARD_DAILY_LIMIT = 3;
 
 const ATLAS_ITEMS = [
   {
@@ -87,54 +88,98 @@ function shouldUseLocalFallback() {
     || typeof wx.cloud.callFunction !== 'function';
 }
 
-async function callMagnifyingGlassFunction(data) {
+function callCloudFunction(name, data, deployCode, deployMessage) {
   initCloud();
 
   if (shouldUseLocalFallback()) {
     throw createServiceError('LOCAL_ONLY', '当前环境不支持云函数调用');
   }
 
-  try {
-    const result = await new Promise(function callCloudFunction(resolve, reject) {
-      wx.cloud.callFunction({
-        name: 'consumeMagnifyingGlass',
-        data: data,
-        success: resolve,
-        fail: reject,
-      });
+  return new Promise(function executor(resolve, reject) {
+    wx.cloud.callFunction({
+      name: name,
+      data: data,
+      success: function onSuccess(result) {
+        const functionResult = result && result.result ? result.result : null;
+
+        if (!functionResult || typeof functionResult.ok !== 'boolean') {
+          reject(createServiceError(deployCode, deployMessage));
+          return;
+        }
+
+        if (functionResult.ok !== true) {
+          const errorCode = functionResult && functionResult.error && functionResult.error.code
+            ? functionResult.error.code
+            : 'INTERNAL_ERROR';
+          const message = functionResult && functionResult.error && functionResult.error.message
+            ? functionResult.error.message
+            : '服务暂时不可用，请稍后再试。';
+
+          reject(createServiceError(errorCode, message));
+          return;
+        }
+
+        resolve(functionResult.data || {});
+      },
+      fail: function onFail(error) {
+        const rawMessage = error && error.message ? String(error.message) : '';
+
+        if (
+          rawMessage.indexOf('FunctionName parameter could not be found') !== -1
+          || rawMessage.indexOf('找不到') !== -1
+          || rawMessage.indexOf('not found') !== -1
+        ) {
+          reject(createServiceError(deployCode, deployMessage));
+          return;
+        }
+
+        reject(createServiceError(error && error.code ? String(error.code) : 'INTERNAL_ERROR', rawMessage || '服务暂时不可用，请稍后再试。'));
+      },
     });
-    const functionResult = result && result.result ? result.result : null;
+  });
+}
 
-    if (!functionResult || typeof functionResult.ok !== 'boolean') {
-      throw createServiceError('DEPLOY_REQUIRED', '放大镜服务尚未更新，请重新部署 consumeMagnifyingGlass 云函数。');
-    }
+async function callMagnifyingGlassFunction(data) {
+  return callCloudFunction(
+    'consumeMagnifyingGlass',
+    data,
+    'DEPLOY_REQUIRED',
+    '放大镜服务尚未更新，请重新部署 consumeMagnifyingGlass 云函数。'
+  );
+}
 
-    if (functionResult.ok !== true) {
-      const errorCode = functionResult && functionResult.error && functionResult.error.code
-        ? functionResult.error.code
-        : 'INTERNAL_ERROR';
-      const message = functionResult && functionResult.error && functionResult.error.message
-        ? functionResult.error.message
-        : '放大镜服务暂时不可用，请稍后再试。';
+function normalizeAdRewardStatus(rawData) {
+  const status = rawData && typeof rawData === 'object' ? rawData : {};
 
-      throw createServiceError(errorCode, message);
-    }
+  return {
+    magnifyingGlass: typeof status.magnifyingGlass === 'number' ? status.magnifyingGlass : CURRENT_USER.magnifyingGlass,
+    todayRewardCount: typeof status.todayRewardCount === 'number' ? status.todayRewardCount : 0,
+    dailyRewardLimit: typeof status.dailyRewardLimit === 'number' ? status.dailyRewardLimit : AD_REWARD_DAILY_LIMIT,
+    rewardAmount: typeof status.rewardAmount === 'number' ? status.rewardAmount : 1,
+    duplicate: !!status.duplicate,
+  };
+}
 
-    return functionResult.data || {};
-  } catch (error) {
-    const rawMessage = error && error.message ? String(error.message) : '';
-    const errorCode = error && error.code ? String(error.code) : '';
-
-    if (
-      rawMessage.indexOf('FunctionName parameter could not be found') !== -1
-      || rawMessage.indexOf('找不到') !== -1
-      || rawMessage.indexOf('not found') !== -1
-    ) {
-      throw createServiceError('DEPLOY_REQUIRED', '放大镜服务尚未更新，请重新部署 consumeMagnifyingGlass 云函数。');
-    }
-
-    throw createServiceError(errorCode || 'INTERNAL_ERROR', rawMessage || '放大镜服务暂时不可用，请稍后再试。');
+function validateRewardPayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    throw createServiceError('INVALID_INPUT', '广告奖励请求参数不完整。');
   }
+
+  const rewardRequestId = trimString(payload.rewardRequestId);
+  const adUnitId = trimString(payload.adUnitId);
+
+  if (!rewardRequestId) {
+    throw createServiceError('INVALID_INPUT', 'rewardRequestId 不能为空。');
+  }
+
+  if (!adUnitId) {
+    throw createServiceError('INVALID_INPUT', 'adUnitId 不能为空。');
+  }
+
+  return {
+    rewardRequestId: rewardRequestId,
+    adUnitId: adUnitId,
+  };
 }
 
 function validateUsagePayload(payload) {
@@ -177,6 +222,30 @@ async function getCurrentUserProfile() {
 
   syncLocalCurrentUser(profile);
   return profile;
+}
+
+async function getAdRewardStatus() {
+  if (shouldUseLocalFallback()) {
+    return {
+      magnifyingGlass: CURRENT_USER.magnifyingGlass,
+      todayRewardCount: 0,
+      dailyRewardLimit: AD_REWARD_DAILY_LIMIT,
+      rewardAmount: 1,
+      duplicate: false,
+    };
+  }
+
+  const status = normalizeAdRewardStatus(await callCloudFunction(
+    'claimAdReward',
+    {
+      action: 'status',
+    },
+    'DEPLOY_REQUIRED',
+    '广告奖励服务尚未更新，请重新部署 claimAdReward 云函数。'
+  ));
+
+  CURRENT_USER.magnifyingGlass = status.magnifyingGlass;
+  return status;
 }
 
 function getAtlasItems() {
@@ -251,8 +320,32 @@ async function releaseMagnifyingGlassRequest(payload) {
   });
 }
 
+async function claimAdReward(payload) {
+  const normalizedPayload = validateRewardPayload(payload);
+
+  if (shouldUseLocalFallback()) {
+    throw createServiceError('AD_REWARD_UNAVAILABLE', '广告奖励暂时不可用，请稍后再试');
+  }
+
+  const status = normalizeAdRewardStatus(await callCloudFunction(
+    'claimAdReward',
+    {
+      action: 'claim',
+      rewardRequestId: normalizedPayload.rewardRequestId,
+      adUnitId: normalizedPayload.adUnitId,
+    },
+    'DEPLOY_REQUIRED',
+    '广告奖励服务尚未更新，请重新部署 claimAdReward 云函数。'
+  ));
+
+  CURRENT_USER.magnifyingGlass = status.magnifyingGlass;
+  return status;
+}
+
 module.exports = {
+  claimAdReward,
   consumeMagnifyingGlass,
+  getAdRewardStatus,
   getAtlasItems,
   getCurrentUserProfile,
   prepareMagnifyingGlassUsage,

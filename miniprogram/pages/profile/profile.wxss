@@ -98,6 +98,67 @@
   font-size: 24rpx;
 }
 
+.reward-divider {
+  height: 2rpx;
+  margin: 28rpx 0;
+  background: rgba(140, 94, 52, 0.12);
+}
+
+.reward-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.reward-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.reward-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #4c3424;
+}
+
+.reward-note {
+  margin-top: 8rpx;
+  color: #8a725c;
+  font-size: 22rpx;
+  line-height: 1.6;
+}
+
+.reward-badge {
+  min-width: 72rpx;
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(190, 122, 36, 0.12);
+  color: #8b5e34;
+  font-size: 28rpx;
+  font-weight: 600;
+  text-align: center;
+}
+
+.reward-button {
+  width: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, #b67833, #8b5e34);
+  color: #fffaf2;
+  font-size: 28rpx;
+  line-height: 2.8;
+}
+
+.reward-button::after {
+  border: none;
+}
+
+.reward-button-disabled {
+  background: rgba(140, 94, 52, 0.18);
+  color: #8a725c;
+}
+
 .menu-list {
   display: flex;
   flex-direction: column;
