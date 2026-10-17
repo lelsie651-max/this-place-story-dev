@@ -37,6 +37,19 @@
 - 当前导入界面对 CSV 更友好
 - CSV 只支持 string 和 number，所以 `locations.manual.csv` 里没有放数组类型的 `tags`
 - 当前页面仍可正常工作，因为地点列表和地点详情还有 `level`、`intro`、`description` 这些 fallback 字段
+- `locations.tags` 的最终目标类型仍然是数组
+- 使用 `JSONL` 导入时可以保留 `tags` 数组
+- 使用 `CSV` 导入时，`tags` 可能会被保存成字符串
+- 当前代码已经兼容这些历史值：
+  - 数组
+  - JSON 字符串数组
+  - 普通逗号分隔字符串
+  - 中文逗号分隔字符串
+  - 顿号分隔字符串
+  - 换行分隔字符串
+  - 竖线分隔字符串
+  - `null` / 缺失值
+- 因此不需要为了 `tags` 类型问题删除地点、重建地点或重复导入故事
 
 ## 当前代码实际依赖的字段
 
@@ -261,6 +274,13 @@ Sprint 12 包的约束如下：
 - 测试点只导地点，不导任何 `type = folk` 且 `status = published` 的故事
 - `source = folk_archive` 才表示预设内容
 - 禁止使用 `ai_observer` 或 `deepseek` 作为预设导入来源
+- 当前页面已兼容历史字符串类型的 `locations.tags`，所以已导入地点不需要因为 `tags` 类型不同而重导
+
+如果后续要新增地点，仍建议优先使用 `JSONL` 导入：
+
+- 更容易保留 `tags` 数组结构
+- 更接近当前代码实际使用的字段类型
+- 能减少 CSV 把数组字段转成字符串的风险
 
 如果 CloudBase 控制台无法安全 upsert，请按 `sprint12_import_steps.md` 中的人工检查顺序执行：
 

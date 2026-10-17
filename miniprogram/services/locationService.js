@@ -53,6 +53,49 @@ function calculateDistanceMeters(latitudeA, longitudeA, latitudeB, longitudeB) {
   return Math.round(earthRadiusMeters * angularDistance);
 }
 
+function normalizeTags(tags) {
+  if (Array.isArray(tags)) {
+    return tags
+      .map(function normalizeTagItem(tag) {
+        return String(tag || '').trim();
+      })
+      .filter(Boolean);
+  }
+
+  if (typeof tags === 'string') {
+    const trimmedTags = tags.trim();
+
+    if (!trimmedTags) {
+      return [];
+    }
+
+    if (trimmedTags.indexOf('[') === 0) {
+      try {
+        const parsedTags = JSON.parse(trimmedTags);
+
+        if (Array.isArray(parsedTags)) {
+          return parsedTags
+            .map(function normalizeParsedTag(tag) {
+              return String(tag || '').trim();
+            })
+            .filter(Boolean);
+        }
+      } catch (error) {
+        // Fall through to delimiter-based parsing for historical string data.
+      }
+    }
+
+    return trimmedTags
+      .split(/[,\n，、|]/)
+      .map(function normalizeSplitTag(tag) {
+        return String(tag || '').trim();
+      })
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
 function formatLocationAddress(location) {
   return [location.province, location.city, location.name].filter(Boolean).join('');
 }
@@ -67,7 +110,7 @@ function normalizeLocation(doc) {
     latitude: doc.latitude,
     longitude: doc.longitude,
     level: doc.level,
-    tags: doc.tags,
+    tags: normalizeTags(doc.tags),
     intro: doc.intro || doc.description || doc.introduction || doc.summary || '',
     description: doc.description || doc.introduction || doc.summary || '',
     status: doc.status,
@@ -336,5 +379,6 @@ module.exports = {
   getStoriesByLocationId,
   listLocations,
   matchSelectedPlaceToLocations,
+  normalizeTags,
   normalizeSelectedPlace,
 };
