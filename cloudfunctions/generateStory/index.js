@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const https = require('https');
 
 let cloud = null;
@@ -8,6 +9,12 @@ try {
   cloud = {
     DYNAMIC_CURRENT_ENV: '',
     init: function init() {},
+    database: function database() {
+      return null;
+    },
+    getWXContext: function getWXContext() {
+      return {};
+    },
   };
 }
 
@@ -15,16 +22,25 @@ cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV,
 });
 
+const db = cloud.database ? cloud.database() : null;
+const AI_USAGE_DAILY_COLLECTION = 'ai_usage_daily';
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
 const DEEPSEEK_CHAT_PATH = '/chat/completions';
 const DEEPSEEK_MODEL = 'deepseek-flash';
-const REQUEST_TIMEOUT_MS = 25000;
-const MAX_LOCATION_ID_LENGTH = 128;
-const MAX_LOCATION_NAME_LENGTH = 80;
-const MAX_LOCATION_DESCRIPTION_LENGTH = 300;
-const MAX_CITY_LENGTH = 40;
-const MAX_TITLE_LENGTH = 60;
-const MAX_CONTENT_LENGTH = 1800;
+const AI_GUARD_LIMITS = {
+  USER_DAILY_LIMIT: 10,
+  GLOBAL_DAILY_LIMIT: 200,
+  REQUEST_TIMEOUT_MS: 60000,
+  MAX_PROVIDER_INPUT_CHARS: 500,
+  MAX_PROVIDER_OUTPUT_TOKENS: 1200,
+  MAX_LOCATION_ID_LENGTH: 128,
+  MAX_LOCATION_NAME_LENGTH: 80,
+  MAX_LOCATION_DESCRIPTION_LENGTH: 300,
+  MAX_CITY_LENGTH: 40,
+  MAX_TITLE_LENGTH: 80,
+  MAX_CONTENT_LENGTH: 2000,
+  REQUEST_LOCK_WINDOW_MS: 70000,
+};
 const SUPPORTED_STORY_TYPES = {
   AI说: true,
   民间传说: true,
@@ -32,8 +48,13 @@ const SUPPORTED_STORY_TYPES = {
 const ALLOWED_ERROR_CODES = {
   INVALID_INPUT: true,
   CONFIG_ERROR: true,
-  PROVIDER_ERROR: true,
-  PROVIDER_TIMEOUT: true,
+  UNAUTHORIZED: true,
+  AI_USER_LIMIT: true,
+  AI_GLOBAL_LIMIT: true,
+  AI_CIRCUIT_OPEN: true,
+  AI_REQUEST_IN_PROGRESS: true,
+  AI_TIMEOUT: true,
+  AI_PROVIDER_ERROR: true,
   NORMALIZATION_ERROR: true,
 };
 
@@ -84,6 +105,115 @@ function validateLength(value, maxLength, fieldName) {
   }
 }
 
+function getNumericValue(value) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue) || numericValue < 0) {
+    return 0;
+  }
+
+  return numericValue;
+}
+
+function createDigest(value) {
+  return crypto.createHash('sha1').update(String(value || ''), 'utf8').digest('hex');
+}
+
+function getUsageDateKey(nowMs) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  return formatter.format(new Date(typeof nowMs === 'number' ? nowMs : Date.now()));
+}
+
+function buildGlobalUsageDocId(dateKey) {
+  return 'global__' + dateKey;
+}
+
+function buildUserUsageDocId(dateKey, userId) {
+  return 'user__' + dateKey + '__' + createDigest(userId).slice(0, 24);
+}
+
+function isMissingDocumentError(error) {
+  const message = error && error.message ? String(error.message) : '';
+
+  return (
+    message.indexOf('does not exist') !== -1
+    || message.indexOf('non-existent') !== -1
+    || message.indexOf('document.get:fail') !== -1
+  );
+}
+
+async function safeGetDocument(actor, collectionName, docId) {
+  try {
+    const result = await actor.collection(collectionName).doc(docId).get();
+    return result && result.data ? result.data : null;
+  } catch (error) {
+    if (isMissingDocumentError(error)) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+function buildUserUsageDocument(options) {
+  const existing = isPlainObject(options.existing) ? options.existing : {};
+
+  return {
+    scope: 'user',
+    date: options.dateKey,
+    userId: options.userId,
+    userCount: typeof options.userCount === 'number' ? options.userCount : getNumericValue(existing.userCount),
+    globalCount: 0,
+    updatedAt: db.serverDate(),
+    requestLockUntil: typeof options.requestLockUntil === 'number'
+      ? options.requestLockUntil
+      : getNumericValue(existing.requestLockUntil),
+    activeRequestHash: typeof options.activeRequestHash === 'string'
+      ? options.activeRequestHash
+      : trimString(existing.activeRequestHash),
+    lastRequestAt: typeof options.lastRequestAt === 'number'
+      ? options.lastRequestAt
+      : getNumericValue(existing.lastRequestAt),
+    lastUsageAt: typeof options.lastUsageAt === 'number'
+      ? options.lastUsageAt
+      : getNumericValue(existing.lastUsageAt),
+  };
+}
+
+function buildGlobalUsageDocument(options) {
+  const existing = isPlainObject(options.existing) ? options.existing : {};
+
+  return {
+    scope: 'global',
+    date: options.dateKey,
+    userId: '',
+    userCount: 0,
+    globalCount: typeof options.globalCount === 'number' ? options.globalCount : getNumericValue(existing.globalCount),
+    updatedAt: db.serverDate(),
+    lastUsageAt: typeof options.lastUsageAt === 'number'
+      ? options.lastUsageAt
+      : getNumericValue(existing.lastUsageAt),
+  };
+}
+
+function createRequestHash(input) {
+  return createDigest(JSON.stringify({
+    locationId: input.locationId || null,
+    locationName: input.locationName || '',
+    locationDescription: input.locationDescription || '',
+    city: input.city || '',
+    type: input.type || '',
+    isTemporary: !!input.isTemporary,
+    selectedPlace: input.selectedPlace || null,
+  }));
+}
+
 function normalizeSelectedPlace(selectedPlace) {
   if (!isPlainObject(selectedPlace)) {
     throw new GenerateStoryError('INVALID_INPUT', '临时地点缺少 selectedPlace');
@@ -112,6 +242,24 @@ function normalizeSelectedPlace(selectedPlace) {
   };
 }
 
+function validateProviderInputLength(input) {
+  const totalLength = [
+    input.locationName,
+    input.locationDescription,
+    input.city,
+    input.type,
+  ]
+    .map(function mapText(value) {
+      return trimString(value);
+    })
+    .join('')
+    .length;
+
+  if (totalLength > AI_GUARD_LIMITS.MAX_PROVIDER_INPUT_CHARS) {
+    throw new GenerateStoryError('INVALID_INPUT', '单次地点信息长度超出限制');
+  }
+}
+
 function validateEvent(event) {
   if (!isPlainObject(event)) {
     throw new GenerateStoryError('INVALID_INPUT', '故事生成参数格式不正确');
@@ -122,9 +270,9 @@ function validateEvent(event) {
   }
 
   if (
-    typeof event.locationId !== 'undefined' &&
-    event.locationId !== null &&
-    typeof event.locationId !== 'string'
+    typeof event.locationId !== 'undefined'
+    && event.locationId !== null
+    && typeof event.locationId !== 'string'
   ) {
     throw new GenerateStoryError('INVALID_INPUT', 'locationId 必须是字符串或空值');
   }
@@ -137,7 +285,11 @@ function validateEvent(event) {
     throw new GenerateStoryError('INVALID_INPUT', 'type 必须是字符串');
   }
 
-  if (typeof event.locationDescription !== 'undefined' && event.locationDescription !== null && typeof event.locationDescription !== 'string') {
+  if (
+    typeof event.locationDescription !== 'undefined'
+    && event.locationDescription !== null
+    && typeof event.locationDescription !== 'string'
+  ) {
     throw new GenerateStoryError('INVALID_INPUT', 'locationDescription 必须是字符串');
   }
 
@@ -172,14 +324,14 @@ function validateEvent(event) {
       throw new GenerateStoryError('INVALID_INPUT', '正式地点 locationId 不能为空');
     }
 
-    validateLength(locationId, MAX_LOCATION_ID_LENGTH, 'locationId');
+    validateLength(locationId, AI_GUARD_LIMITS.MAX_LOCATION_ID_LENGTH, 'locationId');
   }
 
-  validateLength(locationName, MAX_LOCATION_NAME_LENGTH, 'locationName');
-  validateLength(locationDescription, MAX_LOCATION_DESCRIPTION_LENGTH, 'locationDescription');
-  validateLength(city, MAX_CITY_LENGTH, 'city');
+  validateLength(locationName, AI_GUARD_LIMITS.MAX_LOCATION_NAME_LENGTH, 'locationName');
+  validateLength(locationDescription, AI_GUARD_LIMITS.MAX_LOCATION_DESCRIPTION_LENGTH, 'locationDescription');
+  validateLength(city, AI_GUARD_LIMITS.MAX_CITY_LENGTH, 'city');
 
-  return {
+  const normalizedInput = {
     isTemporary: isTemporary,
     locationId: locationId || null,
     selectedPlace: selectedPlace,
@@ -188,6 +340,10 @@ function validateEvent(event) {
     city: city,
     type: type,
   };
+
+  validateProviderInputLength(normalizedInput);
+
+  return normalizedInput;
 }
 
 function buildSystemPrompt(input) {
@@ -239,6 +395,7 @@ function requestDeepSeek(options) {
   const requestBody = JSON.stringify({
     model: DEEPSEEK_MODEL,
     stream: false,
+    max_tokens: AI_GUARD_LIMITS.MAX_PROVIDER_OUTPUT_TOKENS,
     response_format: {
       type: 'json_object',
     },
@@ -279,7 +436,7 @@ function requestDeepSeek(options) {
             console.error('[generateStory] Provider HTTP error', {
               statusCode: response.statusCode,
             });
-            reject(new GenerateStoryError('PROVIDER_ERROR', 'AI故事生成失败，请稍后重试'));
+            reject(new GenerateStoryError('AI_PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试'));
             return;
           }
 
@@ -287,14 +444,14 @@ function requestDeepSeek(options) {
             resolve(JSON.parse(responseBody));
           } catch (error) {
             console.error('[generateStory] Provider response parse failed');
-            reject(new GenerateStoryError('PROVIDER_ERROR', 'AI故事生成失败，请稍后重试'));
+            reject(new GenerateStoryError('AI_PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试'));
           }
         });
       }
     );
 
     request.setTimeout(options.timeoutMs, function onTimeout() {
-      request.destroy(new GenerateStoryError('PROVIDER_TIMEOUT', 'AI故事生成超时，请稍后重试'));
+      request.destroy(new GenerateStoryError('AI_TIMEOUT', '故事生成超时，请稍后再试'));
     });
 
     request.on('error', function onError(error) {
@@ -306,7 +463,7 @@ function requestDeepSeek(options) {
       console.error('[generateStory] Provider request failed', {
         name: error && error.name ? error.name : 'Error',
       });
-      reject(new GenerateStoryError('PROVIDER_ERROR', 'AI故事生成失败，请稍后重试'));
+      reject(new GenerateStoryError('AI_PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试'));
     });
 
     request.write(requestBody);
@@ -339,7 +496,6 @@ function stripCodeFence(value) {
 
 function extractJsonText(value) {
   const text = stripCodeFence(trimString(String(value || '')));
-
   const startIndex = text.indexOf('{');
   const endIndex = text.lastIndexOf('}');
 
@@ -384,8 +540,8 @@ function normalizeStoryPayload(rawContent, expectedType) {
     throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果类型与请求不一致');
   }
 
-  validateLength(title, MAX_TITLE_LENGTH, 'title');
-  validateLength(content, MAX_CONTENT_LENGTH, 'content');
+  validateLength(title, AI_GUARD_LIMITS.MAX_TITLE_LENGTH, 'title');
+  validateLength(content, AI_GUARD_LIMITS.MAX_CONTENT_LENGTH, 'content');
 
   return {
     title: title,
@@ -394,8 +550,182 @@ function normalizeStoryPayload(rawContent, expectedType) {
   };
 }
 
+function isCircuitOpen() {
+  const value = trimString(process.env.AI_CIRCUIT_OPEN).toLowerCase();
+  return value === '1' || value === 'true' || value === 'open' || value === 'on';
+}
+
+function ensureDatabaseAvailable() {
+  if (!db || typeof db.runTransaction !== 'function') {
+    throw new GenerateStoryError('CONFIG_ERROR', 'AI服务暂未配置');
+  }
+}
+
+async function acquireRequestLock(input, userId) {
+  ensureDatabaseAvailable();
+
+  const nowMs = Date.now();
+  const dateKey = getUsageDateKey(nowMs);
+  const requestHash = createRequestHash(input);
+  const userDocId = buildUserUsageDocId(dateKey, userId);
+
+  try {
+    await db.runTransaction(async function lockTransaction(transaction) {
+      const existingUserDoc = await safeGetDocument(transaction, AI_USAGE_DAILY_COLLECTION, userDocId);
+      const requestLockUntil = getNumericValue(existingUserDoc && existingUserDoc.requestLockUntil);
+
+      if (requestLockUntil > nowMs) {
+        throw new GenerateStoryError('AI_REQUEST_IN_PROGRESS', '故事生成处理中，请稍后再试');
+      }
+
+      const userDoc = buildUserUsageDocument({
+        existing: existingUserDoc,
+        dateKey: dateKey,
+        userId: userId,
+        requestLockUntil: nowMs + AI_GUARD_LIMITS.REQUEST_LOCK_WINDOW_MS,
+        activeRequestHash: requestHash,
+        lastRequestAt: nowMs,
+      });
+
+      if (existingUserDoc) {
+        await transaction.collection(AI_USAGE_DAILY_COLLECTION).doc(userDocId).update({
+          data: userDoc,
+        });
+      } else {
+        await transaction.collection(AI_USAGE_DAILY_COLLECTION).doc(userDocId).set({
+          data: Object.assign({
+            createdAt: db.serverDate(),
+          }, userDoc),
+        });
+      }
+    });
+  } catch (error) {
+    if (error instanceof GenerateStoryError) {
+      throw error;
+    }
+
+    console.error('[generateStory] Failed to acquire request lock', {
+      name: error && error.name ? error.name : 'Error',
+    });
+    throw new GenerateStoryError('AI_PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试');
+  }
+
+  return {
+    dateKey: dateKey,
+    userId: userId,
+    userDocId: userDocId,
+    globalDocId: buildGlobalUsageDocId(dateKey),
+    requestHash: requestHash,
+  };
+}
+
+async function releaseRequestLock(lockToken) {
+  if (!db || !lockToken || !lockToken.userDocId) {
+    return;
+  }
+
+  try {
+    const result = await db.collection(AI_USAGE_DAILY_COLLECTION).doc(lockToken.userDocId).get();
+    const currentDoc = result && result.data ? result.data : null;
+
+    if (!currentDoc || trimString(currentDoc.activeRequestHash) !== lockToken.requestHash) {
+      return;
+    }
+
+    await db.collection(AI_USAGE_DAILY_COLLECTION).doc(lockToken.userDocId).update({
+      data: {
+        requestLockUntil: 0,
+        activeRequestHash: '',
+        updatedAt: db.serverDate(),
+      },
+    });
+  } catch (error) {
+    console.warn('[generateStory] Failed to release request lock', {
+      name: error && error.name ? error.name : 'Error',
+    });
+  }
+}
+
+async function consumeAiQuota(lockToken) {
+  ensureDatabaseAvailable();
+
+  const nowMs = Date.now();
+
+  try {
+    return await db.runTransaction(async function quotaTransaction(transaction) {
+      const existingUserDoc = await safeGetDocument(transaction, AI_USAGE_DAILY_COLLECTION, lockToken.userDocId);
+      const existingGlobalDoc = await safeGetDocument(transaction, AI_USAGE_DAILY_COLLECTION, lockToken.globalDocId);
+
+      if (!existingUserDoc || trimString(existingUserDoc.activeRequestHash) !== lockToken.requestHash) {
+        throw new GenerateStoryError('AI_REQUEST_IN_PROGRESS', '故事生成处理中，请稍后再试');
+      }
+
+      const userCount = getNumericValue(existingUserDoc.userCount);
+      const globalCount = getNumericValue(existingGlobalDoc && existingGlobalDoc.globalCount);
+
+      if (userCount >= AI_GUARD_LIMITS.USER_DAILY_LIMIT) {
+        throw new GenerateStoryError('AI_USER_LIMIT', '今日 AI 故事生成次数已用完，请明天再来。');
+      }
+
+      if (globalCount >= AI_GUARD_LIMITS.GLOBAL_DAILY_LIMIT) {
+        throw new GenerateStoryError('AI_GLOBAL_LIMIT', '当前 AI 服务较忙，请稍后再试。');
+      }
+
+      const userDoc = buildUserUsageDocument({
+        existing: existingUserDoc,
+        dateKey: lockToken.dateKey,
+        userId: lockToken.userId,
+        userCount: userCount + 1,
+        requestLockUntil: getNumericValue(existingUserDoc.requestLockUntil),
+        activeRequestHash: trimString(existingUserDoc.activeRequestHash),
+        lastRequestAt: getNumericValue(existingUserDoc.lastRequestAt),
+        lastUsageAt: nowMs,
+      });
+      const globalDoc = buildGlobalUsageDocument({
+        existing: existingGlobalDoc,
+        dateKey: lockToken.dateKey,
+        globalCount: globalCount + 1,
+        lastUsageAt: nowMs,
+      });
+
+      await transaction.collection(AI_USAGE_DAILY_COLLECTION).doc(lockToken.userDocId).update({
+        data: userDoc,
+      });
+
+      if (existingGlobalDoc) {
+        await transaction.collection(AI_USAGE_DAILY_COLLECTION).doc(lockToken.globalDocId).update({
+          data: globalDoc,
+        });
+      } else {
+        await transaction.collection(AI_USAGE_DAILY_COLLECTION).doc(lockToken.globalDocId).set({
+          data: Object.assign({
+            createdAt: db.serverDate(),
+          }, globalDoc),
+        });
+      }
+
+      return {
+        userCount: userCount + 1,
+        globalCount: globalCount + 1,
+      };
+    });
+  } catch (error) {
+    if (error instanceof GenerateStoryError) {
+      throw error;
+    }
+
+    console.error('[generateStory] Failed to consume AI quota', {
+      name: error && error.name ? error.name : 'Error',
+    });
+    throw new GenerateStoryError('AI_PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试');
+  }
+}
+
 async function requestAndNormalizeStory(options) {
   const requestFn = typeof options.requestFn === 'function' ? options.requestFn : requestDeepSeek;
+
+  await consumeAiQuota(options.lockToken);
+
   const providerResponse = await requestFn({
     apiKey: options.apiKey,
     input: options.input,
@@ -417,6 +747,7 @@ async function generateNormalizedStoryWithRetry(options) {
       timeoutMs: options.timeoutMs,
       strictJsonOnly: false,
       requestFn: requestFn,
+      lockToken: options.lockToken,
     });
   } catch (error) {
     if (!(error instanceof GenerateStoryError) || error.code !== 'NORMALIZATION_ERROR') {
@@ -436,6 +767,7 @@ async function generateNormalizedStoryWithRetry(options) {
         timeoutMs: options.timeoutMs,
         strictJsonOnly: true,
         requestFn: requestFn,
+        lockToken: options.lockToken,
       });
     } catch (retryError) {
       if (retryError instanceof GenerateStoryError && retryError.code === 'NORMALIZATION_ERROR') {
@@ -444,7 +776,7 @@ async function generateNormalizedStoryWithRetry(options) {
           type: options.input.type,
           isTemporary: options.input.isTemporary,
         });
-        throw new GenerateStoryError('NORMALIZATION_ERROR', '故事暂时生成失败，请稍后再试');
+        throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI故事暂时生成失败，请稍后再试');
       }
 
       throw retryError;
@@ -457,6 +789,8 @@ function createGeneratedStoryId() {
 }
 
 async function main(event) {
+  let requestLockToken = null;
+
   try {
     const input = validateEvent(event);
     const apiKey = trimString(process.env.DEEPSEEK_API_KEY);
@@ -466,10 +800,24 @@ async function main(event) {
       return buildError('CONFIG_ERROR', 'AI服务暂未配置');
     }
 
+    if (isCircuitOpen()) {
+      return buildError('AI_CIRCUIT_OPEN', 'AI故事服务暂时维护中');
+    }
+
+    const wxContext = cloud.getWXContext ? cloud.getWXContext() : {};
+    const openId = trimString(wxContext && wxContext.OPENID);
+
+    if (!openId) {
+      return buildError('UNAUTHORIZED', '当前用户身份读取失败，请稍后再试。');
+    }
+
+    requestLockToken = await acquireRequestLock(input, openId);
+
     const normalizedStory = await generateNormalizedStoryWithRetry({
       apiKey: apiKey,
       input: input,
-      timeoutMs: REQUEST_TIMEOUT_MS,
+      timeoutMs: AI_GUARD_LIMITS.REQUEST_TIMEOUT_MS,
+      lockToken: requestLockToken,
     });
 
     return buildSuccess({
@@ -483,10 +831,6 @@ async function main(event) {
       source: 'deepseek',
     });
   } catch (error) {
-    if (error instanceof GenerateStoryError && error.code === 'NORMALIZATION_ERROR') {
-      return buildError('NORMALIZATION_ERROR', '故事暂时生成失败，请稍后再试');
-    }
-
     if (error instanceof GenerateStoryError && ALLOWED_ERROR_CODES[error.code]) {
       return buildError(error.code, error.message);
     }
@@ -494,38 +838,47 @@ async function main(event) {
     console.error('[generateStory] Unexpected error', {
       name: error && error.name ? error.name : 'Error',
     });
-    return buildError('PROVIDER_ERROR', 'AI故事生成失败，请稍后重试');
+    return buildError('AI_PROVIDER_ERROR', 'AI故事暂时生成失败，请稍后再试');
+  } finally {
+    await releaseRequestLock(requestLockToken);
   }
 }
 
 module.exports = {
   main: main,
   _private: {
+    AI_GUARD_LIMITS: AI_GUARD_LIMITS,
+    AI_USAGE_DAILY_COLLECTION: AI_USAGE_DAILY_COLLECTION,
     ALLOWED_ERROR_CODES: ALLOWED_ERROR_CODES,
     DEEPSEEK_BASE_URL: DEEPSEEK_BASE_URL,
     DEEPSEEK_CHAT_PATH: DEEPSEEK_CHAT_PATH,
     DEEPSEEK_MODEL: DEEPSEEK_MODEL,
     GenerateStoryError: GenerateStoryError,
-    MAX_CITY_LENGTH: MAX_CITY_LENGTH,
-    MAX_CONTENT_LENGTH: MAX_CONTENT_LENGTH,
-    MAX_LOCATION_DESCRIPTION_LENGTH: MAX_LOCATION_DESCRIPTION_LENGTH,
-    MAX_LOCATION_ID_LENGTH: MAX_LOCATION_ID_LENGTH,
-    MAX_LOCATION_NAME_LENGTH: MAX_LOCATION_NAME_LENGTH,
-    MAX_TITLE_LENGTH: MAX_TITLE_LENGTH,
-    REQUEST_TIMEOUT_MS: REQUEST_TIMEOUT_MS,
+    acquireRequestLock: acquireRequestLock,
     buildError: buildError,
+    buildGlobalUsageDocId: buildGlobalUsageDocId,
+    buildGlobalUsageDocument: buildGlobalUsageDocument,
     buildSuccess: buildSuccess,
     buildSystemPrompt: buildSystemPrompt,
     buildUserPrompt: buildUserPrompt,
+    buildUserUsageDocId: buildUserUsageDocId,
+    buildUserUsageDocument: buildUserUsageDocument,
+    consumeAiQuota: consumeAiQuota,
     createGeneratedStoryId: createGeneratedStoryId,
+    createRequestHash: createRequestHash,
     extractJsonText: extractJsonText,
     extractProviderMessage: extractProviderMessage,
     generateNormalizedStoryWithRetry: generateNormalizedStoryWithRetry,
-    requestAndNormalizeStory: requestAndNormalizeStory,
+    getUsageDateKey: getUsageDateKey,
+    isCircuitOpen: isCircuitOpen,
     normalizeStoryPayload: normalizeStoryPayload,
     normalizeWhitespace: normalizeWhitespace,
+    releaseRequestLock: releaseRequestLock,
+    requestAndNormalizeStory: requestAndNormalizeStory,
     requestDeepSeek: requestDeepSeek,
+    safeGetDocument: safeGetDocument,
     trimString: trimString,
     validateEvent: validateEvent,
+    validateProviderInputLength: validateProviderInputLength,
   },
 };

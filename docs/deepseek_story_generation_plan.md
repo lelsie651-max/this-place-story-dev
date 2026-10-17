@@ -114,8 +114,8 @@
 {
   "ok": false,
   "error": {
-    "code": "PROVIDER_ERROR",
-    "message": "AI故事生成失败，请稍后重试"
+    "code": "AI_USER_LIMIT",
+    "message": "今日 AI 故事生成次数已用完，请明天再来。"
   }
 }
 ```
@@ -124,8 +124,13 @@
 
 - `INVALID_INPUT`
 - `CONFIG_ERROR`
-- `PROVIDER_ERROR`
-- `PROVIDER_TIMEOUT`
+- `UNAUTHORIZED`
+- `AI_USER_LIMIT`
+- `AI_GLOBAL_LIMIT`
+- `AI_CIRCUIT_OPEN`
+- `AI_REQUEST_IN_PROGRESS`
+- `AI_TIMEOUT`
+- `AI_PROVIDER_ERROR`
 - `NORMALIZATION_ERROR`
 
 ---
@@ -137,7 +142,8 @@
 - Base URL：`https://api.deepseek.com`
 - API Path：`/chat/completions`
 - Model：`deepseek-flash`
-- 外部请求超时：`25000ms`
+- 外部请求超时：`60000ms`
+- `max_tokens` 上限已在云函数内集中定义
 - `stream: false`
 - `response_format.type: "json_object"`
 
@@ -153,6 +159,13 @@ API Key 来源：
 - API Key 不能写入 `docs/`
 - API Key 不能通过源码进入 git 历史
 - 云函数不能把 Key、Authorization 或上游原始错误体返回给小程序
+
+当前平台与项目双重保护要求：
+
+- 项目侧通过 `generateStory` 的服务端限额控制本项目请求量
+- DeepSeek 账户侧仍需额外配置余额提醒、消费预警或 API 使用限制
+- 如果 DeepSeek 控制台没有硬性消费上限，则项目侧全局每日上限是最后一道保护
+- 任何余额不足、服务商错误、超时或解析失败都不能扣放大镜
 
 CloudBase 云函数平台超时要求：
 
@@ -181,9 +194,60 @@ CloudBase 云函数平台超时要求：
 - 最终展示内容中不出现提示词、字段名或 JSON 代码块
 - 正文必须能直接展示在故事详情页
 - 控制在适中的展示长度
+- 标题最大 `80` 字
+- 正文最大 `2000` 字
 - 不生成违法、色情、仇恨或危险内容
 
-## 6. 故事详情页接收策略
+## 6. 服务端限流与并发保护
+
+当前 `generateStory` 只在服务端执行 AI 调用保护，前端不会单独承担这些限制。
+
+当前集中常量：
+
+- 单用户每日最多 `10` 次 AI 上游请求
+- 全局每日最多 `200` 次 AI 上游请求
+- 单次上游请求超时 `60 秒`
+- 单次地点输入长度上限
+- 标题最大 `80` 字
+- 正文最大 `2000` 字
+- 短时间重复请求锁窗口 `70 秒`
+
+当前使用的集合：
+
+- `ai_usage_daily`
+
+当前最小可靠实现：
+
+- 以 `date + userId` 记录用户侧每日计数
+- 以 `date` 记录全局每日计数
+- 文档至少包含以下字段：
+  - `date`
+  - `userId`
+  - `userCount`
+  - `globalCount`
+  - `updatedAt`
+- 用户侧文档还会记录短时间重复请求保护所需的锁字段
+- 使用 CloudBase 事务更新计数，避免并发请求绕过限制
+
+当前计数规则：
+
+- 只有真正准备发起 DeepSeek 上游请求时，才消耗一次 AI 调用次数
+- JSON 标准化失败后的重试，会再次发起上游请求，因此会再次计入 AI 调用次数
+- 放大镜仍然只在整次故事生成成功后扣除一次
+
+当前熔断开关：
+
+- 环境变量：`AI_CIRCUIT_OPEN`
+- 取值为 `1/true/open/on` 时，云函数直接返回 `AI_CIRCUIT_OPEN`
+- 熔断开启时不调用 DeepSeek
+
+当前短时间重复请求保护：
+
+- 前端继续保留 `requestLock`
+- 云函数端按 `userId + 请求内容` 加短时间锁
+- 同一用户短时间内重复点击，不会并发发起多次 DeepSeek 请求
+
+## 7. 故事详情页接收策略
 
 当前生成结果 **不落库** 到 CloudBase `stories`。
 
@@ -222,7 +286,7 @@ CloudBase 云函数平台超时要求：
 - `deepseek` 显示为“AI生成”
 - `user` 显示为“网友投稿”
 
-## 7. 放大镜规则
+## 8. 放大镜规则
 
 当前规则：
 
@@ -230,6 +294,10 @@ CloudBase 云函数平台超时要求：
 - 余额为 `0` 时不调用云函数
 - AI 生成失败时不扣
 - 没有可用结果时不扣
+- 达到单用户每日上限时不扣
+- 达到全局每日上限时不扣
+- 熔断开启时不扣
+- 超时或非法 JSON 时不扣
 
 当前共享规则：
 
@@ -240,7 +308,7 @@ CloudBase 云函数平台超时要求：
 
 - `miniprogram/services/userService.js` 中的 mock 用户
 
-## 8. 失败处理
+## 9. 失败处理
 
 小程序端失败处理：
 
@@ -252,10 +320,19 @@ CloudBase 云函数平台超时要求：
 示例：
 
 - 缺少 Key -> `AI服务暂未配置`
-- 超时 -> `AI故事生成超时，请稍后重试`
-- 提供商或标准化失败 -> 友好重试提示
+- 单用户限流 -> `今日 AI 故事次数已用完，请明天再来`
+- 全局限流 -> `当前 AI 服务较忙，请稍后再试`
+- 熔断 -> `AI 故事服务暂时维护中`
+- 超时 -> `故事生成超时，请稍后再试`
+- 提供商失败或标准化失败 -> `AI 故事暂时生成失败，请稍后再试`
 
-## 9. 明确不在本轮范围内
+技术约束：
+
+- 不能把 DeepSeek 原始错误体返回前端
+- 不能把 API Key 打进日志
+- 不能把 JSON 解析错误细节直接展示给用户
+
+## 10. 明确不在本轮范围内
 
 当前版本不包含：
 

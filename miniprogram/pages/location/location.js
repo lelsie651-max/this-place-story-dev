@@ -201,12 +201,51 @@ function buildGeneratedStoryForPage(resultStory, locationDetail) {
   };
 }
 
+function createAiServiceError(code, message) {
+  const error = new Error(message || 'AI故事暂时生成失败，请稍后再试');
+
+  if (code) {
+    error.code = code;
+  }
+
+  return error;
+}
+
 function getUserFacingAiErrorMessage(error) {
+  const code = error && error.code ? String(error.code) : '';
   const rawMessage = error && error.message ? String(error.message) : '';
   const normalizedMessage = rawMessage
     .replace(/^Failed to load story by location and type from CloudBase:\s*/, '')
     .replace(/^Failed to load preset story by location and type from CloudBase:\s*/, '')
     .replace(/^Failed to load user story by location from CloudBase:\s*/, '');
+
+  if (code === 'AI_USER_LIMIT') {
+    return '今日 AI 故事次数已用完，请明天再来';
+  }
+
+  if (code === 'AI_GLOBAL_LIMIT') {
+    return '当前 AI 服务较忙，请稍后再试';
+  }
+
+  if (code === 'AI_CIRCUIT_OPEN') {
+    return 'AI 故事服务暂时维护中';
+  }
+
+  if (code === 'AI_TIMEOUT') {
+    return '故事生成超时，请稍后再试';
+  }
+
+  if (code === 'AI_PROVIDER_ERROR' || code === 'NORMALIZATION_ERROR') {
+    return 'AI 故事暂时生成失败，请稍后再试';
+  }
+
+  if (code === 'AI_REQUEST_IN_PROGRESS') {
+    return '故事生成处理中，请稍后再试';
+  }
+
+  if (code === 'UNAUTHORIZED') {
+    return '当前用户身份读取失败，请稍后再试';
+  }
 
   if (!normalizedMessage) {
     return 'AI故事生成失败，请稍后重试';
@@ -530,6 +569,11 @@ Page({
         });
       });
     } catch (error) {
+      console.error('[location] story request failed', {
+        code: error && error.code ? error.code : 'INTERNAL_ERROR',
+        message: error && error.message ? error.message : '',
+        type: type,
+      });
       const message = getUserFacingAiErrorMessage(error);
 
       wx.showToast({
@@ -565,10 +609,13 @@ Page({
     const result = functionResult && functionResult.result ? functionResult.result : null;
 
     if (!result || result.ok !== true || !result.story) {
+      const errorCode = result && result.error && result.error.code
+        ? result.error.code
+        : 'AI_PROVIDER_ERROR';
       const message = result && result.error && result.error.message
         ? result.error.message
-        : 'AI故事生成失败，请稍后重试';
-      throw new Error(message);
+        : 'AI故事暂时生成失败，请稍后再试';
+      throw createAiServiceError(errorCode, message);
     }
 
     const app = getApp();
