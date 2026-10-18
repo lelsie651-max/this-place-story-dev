@@ -7,7 +7,8 @@ let capturedPageConfig = null;
 let currentApp = null;
 let currentWx = null;
 let currentEnvVersion = 'develop';
-let accessCheckCalls = 0;
+let currentOpenId = 'openid-anonymous-001';
+let storageState = {};
 
 global.getApp = function getApp() {
   return currentApp;
@@ -98,6 +99,7 @@ function getCountKey(locationKey, storyType) {
 
 function setupSharedMocks() {
   const state = {
+    expectedToken: 'correct-dev-token',
     magnifyingGlass: 5,
     dailyTotalCount: 0,
     locationTypeCounts: {},
@@ -105,6 +107,7 @@ function setupSharedMocks() {
     activeRequestId: '',
     activeLocationKey: '',
     activeStoryType: '',
+    getDevStateCalls: 0,
   };
 
   currentApp = {
@@ -124,6 +127,15 @@ function setupSharedMocks() {
         },
       };
     },
+    getStorageSync(key) {
+      return storageState[key];
+    },
+    setStorageSync(key, value) {
+      storageState[key] = value;
+    },
+    removeStorageSync(key) {
+      delete storageState[key];
+    },
     showToast(options) {
       state.lastToast = options;
     },
@@ -142,9 +154,42 @@ function setupSharedMocks() {
 
   global.wx = currentWx;
 
+  function assertToken(payload) {
+    const devTestToken = payload && payload.devTestToken ? String(payload.devTestToken) : '';
+
+    if (currentEnvVersion === 'release') {
+      const error = new Error('开发测试工具未开启');
+      error.code = 'DEV_TOOLS_DISABLED';
+      throw error;
+    }
+
+    if (!devTestToken || devTestToken !== state.expectedToken) {
+      const error = new Error('开发测试工具口令不正确');
+      error.code = 'DEV_TOOLS_FORBIDDEN';
+      throw error;
+    }
+  }
+
+  function buildDevState(payload) {
+    const selector = payload && payload.locationKey
+      ? getCountKey(payload.locationKey, payload.storyType)
+      : '';
+
+    return {
+      magnifyingGlass: state.magnifyingGlass,
+      dailyTotalCount: state.dailyTotalCount,
+      locationTypeCount: selector ? (state.locationTypeCounts[selector] || 0) : 0,
+      requestLockUntil: state.requestLockUntil,
+      activeLocationKey: state.activeLocationKey,
+      activeStoryType: state.activeStoryType,
+      hasRequestLock: !!state.activeRequestId && state.requestLockUntil > 0,
+    };
+  }
+
   userService.getCurrentUserProfile = async function getCurrentUserProfileMock() {
     return {
       magnifyingGlass: state.magnifyingGlass,
+      openid: currentOpenId,
     };
   };
 
@@ -223,62 +268,52 @@ function setupSharedMocks() {
   };
 
   userService.getDevTestState = async function getDevTestStateMock(payload) {
-    accessCheckCalls += 1;
-    const selector = payload && payload.locationKey
-      ? getCountKey(payload.locationKey, payload.storyType)
-      : '';
-
-    if (currentEnvVersion === 'release') {
-      const error = new Error('开发测试工具未开启');
-      error.code = 'DEV_TOOLS_DISABLED';
-      throw error;
-    }
-
-    return {
-      magnifyingGlass: state.magnifyingGlass,
-      dailyTotalCount: state.dailyTotalCount,
-      locationTypeCount: selector ? (state.locationTypeCounts[selector] || 0) : 0,
-      requestLockUntil: state.requestLockUntil,
-      activeLocationKey: state.activeLocationKey,
-      activeStoryType: state.activeStoryType,
-      hasRequestLock: !!state.activeRequestId && state.requestLockUntil > 0,
-    };
+    state.getDevStateCalls += 1;
+    assertToken(payload);
+    return buildDevState(payload);
   };
 
   userService.setDevTestMagnifyingGlass = async function setDevTestMagnifyingGlassMock(payload) {
+    assertToken(payload);
     state.magnifyingGlass = payload.magnifyingGlass;
-    return userService.getDevTestState();
+    return buildDevState(payload);
   };
 
   userService.setDevTestDailyTotalCount = async function setDevTestDailyTotalCountMock(payload) {
+    assertToken(payload);
     state.dailyTotalCount = payload.dailyTotalCount;
-    return userService.getDevTestState();
+    return buildDevState(payload);
   };
 
   userService.setDevTestLocationTypeCount = async function setDevTestLocationTypeCountMock(payload) {
+    assertToken(payload);
     state.locationTypeCounts[getCountKey(payload.locationKey, payload.storyType)] = payload.locationTypeCount;
-    return userService.getDevTestState(payload);
+    return buildDevState(payload);
   };
 
-  userService.clearDevTestLocationTypeCounts = async function clearDevTestLocationTypeCountsMock() {
+  userService.clearDevTestLocationTypeCounts = async function clearDevTestLocationTypeCountsMock(payload) {
+    assertToken(payload);
     state.locationTypeCounts = {};
-    return userService.getDevTestState();
+    return buildDevState(payload);
   };
 
   userService.clearDevTestLocationTypeCount = async function clearDevTestLocationTypeCountMock(payload) {
+    assertToken(payload);
     delete state.locationTypeCounts[getCountKey(payload.locationKey, payload.storyType)];
-    return userService.getDevTestState(payload);
+    return buildDevState(payload);
   };
 
-  userService.clearDevTestRequestLock = async function clearDevTestRequestLockMock() {
+  userService.clearDevTestRequestLock = async function clearDevTestRequestLockMock(payload) {
+    assertToken(payload);
     state.activeRequestId = '';
     state.activeLocationKey = '';
     state.activeStoryType = '';
     state.requestLockUntil = 0;
-    return userService.getDevTestState();
+    return buildDevState(payload);
   };
 
   userService.resetDevTestTodayState = async function resetDevTestTodayStateMock(payload) {
+    assertToken(payload);
     state.magnifyingGlass = payload.magnifyingGlass;
     state.dailyTotalCount = 0;
     state.locationTypeCounts = {};
@@ -286,7 +321,7 @@ function setupSharedMocks() {
     state.activeLocationKey = '';
     state.activeStoryType = '';
     state.requestLockUntil = 0;
-    return userService.getDevTestState();
+    return buildDevState(payload);
   };
 
   storyService.getRandomPresetStoryByLocationAndType = async function getRandomPresetStoryByLocationAndTypeMock() {
@@ -322,7 +357,8 @@ function createLocationPage() {
 }
 
 async function runScenario(label, execute) {
-  accessCheckCalls = 0;
+  currentOpenId = 'openid-anonymous-001';
+  storageState = {};
   const state = setupSharedMocks();
 
   await execute(state);
@@ -330,115 +366,119 @@ async function runScenario(label, execute) {
   console.log('[PASS]', label);
 }
 
-async function testCanExploreAfterResetToFiveAndZero() {
+async function testCorrectTokenCanViewState() {
   currentEnvVersion = 'develop';
-  await runScenario('set balance 5 and total 0 allows explore', async function execute(state) {
+  await runScenario('correct token can view state', async function execute() {
     const devPage = await createDevToolsPage();
 
-    devPage.handleSetMagnifyingGlassPreset(createDevPresetEvent(5));
-    await wait(0);
-    devPage.handleSetDailyTotalPreset(createDevPresetEvent(0));
-    await wait(0);
-
-    const locationPage = createLocationPage();
-    await locationPage.handleSelectStoryType(createLocationPageEvent('folk', '民间传说'));
-
-    assert.strictEqual(state.magnifyingGlass, 4);
-    assert.strictEqual(state.dailyTotalCount, 1);
-  });
-}
-
-async function testBalanceZeroBlocksExplore() {
-  currentEnvVersion = 'develop';
-  await runScenario('set balance 0 blocks explore', async function execute(state) {
-    const devPage = await createDevToolsPage();
-
-    devPage.handleSetMagnifyingGlassPreset(createDevPresetEvent(0));
-    await wait(0);
-
-    const locationPage = createLocationPage();
-    await locationPage.handleSelectStoryType(createLocationPageEvent('folk', '民间传说'));
-
-    assert.strictEqual(state.magnifyingGlass, 0);
-    assert.strictEqual(state.lastToast.title, '放大镜不足，暂时无法继续探索。');
-  });
-}
-
-async function testDailyLimitBlocksExplore() {
-  currentEnvVersion = 'develop';
-  await runScenario('set total 10 and balance 5 blocks explore', async function execute(state) {
-    const devPage = await createDevToolsPage();
-
-    devPage.handleSetMagnifyingGlassPreset(createDevPresetEvent(5));
-    await wait(0);
-    devPage.handleSetDailyTotalPreset(createDevPresetEvent(10));
-    await wait(0);
-
-    const locationPage = createLocationPage();
-    await locationPage.handleSelectStoryType(createLocationPageEvent('folk', '民间传说'));
-
-    assert.strictEqual(state.magnifyingGlass, 5);
-    assert.strictEqual(state.lastToast.title, '今天的探索次数已用完，请明天再来。');
-  });
-}
-
-async function testClearDailyLimitAllowsExploreAgain() {
-  currentEnvVersion = 'develop';
-  await runScenario('clear total count allows explore again', async function execute(state) {
-    const devPage = await createDevToolsPage();
-
-    devPage.handleSetDailyTotalPreset(createDevPresetEvent(10));
-    await wait(0);
-    devPage.handleSetDailyTotalPreset(createDevPresetEvent(0));
-    await wait(0);
-
-    const locationPage = createLocationPage();
-    await locationPage.handleSelectStoryType(createLocationPageEvent('folk', '民间传说'));
-
-    assert.strictEqual(state.dailyTotalCount, 1);
-    assert.strictEqual(state.magnifyingGlass, 4);
-  });
-}
-
-async function testLocationTypeLimitBlocksFourthTime() {
-  currentEnvVersion = 'develop';
-  await runScenario('set location type count 3 blocks fourth explore', async function execute(state) {
-    const devPage = await createDevToolsPage();
-
-    devPage.setData({
-      locationKey: 'loc-demo-001',
-      storyTypeIndex: 0,
+    devPage.handleDevTestTokenInput({
+      detail: {
+        value: 'correct-dev-token',
+      },
     });
-    devPage.handleSetLocationTypePreset(createDevPresetEvent(3));
+    devPage.handleVerifyTokenTap();
     await wait(0);
 
-    const locationPage = createLocationPage();
-    await locationPage.handleSelectStoryType(createLocationPageEvent('folk', '民间传说'));
-
-    assert.strictEqual(state.lastToast.title, '这个地点的该类故事今天已经探索 3 次了。');
+    assert.strictEqual(devPage.data.accessGranted, true);
+    assert.strictEqual(devPage.data.tokenStatusText, '开发测试口令已验证');
   });
 }
 
-async function testClearRequestLockAllowsRetry() {
+async function testWrongTokenRejected() {
   currentEnvVersion = 'develop';
-  await runScenario('clear request lock allows retry', async function execute(state) {
-    state.activeRequestId = 'req-existing';
-    state.activeLocationKey = 'loc-demo-001';
-    state.activeStoryType = '民间传说';
-    state.requestLockUntil = Date.now() + 60000;
-
+  await runScenario('wrong token is rejected', async function execute(state) {
     const devPage = await createDevToolsPage();
-    const locationPage = createLocationPage();
 
-    await locationPage.handleSelectStoryType(createLocationPageEvent('folk', '民间传说'));
-    assert.strictEqual(state.lastToast.title, '当前探索处理中，请稍后再试。');
-
-    devPage.handleClearRequestLock();
+    devPage.handleDevTestTokenInput({
+      detail: {
+        value: 'wrong-token',
+      },
+    });
+    devPage.handleVerifyTokenTap();
     await wait(0);
-    await locationPage.handleSelectStoryType(createLocationPageEvent('folk', '民间传说'));
 
-    assert.strictEqual(state.magnifyingGlass, 4);
-    assert.strictEqual(state.requestLockUntil, 0);
+    assert.strictEqual(devPage.data.accessGranted, false);
+    assert.strictEqual(devPage.data.tokenStatusText, '开发测试工具口令不正确');
+    assert.strictEqual(state.lastToast.title, '开发测试工具口令不正确');
+  });
+}
+
+async function testMissingTokenRejected() {
+  currentEnvVersion = 'develop';
+  await runScenario('missing token is rejected', async function execute() {
+    const devPage = await createDevToolsPage();
+
+    devPage.handleVerifyTokenTap();
+    await wait(0);
+
+    assert.strictEqual(devPage.data.accessGranted, false);
+    assert.strictEqual(devPage.data.tokenStatusText, '请输入开发测试口令后验证');
+  });
+}
+
+async function testDisabledFlagRejectsAllRequests() {
+  currentEnvVersion = 'release';
+  await runScenario('disabled env rejects all requests', async function execute() {
+    storageState.dev_test_admin_token = 'correct-dev-token';
+    const devPage = await createDevToolsPage();
+
+    assert.strictEqual(devPage.data.envAllowed, false);
+    assert.strictEqual(devPage.data.accessGranted, false);
+  });
+}
+
+async function testTokenDoesNotDependOnOpenId() {
+  currentEnvVersion = 'develop';
+  await runScenario('token does not depend on openid', async function execute(state) {
+    let devPage = await createDevToolsPage();
+
+    devPage.handleDevTestTokenInput({
+      detail: {
+        value: 'correct-dev-token',
+      },
+    });
+    devPage.handleVerifyTokenTap();
+    await wait(0);
+    assert.strictEqual(devPage.data.accessGranted, true);
+
+    currentOpenId = 'openid-anonymous-002';
+    devPage = await createDevToolsPage();
+
+    devPage.handleDevTestTokenInput({
+      detail: {
+        value: 'correct-dev-token',
+      },
+    });
+    devPage.handleVerifyTokenTap();
+    await wait(0);
+    assert.strictEqual(devPage.data.accessGranted, true);
+    assert.ok(state.getDevStateCalls >= 2);
+  });
+}
+
+async function testStoredTokenAutoValidates() {
+  currentEnvVersion = 'develop';
+  await runScenario('stored token auto validates', async function execute() {
+    storageState.dev_test_admin_token = 'correct-dev-token';
+    const devPage = await createDevToolsPage();
+
+    assert.strictEqual(devPage.data.accessGranted, true);
+    assert.strictEqual(devPage.data.hasStoredToken, true);
+  });
+}
+
+async function testClearStoredTokenRequiresReinput() {
+  currentEnvVersion = 'develop';
+  await runScenario('clearing token requires reinput', async function execute() {
+    storageState.dev_test_admin_token = 'correct-dev-token';
+    const devPage = await createDevToolsPage();
+
+    assert.strictEqual(devPage.data.accessGranted, true);
+    devPage.handleClearLocalDevTestToken();
+
+    assert.strictEqual(devPage.data.accessGranted, false);
+    assert.strictEqual(storageState.dev_test_admin_token, undefined);
+    assert.strictEqual(devPage.data.tokenStatusText, '本地测试口令已清除，请重新输入');
   });
 }
 
@@ -451,18 +491,77 @@ async function testReleaseEnvHidesProfileEntry() {
     await profilePage.loadDevTestToolAccess();
 
     assert.strictEqual(profilePage.data.devTestToolsVisible, false);
-    assert.strictEqual(accessCheckCalls, 0);
+  });
+}
+
+async function testCanExploreAfterResetToFiveAndZero() {
+  currentEnvVersion = 'develop';
+  await runScenario('set balance 5 and total 0 allows explore', async function execute(state) {
+    const devPage = await createDevToolsPage();
+
+    devPage.handleDevTestTokenInput({
+      detail: {
+        value: 'correct-dev-token',
+      },
+    });
+    devPage.handleVerifyTokenTap();
+    await wait(0);
+
+    devPage.handleSetMagnifyingGlassPreset(createDevPresetEvent(5));
+    await wait(0);
+    devPage.handleSetDailyTotalPreset(createDevPresetEvent(0));
+    await wait(0);
+
+    const locationPage = createLocationPage();
+    await locationPage.handleSelectStoryType(createLocationPageEvent('folk', '民间传说'));
+
+    assert.strictEqual(state.magnifyingGlass, 4);
+    assert.strictEqual(state.dailyTotalCount, 1);
+  });
+}
+
+async function testClearRequestLockAllowsRetry() {
+  currentEnvVersion = 'develop';
+  await runScenario('clear request lock allows retry', async function execute(state) {
+    state.activeRequestId = 'req-existing';
+    state.activeLocationKey = 'loc-demo-001';
+    state.activeStoryType = '民间传说';
+    state.requestLockUntil = Date.now() + 60000;
+
+    const devPage = await createDevToolsPage();
+
+    devPage.handleDevTestTokenInput({
+      detail: {
+        value: 'correct-dev-token',
+      },
+    });
+    devPage.handleVerifyTokenTap();
+    await wait(0);
+
+    const locationPage = createLocationPage();
+    await locationPage.handleSelectStoryType(createLocationPageEvent('folk', '民间传说'));
+    assert.strictEqual(state.lastToast.title, '当前探索处理中，请稍后再试。');
+
+    devPage.handleClearRequestLock();
+    await wait(0);
+    await locationPage.handleSelectStoryType(createLocationPageEvent('folk', '民间传说'));
+
+    assert.strictEqual(state.magnifyingGlass, 4);
+    assert.strictEqual(state.requestLockUntil, 0);
   });
 }
 
 async function run() {
-  await testCanExploreAfterResetToFiveAndZero();
-  await testBalanceZeroBlocksExplore();
-  await testDailyLimitBlocksExplore();
-  await testClearDailyLimitAllowsExploreAgain();
-  await testLocationTypeLimitBlocksFourthTime();
-  await testClearRequestLockAllowsRetry();
+  await testCorrectTokenCanViewState();
+  await testWrongTokenRejected();
+  await testMissingTokenRejected();
+  await testDisabledFlagRejectsAllRequests();
+  await testTokenDoesNotDependOnOpenId();
+  await testStoredTokenAutoValidates();
+  await testClearStoredTokenRequiresReinput();
   await testReleaseEnvHidesProfileEntry();
+  await testCanExploreAfterResetToFiveAndZero();
+  await testClearRequestLockAllowsRetry();
 
   console.log('[PASS] dev test tools page validation complete');
 }

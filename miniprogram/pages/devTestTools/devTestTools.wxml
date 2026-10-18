@@ -12,111 +12,138 @@
     <text class="empty-text">正在读取开发测试状态...</text>
   </view>
 
-  <view wx:elif="{{!envAllowed || !accessGranted}}" class="panel empty-panel">
+  <view wx:elif="{{!envAllowed}}" class="panel empty-panel">
     <text class="empty-title">当前不可用</text>
     <text class="empty-text">{{blockedMessage}}</text>
   </view>
 
   <block wx:else>
     <view class="panel section-panel">
-      <view class="section-title-row">
-        <text class="section-title">当前状态</text>
-        <button class="minor-button" size="mini" bindtap="handleRefreshTap" loading="{{submitting}}">刷新</button>
-      </view>
-
-      <view class="status-row">
-        <text class="status-key">magnifyingGlass</text>
-        <text class="status-value">{{state.magnifyingGlass}}</text>
-      </view>
-      <view class="status-row">
-        <text class="status-key">dailyTotalCount</text>
-        <text class="status-value">{{state.dailyTotalCount}}</text>
-      </view>
-      <view class="status-row">
-        <text class="status-key">locationTypeCount</text>
-        <text class="status-value">{{state.locationTypeCount}}</text>
-      </view>
-      <view class="status-row">
-        <text class="status-key">requestLockUntil</text>
-        <text class="status-value">{{state.requestLockUntil}}</text>
-      </view>
-      <view class="status-row">
-        <text class="status-key">activeLocationKey</text>
-        <text class="status-value status-value-multiline">{{state.activeLocationKey || '-'}}</text>
-      </view>
-      <view class="status-row">
-        <text class="status-key">activeStoryType</text>
-        <text class="status-value">{{state.activeStoryType || '-'}}</text>
-      </view>
-    </view>
-
-    <view class="panel section-panel">
-      <view class="section-title">设置放大镜余额</view>
-      <view class="preset-row">
-        <button class="preset-button" size="mini" data-value="0" bindtap="handleSetMagnifyingGlassPreset" loading="{{submitting}}">0</button>
-        <button class="preset-button" size="mini" data-value="1" bindtap="handleSetMagnifyingGlassPreset" loading="{{submitting}}">1</button>
-        <button class="preset-button" size="mini" data-value="5" bindtap="handleSetMagnifyingGlassPreset" loading="{{submitting}}">5</button>
-        <button class="preset-button" size="mini" data-value="10" bindtap="handleSetMagnifyingGlassPreset" loading="{{submitting}}">10</button>
-      </view>
-      <view class="input-row">
-        <input class="tool-input" type="number" value="{{customMagnifyingGlass}}" bindinput="handleCustomMagnifyingGlassInput" placeholder="自定义非负整数" />
-        <button class="primary-button" size="mini" bindtap="handleSetMagnifyingGlassCustom" loading="{{submitting}}">设置</button>
-      </view>
-    </view>
-
-    <view class="panel section-panel">
-      <view class="section-title">设置今日成功次数</view>
-      <view class="preset-row">
-        <button class="preset-button" size="mini" data-value="0" bindtap="handleSetDailyTotalPreset" loading="{{submitting}}">0</button>
-        <button class="preset-button" size="mini" data-value="1" bindtap="handleSetDailyTotalPreset" loading="{{submitting}}">1</button>
-        <button class="preset-button" size="mini" data-value="9" bindtap="handleSetDailyTotalPreset" loading="{{submitting}}">9</button>
-        <button class="preset-button" size="mini" data-value="10" bindtap="handleSetDailyTotalPreset" loading="{{submitting}}">10</button>
-      </view>
-      <view class="input-row">
-        <input class="tool-input" type="number" value="{{customDailyTotalCount}}" bindinput="handleCustomDailyTotalCountInput" placeholder="自定义 0~10" />
-        <button class="primary-button" size="mini" bindtap="handleSetDailyTotalCustom" loading="{{submitting}}">设置</button>
-      </view>
-    </view>
-
-    <view class="panel section-panel">
-      <view class="section-title">地点 + 标签次数</view>
-      <input class="tool-input tool-input-full" value="{{locationKey}}" bindinput="handleLocationKeyInput" placeholder="输入 locationKey" />
-      <view class="picker-row">
-        <picker class="story-type-picker" range="{{storyTypeOptions}}" value="{{storyTypeIndex}}" bindchange="handleStoryTypeChange">
-          <view class="picker-value">故事类型：{{storyTypeOptions[storyTypeIndex]}}</view>
-        </picker>
-        <button class="minor-button" size="mini" bindtap="handleRefreshSelectorTap" loading="{{submitting}}">查询</button>
-      </view>
-      <view class="selected-count">当前选择的地点标签次数：{{state.locationTypeCount}}</view>
-      <view class="preset-row">
-        <button class="preset-button" size="mini" data-value="0" bindtap="handleSetLocationTypePreset" loading="{{submitting}}">0</button>
-        <button class="preset-button" size="mini" data-value="1" bindtap="handleSetLocationTypePreset" loading="{{submitting}}">1</button>
-        <button class="preset-button" size="mini" data-value="3" bindtap="handleSetLocationTypePreset" loading="{{submitting}}">3</button>
-      </view>
-      <view class="input-row">
-        <input class="tool-input" type="number" value="{{customLocationTypeCount}}" bindinput="handleCustomLocationTypeCountInput" placeholder="自定义 0~3" />
-        <button class="primary-button" size="mini" bindtap="handleSetLocationTypeCustom" loading="{{submitting}}">设置</button>
+      <view class="section-title">开发测试口令</view>
+      <view class="section-note">口令由管理员手动输入，并仅保存在当前设备本地存储。</view>
+      <input
+        class="tool-input tool-input-full"
+        password="{{true}}"
+        value="{{devTestToken}}"
+        bindinput="handleDevTestTokenInput"
+        placeholder="输入开发测试口令"
+      />
+      <view class="auth-status auth-status-{{tokenStatusType}}">
+        <text class="auth-status-text">{{tokenStatusText}}</text>
+        <text wx:if="{{hasStoredToken}}" class="auth-status-badge">已保存本地口令</text>
       </view>
       <view class="action-row">
-        <button class="secondary-button" size="mini" bindtap="handleClearSingleLocationTypeCount" loading="{{submitting}}">清空指定项</button>
-        <button class="secondary-button" size="mini" bindtap="handleClearAllLocationTypeCounts" loading="{{submitting}}">清空全部</button>
+        <button class="primary-button" size="mini" bindtap="handleVerifyTokenTap" loading="{{submitting}}">验证并进入测试工具</button>
+        <button class="secondary-button" size="mini" bindtap="handleClearLocalDevTestToken" loading="{{submitting}}">清除本地测试口令</button>
       </view>
     </view>
 
-    <view class="panel section-panel">
-      <view class="section-title">请求锁</view>
-      <view class="section-note">当前有锁：{{state.hasRequestLock ? '是' : '否'}}</view>
-      <view class="section-note">锁字段会清空 activeRequestId / activeLocationKey / activeStoryType，并把 requestLockUntil 设为 0。</view>
-      <button class="primary-button block-button" bindtap="handleClearRequestLock" loading="{{submitting}}">清除请求锁</button>
+    <view wx:if="{{!accessGranted}}" class="panel empty-panel">
+      <text class="empty-title">等待验证</text>
+      <text class="empty-text">口令验证成功后，才会显示状态读取与测试操作按钮。</text>
     </view>
 
-    <view class="panel section-panel">
-      <view class="section-title">一键重置今日探索测试状态</view>
-      <view class="section-note">会把 totalCount 清零、清空地点标签次数与 recentRequestIds，并同时清理请求锁。</view>
-      <view class="input-row">
-        <input class="tool-input" type="number" value="{{resetMagnifyingGlass}}" bindinput="handleResetMagnifyingGlassInput" placeholder="重置后的放大镜余额" />
-        <button class="primary-button" size="mini" bindtap="handleResetTodayState" loading="{{submitting}}">重置</button>
+    <block wx:else>
+      <view class="panel section-panel">
+        <view class="section-title-row">
+          <text class="section-title">当前状态</text>
+          <button class="minor-button" size="mini" bindtap="handleRefreshTap" loading="{{submitting}}">刷新</button>
+        </view>
+
+        <view class="status-row">
+          <text class="status-key">magnifyingGlass</text>
+          <text class="status-value">{{state.magnifyingGlass}}</text>
+        </view>
+        <view class="status-row">
+          <text class="status-key">dailyTotalCount</text>
+          <text class="status-value">{{state.dailyTotalCount}}</text>
+        </view>
+        <view class="status-row">
+          <text class="status-key">locationTypeCount</text>
+          <text class="status-value">{{state.locationTypeCount}}</text>
+        </view>
+        <view class="status-row">
+          <text class="status-key">requestLockUntil</text>
+          <text class="status-value">{{state.requestLockUntil}}</text>
+        </view>
+        <view class="status-row">
+          <text class="status-key">activeLocationKey</text>
+          <text class="status-value status-value-multiline">{{state.activeLocationKey || '-'}}</text>
+        </view>
+        <view class="status-row">
+          <text class="status-key">activeStoryType</text>
+          <text class="status-value">{{state.activeStoryType || '-'}}</text>
+        </view>
       </view>
-    </view>
+
+      <view class="panel section-panel">
+        <view class="section-title">设置放大镜余额</view>
+        <view class="preset-row">
+          <button class="preset-button" size="mini" data-value="0" bindtap="handleSetMagnifyingGlassPreset" loading="{{submitting}}">0</button>
+          <button class="preset-button" size="mini" data-value="1" bindtap="handleSetMagnifyingGlassPreset" loading="{{submitting}}">1</button>
+          <button class="preset-button" size="mini" data-value="5" bindtap="handleSetMagnifyingGlassPreset" loading="{{submitting}}">5</button>
+          <button class="preset-button" size="mini" data-value="10" bindtap="handleSetMagnifyingGlassPreset" loading="{{submitting}}">10</button>
+        </view>
+        <view class="input-row">
+          <input class="tool-input" type="number" value="{{customMagnifyingGlass}}" bindinput="handleCustomMagnifyingGlassInput" placeholder="自定义非负整数" />
+          <button class="primary-button" size="mini" bindtap="handleSetMagnifyingGlassCustom" loading="{{submitting}}">设置</button>
+        </view>
+      </view>
+
+      <view class="panel section-panel">
+        <view class="section-title">设置今日成功次数</view>
+        <view class="preset-row">
+          <button class="preset-button" size="mini" data-value="0" bindtap="handleSetDailyTotalPreset" loading="{{submitting}}">0</button>
+          <button class="preset-button" size="mini" data-value="1" bindtap="handleSetDailyTotalPreset" loading="{{submitting}}">1</button>
+          <button class="preset-button" size="mini" data-value="9" bindtap="handleSetDailyTotalPreset" loading="{{submitting}}">9</button>
+          <button class="preset-button" size="mini" data-value="10" bindtap="handleSetDailyTotalPreset" loading="{{submitting}}">10</button>
+        </view>
+        <view class="input-row">
+          <input class="tool-input" type="number" value="{{customDailyTotalCount}}" bindinput="handleCustomDailyTotalCountInput" placeholder="自定义 0~10" />
+          <button class="primary-button" size="mini" bindtap="handleSetDailyTotalCustom" loading="{{submitting}}">设置</button>
+        </view>
+      </view>
+
+      <view class="panel section-panel">
+        <view class="section-title">地点 + 标签次数</view>
+        <input class="tool-input tool-input-full" value="{{locationKey}}" bindinput="handleLocationKeyInput" placeholder="输入 locationKey" />
+        <view class="picker-row">
+          <picker class="story-type-picker" range="{{storyTypeOptions}}" value="{{storyTypeIndex}}" bindchange="handleStoryTypeChange">
+            <view class="picker-value">故事类型：{{storyTypeOptions[storyTypeIndex]}}</view>
+          </picker>
+          <button class="minor-button" size="mini" bindtap="handleRefreshSelectorTap" loading="{{submitting}}">查询</button>
+        </view>
+        <view class="selected-count">当前选择的地点标签次数：{{state.locationTypeCount}}</view>
+        <view class="preset-row">
+          <button class="preset-button" size="mini" data-value="0" bindtap="handleSetLocationTypePreset" loading="{{submitting}}">0</button>
+          <button class="preset-button" size="mini" data-value="1" bindtap="handleSetLocationTypePreset" loading="{{submitting}}">1</button>
+          <button class="preset-button" size="mini" data-value="3" bindtap="handleSetLocationTypePreset" loading="{{submitting}}">3</button>
+        </view>
+        <view class="input-row">
+          <input class="tool-input" type="number" value="{{customLocationTypeCount}}" bindinput="handleCustomLocationTypeCountInput" placeholder="自定义 0~3" />
+          <button class="primary-button" size="mini" bindtap="handleSetLocationTypeCustom" loading="{{submitting}}">设置</button>
+        </view>
+        <view class="action-row">
+          <button class="secondary-button" size="mini" bindtap="handleClearSingleLocationTypeCount" loading="{{submitting}}">清空指定项</button>
+          <button class="secondary-button" size="mini" bindtap="handleClearAllLocationTypeCounts" loading="{{submitting}}">清空全部</button>
+        </view>
+      </view>
+
+      <view class="panel section-panel">
+        <view class="section-title">请求锁</view>
+        <view class="section-note">当前有锁：{{state.hasRequestLock ? '是' : '否'}}</view>
+        <view class="section-note">锁字段会清空 activeRequestId / activeLocationKey / activeStoryType，并把 requestLockUntil 设为 0。</view>
+        <button class="primary-button block-button" bindtap="handleClearRequestLock" loading="{{submitting}}">清除请求锁</button>
+      </view>
+
+      <view class="panel section-panel">
+        <view class="section-title">一键重置今日探索测试状态</view>
+        <view class="section-note">会把 totalCount 清零、清空地点标签次数与 recentRequestIds，并同时清理请求锁。</view>
+        <view class="input-row">
+          <input class="tool-input" type="number" value="{{resetMagnifyingGlass}}" bindinput="handleResetMagnifyingGlassInput" placeholder="重置后的放大镜余额" />
+          <button class="primary-button" size="mini" bindtap="handleResetTodayState" loading="{{submitting}}">重置</button>
+        </view>
+      </view>
+    </block>
   </block>
 </view>

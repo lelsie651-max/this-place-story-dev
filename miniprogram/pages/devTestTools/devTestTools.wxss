@@ -44,6 +44,48 @@
   line-height: 1.7;
 }
 
+.auth-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 18rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 24rpx;
+  background: rgba(140, 94, 52, 0.08);
+}
+
+.auth-status-idle {
+  background: rgba(140, 94, 52, 0.08);
+}
+
+.auth-status-pending {
+  background: rgba(182, 120, 51, 0.12);
+}
+
+.auth-status-success {
+  background: rgba(72, 136, 101, 0.12);
+}
+
+.auth-status-error {
+  background: rgba(189, 94, 83, 0.12);
+}
+
+.auth-status-text {
+  flex: 1;
+  color: #4c3424;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.auth-status-badge {
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(140, 94, 52, 0.12);
+  color: #8b5e34;
+  font-size: 20rpx;
+}
+
 .section-title-row {
   display: flex;
   align-items: center;

@@ -130,15 +130,6 @@ function parseBooleanEnv(value) {
   );
 }
 
-function parseAdminOpenIds(value) {
-  return trimString(value)
-    .split(/[\s,;]+/)
-    .map(function mapOpenId(item) {
-      return trimString(item);
-    })
-    .filter(Boolean);
-}
-
 function maskOpenId(openId) {
   if (!openId) {
     return '';
@@ -151,6 +142,10 @@ function maskOpenId(openId) {
   }
 
   return normalizedOpenId.slice(0, 3) + '***' + normalizedOpenId.slice(-2);
+}
+
+function normalizeDevTestToken(value) {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 function createUserDocId(openId) {
@@ -369,6 +364,7 @@ function validateEvent(event) {
   const action = validateAction(event.action);
   const input = {
     action: action,
+    devTestToken: normalizeDevTestToken(event.devTestToken),
   };
 
   if (
@@ -404,19 +400,19 @@ function validateEvent(event) {
   return input;
 }
 
-function authorizeRequest(openId) {
+function authorizeRequest(openId, devTestToken) {
   if (!parseBooleanEnv(process.env.ENABLE_DEV_TEST_TOOLS)) {
     throw new DevToolsError('DEV_TOOLS_DISABLED', '开发测试工具未开启');
   }
 
-  if (!openId) {
-    throw new DevToolsError('UNAUTHORIZED', '当前用户身份读取失败，请稍后再试。');
+  const expectedToken = normalizeDevTestToken(process.env.DEV_TEST_ADMIN_TOKEN);
+
+  if (!devTestToken || !expectedToken || devTestToken !== expectedToken) {
+    throw new DevToolsError('DEV_TOOLS_FORBIDDEN', '开发测试工具口令不正确');
   }
 
-  const adminOpenIds = parseAdminOpenIds(process.env.DEV_TEST_ADMIN_OPENIDS);
-
-  if (adminOpenIds.indexOf(openId) === -1) {
-    throw new DevToolsError('DEV_TOOLS_FORBIDDEN', '当前账号无权使用开发测试工具。');
+  if (!openId) {
+    throw new DevToolsError('UNAUTHORIZED', '当前用户身份读取失败，请稍后再试。');
   }
 }
 
@@ -600,12 +596,13 @@ exports.main = async function main(event) {
     const openId = trimString(wxContext && wxContext.OPENID);
     const actionInput = validateEvent(event || {});
 
-    authorizeRequest(openId);
+    authorizeRequest(openId, actionInput.devTestToken);
 
     console.warn('[devTestControls] request received', {
       action: actionInput.action,
       hasOpenId: !!openId,
       openIdMasked: maskOpenId(openId),
+      hasDevTestToken: !!actionInput.devTestToken,
     });
 
     return buildSuccess(await handleAction(actionInput, openId));
@@ -636,7 +633,7 @@ module.exports._private = {
   createLocationTypeKey: createLocationTypeKey,
   createUsageDocId: createUsageDocId,
   getDateKey: getDateKey,
-  parseAdminOpenIds: parseAdminOpenIds,
+  normalizeDevTestToken: normalizeDevTestToken,
   parseBooleanEnv: parseBooleanEnv,
   validateEvent: validateEvent,
 };

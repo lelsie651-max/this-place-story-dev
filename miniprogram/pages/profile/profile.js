@@ -400,38 +400,11 @@ Page({
   async loadDevTestToolAccess() {
     const envVersion = getMiniProgramEnvVersion();
 
-    if (!isDevTestToolEnv(envVersion)) {
-      this.setData({
-        devTestToolsVisible: false,
-        devTestToolsChecking: false,
-        devTestToolsEnvVersion: envVersion,
-      });
-      return;
-    }
-
     this.setData({
-      devTestToolsChecking: true,
+      devTestToolsVisible: isDevTestToolEnv(envVersion),
+      devTestToolsChecking: false,
       devTestToolsEnvVersion: envVersion,
     });
-
-    try {
-      await userService.getDevTestState();
-
-      this.setData({
-        devTestToolsVisible: true,
-        devTestToolsChecking: false,
-      });
-    } catch (error) {
-      console.warn('[profile] loadDevTestToolAccess failed', {
-        code: error && error.code ? error.code : 'INTERNAL_ERROR',
-        message: error && error.message ? error.message : '',
-      });
-
-      this.setData({
-        devTestToolsVisible: false,
-        devTestToolsChecking: false,
-      });
-    }
   },
 
   async handleWatchAdTap() {

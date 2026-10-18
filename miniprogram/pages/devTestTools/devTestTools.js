@@ -4,6 +4,7 @@ const DEV_TEST_TOOL_ALLOWED_ENVS = {
   develop: true,
   trial: true,
 };
+const DEV_TEST_TOKEN_STORAGE_KEY = 'dev_test_admin_token';
 const STORY_TYPE_OPTIONS = ['民间传说', 'AI说'];
 
 function trimString(value) {
@@ -71,7 +72,7 @@ function getUserFacingErrorMessage(error) {
   }
 
   if (code === 'DEV_TOOLS_FORBIDDEN') {
-    return '当前账号无权使用开发测试工具';
+    return '开发测试工具口令不正确';
   }
 
   if (code === 'DEPLOY_REQUIRED') {
@@ -84,6 +85,10 @@ function getUserFacingErrorMessage(error) {
 
   if (code === 'UNAUTHORIZED') {
     return '当前用户身份读取失败，请稍后再试';
+  }
+
+  if (code === 'INVALID_INPUT') {
+    return message || '请输入开发测试口令';
   }
 
   return message || '操作失败，请稍后再试';
@@ -101,6 +106,41 @@ function buildDefaultState() {
   };
 }
 
+function getStoredDevTestToken() {
+  if (typeof wx === 'undefined' || typeof wx.getStorageSync !== 'function') {
+    return '';
+  }
+
+  try {
+    return trimString(wx.getStorageSync(DEV_TEST_TOKEN_STORAGE_KEY));
+  } catch (error) {
+    return '';
+  }
+}
+
+function setStoredDevTestToken(token) {
+  if (typeof wx === 'undefined' || typeof wx.setStorageSync !== 'function') {
+    return;
+  }
+
+  wx.setStorageSync(DEV_TEST_TOKEN_STORAGE_KEY, token);
+}
+
+function clearStoredDevTestToken() {
+  if (typeof wx === 'undefined') {
+    return;
+  }
+
+  if (typeof wx.removeStorageSync === 'function') {
+    wx.removeStorageSync(DEV_TEST_TOKEN_STORAGE_KEY);
+    return;
+  }
+
+  if (typeof wx.setStorageSync === 'function') {
+    wx.setStorageSync(DEV_TEST_TOKEN_STORAGE_KEY, '');
+  }
+}
+
 Page({
   data: {
     envVersion: 'release',
@@ -109,6 +149,10 @@ Page({
     loading: true,
     submitting: false,
     blockedMessage: '',
+    tokenStatusText: '尚未验证开发测试口令',
+    tokenStatusType: 'idle',
+    hasStoredToken: false,
+    devTestToken: '',
     state: buildDefaultState(),
     locationKey: '',
     storyTypeIndex: 0,
@@ -134,38 +178,46 @@ Page({
   async initializePage() {
     const envVersion = getMiniProgramEnvVersion();
     const envAllowed = isDevToolEnv(envVersion);
+    const storedToken = envAllowed ? getStoredDevTestToken() : '';
 
     this.setData({
       envVersion: envVersion,
       envAllowed: envAllowed,
       loading: true,
+      accessGranted: false,
+      devTestToken: storedToken,
+      hasStoredToken: !!storedToken,
       blockedMessage: envAllowed ? '' : '开发测试工具仅在 develop / trial 版本显示，release 环境不会提供入口。',
+      tokenStatusText: envAllowed
+        ? (storedToken ? '已读取本地测试口令，正在验证...' : '请输入开发测试口令后验证')
+        : '当前环境不可使用开发测试工具',
+      tokenStatusType: envAllowed
+        ? (storedToken ? 'pending' : 'idle')
+        : 'blocked',
+      state: buildDefaultState(),
     });
 
     if (!envAllowed) {
       this.setData({
         loading: false,
-        accessGranted: false,
       });
       return;
     }
 
-    try {
-      const state = await userService.getDevTestState(this.buildSelectorPayload(false));
-
+    if (!storedToken) {
       this.setData({
         loading: false,
-        accessGranted: true,
-        blockedMessage: '',
-        state: state,
       });
-    } catch (error) {
-      this.setData({
-        loading: false,
-        accessGranted: false,
-        blockedMessage: getUserFacingErrorMessage(error),
-      });
+      return;
     }
+
+    await this.verifyAndEnter({
+      devTestToken: storedToken,
+      persistToken: false,
+      silentError: true,
+      clearStoredTokenOnFailure: true,
+      loadingMode: true,
+    });
   },
 
   buildSelectorPayload(required) {
@@ -186,8 +238,101 @@ Page({
     };
   },
 
+  buildAuthorizedPayload(extraPayload) {
+    const devTestToken = trimString(this.data.devTestToken);
+
+    if (!devTestToken) {
+      throw new Error('请输入开发测试口令');
+    }
+
+    return Object.assign({
+      devTestToken: devTestToken,
+    }, extraPayload || {});
+  },
+
   getSelectedStoryType() {
     return this.data.storyTypeOptions[this.data.storyTypeIndex] || STORY_TYPE_OPTIONS[0];
+  },
+
+  async verifyAndEnter(options) {
+    const verifyOptions = options || {};
+    const devTestToken = trimString(
+      typeof verifyOptions.devTestToken === 'string'
+        ? verifyOptions.devTestToken
+        : this.data.devTestToken
+    );
+
+    if (!this.data.envAllowed) {
+      this.setData({
+        loading: false,
+      });
+      return false;
+    }
+
+    if (!devTestToken) {
+      this.setData({
+        accessGranted: false,
+        loading: false,
+        hasStoredToken: !!getStoredDevTestToken(),
+        tokenStatusText: '请输入开发测试口令后验证',
+        tokenStatusType: 'idle',
+      });
+      return false;
+    }
+
+    this.setData({
+      devTestToken: devTestToken,
+      loading: !!verifyOptions.loadingMode,
+      submitting: !verifyOptions.loadingMode,
+      tokenStatusText: '正在验证开发测试口令...',
+      tokenStatusType: 'pending',
+    });
+
+    try {
+      const state = await userService.getDevTestState({
+        devTestToken: devTestToken,
+      });
+
+      if (verifyOptions.persistToken !== false) {
+        setStoredDevTestToken(devTestToken);
+      }
+
+      this.setData({
+        accessGranted: true,
+        loading: false,
+        submitting: false,
+        state: state,
+        hasStoredToken: true,
+        blockedMessage: '',
+        tokenStatusText: '开发测试口令已验证',
+        tokenStatusType: 'success',
+      });
+
+      return true;
+    } catch (error) {
+      if (verifyOptions.clearStoredTokenOnFailure) {
+        clearStoredDevTestToken();
+      }
+
+      this.setData({
+        accessGranted: false,
+        loading: false,
+        submitting: false,
+        hasStoredToken: !!getStoredDevTestToken(),
+        tokenStatusText: getUserFacingErrorMessage(error),
+        tokenStatusType: 'error',
+        state: buildDefaultState(),
+      });
+
+      if (!verifyOptions.silentError) {
+        wx.showToast({
+          title: getUserFacingErrorMessage(error),
+          icon: 'none',
+        });
+      }
+
+      return false;
+    }
   },
 
   async refreshState(options) {
@@ -202,7 +347,8 @@ Page({
     });
 
     try {
-      const state = await userService.getDevTestState(this.buildSelectorPayload(false));
+      const selector = this.buildSelectorPayload(false);
+      const state = await userService.getDevTestState(this.buildAuthorizedPayload(selector));
 
       this.setData({
         state: state,
@@ -289,6 +435,43 @@ Page({
     });
   },
 
+  handleDevTestTokenInput(event) {
+    this.setData({
+      devTestToken: trimString(event && event.detail ? event.detail.value : ''),
+      tokenStatusText: '尚未验证开发测试口令',
+      tokenStatusType: 'idle',
+    });
+  },
+
+  handleVerifyTokenTap() {
+    this.verifyAndEnter({
+      persistToken: true,
+      silentError: false,
+      clearStoredTokenOnFailure: false,
+      loadingMode: false,
+    });
+  },
+
+  handleClearLocalDevTestToken() {
+    clearStoredDevTestToken();
+
+    this.setData({
+      accessGranted: false,
+      devTestToken: '',
+      hasStoredToken: false,
+      loading: false,
+      submitting: false,
+      state: buildDefaultState(),
+      tokenStatusText: '本地测试口令已清除，请重新输入',
+      tokenStatusType: 'idle',
+    });
+
+    wx.showToast({
+      title: '本地测试口令已清除',
+      icon: 'none',
+    });
+  },
+
   handleLocationKeyInput(event) {
     this.setData({
       locationKey: trimString(event && event.detail ? event.detail.value : ''),
@@ -342,11 +525,9 @@ Page({
   handleSetMagnifyingGlassPreset(event) {
     const value = parseInputInteger(event.currentTarget.dataset.value, 'magnifyingGlass');
 
-    this.runMutation(function execute() {
-      return userService.setDevTestMagnifyingGlass({
-        magnifyingGlass: value,
-      });
-    }, '放大镜余额已更新');
+    this.runMutation(() => userService.setDevTestMagnifyingGlass(this.buildAuthorizedPayload({
+      magnifyingGlass: value,
+    })), '放大镜余额已更新');
   },
 
   handleSetMagnifyingGlassCustom() {
@@ -362,21 +543,17 @@ Page({
       return;
     }
 
-    this.runMutation(function execute() {
-      return userService.setDevTestMagnifyingGlass({
-        magnifyingGlass: value,
-      });
-    }, '放大镜余额已更新');
+    this.runMutation(() => userService.setDevTestMagnifyingGlass(this.buildAuthorizedPayload({
+      magnifyingGlass: value,
+    })), '放大镜余额已更新');
   },
 
   handleSetDailyTotalPreset(event) {
     const value = parseInputInteger(event.currentTarget.dataset.value, 'dailyTotalCount', 10);
 
-    this.runMutation(function execute() {
-      return userService.setDevTestDailyTotalCount({
-        dailyTotalCount: value,
-      });
-    }, '今日次数已更新');
+    this.runMutation(() => userService.setDevTestDailyTotalCount(this.buildAuthorizedPayload({
+      dailyTotalCount: value,
+    })), '今日次数已更新');
   },
 
   handleSetDailyTotalCustom() {
@@ -392,11 +569,9 @@ Page({
       return;
     }
 
-    this.runMutation(function execute() {
-      return userService.setDevTestDailyTotalCount({
-        dailyTotalCount: value,
-      });
-    }, '今日次数已更新');
+    this.runMutation(() => userService.setDevTestDailyTotalCount(this.buildAuthorizedPayload({
+      dailyTotalCount: value,
+    })), '今日次数已更新');
   },
 
   handleSetLocationTypePreset(event) {
@@ -414,13 +589,11 @@ Page({
       return;
     }
 
-    this.runMutation(function execute() {
-      return userService.setDevTestLocationTypeCount({
-        locationKey: selector.locationKey,
-        storyType: selector.storyType,
-        locationTypeCount: value,
-      });
-    }, '地点标签次数已更新');
+    this.runMutation(() => userService.setDevTestLocationTypeCount(this.buildAuthorizedPayload({
+      locationKey: selector.locationKey,
+      storyType: selector.storyType,
+      locationTypeCount: value,
+    })), '地点标签次数已更新');
   },
 
   handleSetLocationTypeCustom() {
@@ -438,19 +611,15 @@ Page({
       return;
     }
 
-    this.runMutation(function execute() {
-      return userService.setDevTestLocationTypeCount({
-        locationKey: selector.locationKey,
-        storyType: selector.storyType,
-        locationTypeCount: value,
-      });
-    }, '地点标签次数已更新');
+    this.runMutation(() => userService.setDevTestLocationTypeCount(this.buildAuthorizedPayload({
+      locationKey: selector.locationKey,
+      storyType: selector.storyType,
+      locationTypeCount: value,
+    })), '地点标签次数已更新');
   },
 
   handleClearAllLocationTypeCounts() {
-    this.runMutation(function execute() {
-      return userService.clearDevTestLocationTypeCounts();
-    }, '地点标签次数已清空');
+    this.runMutation(() => userService.clearDevTestLocationTypeCounts(this.buildAuthorizedPayload()), '地点标签次数已清空');
   },
 
   handleClearSingleLocationTypeCount() {
@@ -466,18 +635,14 @@ Page({
       return;
     }
 
-    this.runMutation(function execute() {
-      return userService.clearDevTestLocationTypeCount({
-        locationKey: selector.locationKey,
-        storyType: selector.storyType,
-      });
-    }, '指定地点标签次数已清空');
+    this.runMutation(() => userService.clearDevTestLocationTypeCount(this.buildAuthorizedPayload({
+      locationKey: selector.locationKey,
+      storyType: selector.storyType,
+    })), '指定地点标签次数已清空');
   },
 
   handleClearRequestLock() {
-    this.runMutation(function execute() {
-      return userService.clearDevTestRequestLock();
-    }, '请求锁已清除');
+    this.runMutation(() => userService.clearDevTestRequestLock(this.buildAuthorizedPayload()), '请求锁已清除');
   },
 
   handleResetTodayState() {
@@ -493,10 +658,8 @@ Page({
       return;
     }
 
-    this.runMutation(function execute() {
-      return userService.resetDevTestTodayState({
-        magnifyingGlass: value,
-      });
-    }, '今日测试状态已重置');
+    this.runMutation(() => userService.resetDevTestTodayState(this.buildAuthorizedPayload({
+      magnifyingGlass: value,
+    })), '今日测试状态已重置');
   },
 });

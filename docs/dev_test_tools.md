@@ -46,8 +46,8 @@
 显示条件必须同时满足：
 
 1. 当前小程序环境为 `develop` 或 `trial`
-2. 独立云函数 `devTestControls` 返回成功
-3. 当前用户 `OPENID` 命中服务端管理员白名单
+2. 用户主动进入 `pages/devTestTools/devTestTools`
+3. 在页面中输入正确的开发测试口令并通过服务端验证
 
 ---
 
@@ -60,13 +60,17 @@
 服务端必须执行以下校验：
 
 1. `ENABLE_DEV_TEST_TOOLS` 环境变量为 `true`
-2. 当前用户身份来自 `wx.cloud.getWXContext().OPENID`
-3. 当前 `OPENID` 命中服务端环境变量中的管理员白名单
-4. `action` 必须在白名单中
-5. 所有数值参数必须是有限非负整数
-6. `dailyTotalCount` 只允许 `0 ~ 10`
-7. `locationTypeCount` 只允许 `0 ~ 3`
-8. 不接受前端传入 `openid`
+2. `DEV_TEST_ADMIN_TOKEN` 环境变量为管理员配置的随机长字符串
+3. 当前用户身份来自 `wx.cloud.getWXContext().OPENID`
+4. 请求必须携带 `devTestToken`
+5. `devTestToken` 必须与 `DEV_TEST_ADMIN_TOKEN` 完全一致
+6. `action` 必须在白名单中
+7. 所有数值参数必须是有限非负整数
+8. `dailyTotalCount` 只允许 `0 ~ 10`
+9. `locationTypeCount` 只允许 `0 ~ 3`
+10. 不接受前端传入 `openid`
+
+这里的 `OPENID` 只用于定位“当前要修改哪一个测试用户”的数据，不再用于管理员鉴权。
 
 正式环境关闭开关时，统一返回：
 
@@ -81,6 +85,23 @@
 ```
 
 管理员 `OPENID` 和开关都只能保存在云函数环境变量中，不得写入小程序前端。
+当前已改为：
+
+- 开关保存在云函数环境变量
+- 开发测试口令保存在云函数环境变量
+- 管理员在小程序端手动输入口令后，使用 `wx.setStorageSync` 只保存在当前设备本地
+
+口令错误或缺失时，统一返回：
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "DEV_TOOLS_FORBIDDEN",
+    "message": "开发测试工具口令不正确"
+  }
+}
+```
 
 ---
 
@@ -173,4 +194,4 @@
 
 1. `ENABLE_DEV_TEST_TOOLS = false`
 2. release 版本前端入口已隐藏
-3. 管理员白名单未暴露到小程序前端
+3. `DEV_TEST_ADMIN_TOKEN` 未写入前端代码或 Git 历史
