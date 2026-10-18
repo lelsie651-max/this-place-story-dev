@@ -101,6 +101,20 @@ function normalizeCloudProfile(rawData) {
   };
 }
 
+function normalizeDevTestState(rawData) {
+  const state = rawData && typeof rawData === 'object' ? rawData : {};
+
+  return {
+    magnifyingGlass: typeof state.magnifyingGlass === 'number' ? state.magnifyingGlass : CURRENT_USER.magnifyingGlass,
+    dailyTotalCount: typeof state.dailyTotalCount === 'number' ? state.dailyTotalCount : 0,
+    locationTypeCount: typeof state.locationTypeCount === 'number' ? state.locationTypeCount : 0,
+    requestLockUntil: typeof state.requestLockUntil === 'number' ? state.requestLockUntil : 0,
+    activeLocationKey: trimString(state.activeLocationKey),
+    activeStoryType: trimString(state.activeStoryType),
+    hasRequestLock: !!state.hasRequestLock,
+  };
+}
+
 function shouldUseLocalFallback() {
   return typeof wx === 'undefined'
     || !wx.cloud
@@ -187,6 +201,15 @@ async function callMagnifyingGlassFunction(data) {
   );
 }
 
+async function callDevTestControlsFunction(data) {
+  return callCloudFunction(
+    'devTestControls',
+    data,
+    'DEPLOY_REQUIRED',
+    '开发测试工具服务尚未更新，请重新部署 devTestControls 云函数。'
+  );
+}
+
 function normalizeAdRewardStatus(rawData) {
   const status = rawData && typeof rawData === 'object' ? rawData : {};
 
@@ -247,6 +270,43 @@ function validateUsagePayload(payload) {
     storyType: storyType,
     requestId: requestId,
   };
+}
+
+function validateDevTestSelector(payload, required) {
+  const selectorPayload = payload && typeof payload === 'object' ? payload : {};
+  const locationKey = trimString(selectorPayload.locationKey);
+  const storyType = trimString(selectorPayload.storyType);
+
+  if (!locationKey && !storyType) {
+    if (required) {
+      throw createServiceError('INVALID_INPUT', 'locationKey 和 storyType 不能为空。');
+    }
+
+    return null;
+  }
+
+  if (!locationKey || !storyType) {
+    throw createServiceError('INVALID_INPUT', 'locationKey 和 storyType 必须同时提供。');
+  }
+
+  return {
+    locationKey: locationKey,
+    storyType: storyType,
+  };
+}
+
+function validateNonNegativeInteger(value, fieldName, maxValue) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue) || numericValue < 0 || Math.floor(numericValue) !== numericValue) {
+    throw createServiceError('INVALID_INPUT', fieldName + ' 必须是非负整数。');
+  }
+
+  if (typeof maxValue === 'number' && numericValue > maxValue) {
+    throw createServiceError('INVALID_INPUT', fieldName + ' 超出允许范围。');
+  }
+
+  return numericValue;
 }
 
 async function getCurrentUserProfile() {
@@ -381,12 +441,148 @@ async function claimAdReward(payload) {
   return status;
 }
 
+async function getDevTestState(payload) {
+  const selector = validateDevTestSelector(payload, false);
+
+  if (shouldUseLocalFallback()) {
+    throw createServiceError('LOCAL_ONLY', '开发测试工具仅支持云环境调用。');
+  }
+
+  const requestData = {
+    action: 'get_status',
+  };
+
+  if (selector) {
+    requestData.locationKey = selector.locationKey;
+    requestData.storyType = selector.storyType;
+  }
+
+  const state = normalizeDevTestState(await callDevTestControlsFunction(requestData));
+  CURRENT_USER.magnifyingGlass = state.magnifyingGlass;
+  return state;
+}
+
+async function setDevTestMagnifyingGlass(payload) {
+  const normalizedMagnifyingGlass = validateNonNegativeInteger(
+    payload && payload.magnifyingGlass,
+    'magnifyingGlass'
+  );
+
+  if (shouldUseLocalFallback()) {
+    throw createServiceError('LOCAL_ONLY', '开发测试工具仅支持云环境调用。');
+  }
+
+  const state = normalizeDevTestState(await callDevTestControlsFunction({
+    action: 'set_magnifying_glass',
+    magnifyingGlass: normalizedMagnifyingGlass,
+  }));
+  CURRENT_USER.magnifyingGlass = state.magnifyingGlass;
+  return state;
+}
+
+async function setDevTestDailyTotalCount(payload) {
+  const normalizedDailyTotalCount = validateNonNegativeInteger(
+    payload && payload.dailyTotalCount,
+    'dailyTotalCount',
+    10
+  );
+
+  if (shouldUseLocalFallback()) {
+    throw createServiceError('LOCAL_ONLY', '开发测试工具仅支持云环境调用。');
+  }
+
+  return normalizeDevTestState(await callDevTestControlsFunction({
+    action: 'set_daily_total_count',
+    dailyTotalCount: normalizedDailyTotalCount,
+  }));
+}
+
+async function setDevTestLocationTypeCount(payload) {
+  const selector = validateDevTestSelector(payload, true);
+  const normalizedLocationTypeCount = validateNonNegativeInteger(
+    payload && payload.locationTypeCount,
+    'locationTypeCount',
+    3
+  );
+
+  if (shouldUseLocalFallback()) {
+    throw createServiceError('LOCAL_ONLY', '开发测试工具仅支持云环境调用。');
+  }
+
+  return normalizeDevTestState(await callDevTestControlsFunction({
+    action: 'set_location_type_count',
+    locationKey: selector.locationKey,
+    storyType: selector.storyType,
+    locationTypeCount: normalizedLocationTypeCount,
+  }));
+}
+
+async function clearDevTestLocationTypeCounts() {
+  if (shouldUseLocalFallback()) {
+    throw createServiceError('LOCAL_ONLY', '开发测试工具仅支持云环境调用。');
+  }
+
+  return normalizeDevTestState(await callDevTestControlsFunction({
+    action: 'clear_all_location_type_counts',
+  }));
+}
+
+async function clearDevTestLocationTypeCount(payload) {
+  const selector = validateDevTestSelector(payload, true);
+
+  if (shouldUseLocalFallback()) {
+    throw createServiceError('LOCAL_ONLY', '开发测试工具仅支持云环境调用。');
+  }
+
+  return normalizeDevTestState(await callDevTestControlsFunction({
+    action: 'clear_location_type_count',
+    locationKey: selector.locationKey,
+    storyType: selector.storyType,
+  }));
+}
+
+async function clearDevTestRequestLock() {
+  if (shouldUseLocalFallback()) {
+    throw createServiceError('LOCAL_ONLY', '开发测试工具仅支持云环境调用。');
+  }
+
+  return normalizeDevTestState(await callDevTestControlsFunction({
+    action: 'clear_request_lock',
+  }));
+}
+
+async function resetDevTestTodayState(payload) {
+  const normalizedMagnifyingGlass = validateNonNegativeInteger(
+    payload && payload.magnifyingGlass,
+    'magnifyingGlass'
+  );
+
+  if (shouldUseLocalFallback()) {
+    throw createServiceError('LOCAL_ONLY', '开发测试工具仅支持云环境调用。');
+  }
+
+  const state = normalizeDevTestState(await callDevTestControlsFunction({
+    action: 'reset_today_state',
+    magnifyingGlass: normalizedMagnifyingGlass,
+  }));
+  CURRENT_USER.magnifyingGlass = state.magnifyingGlass;
+  return state;
+}
+
 module.exports = {
+  clearDevTestLocationTypeCount,
+  clearDevTestLocationTypeCounts,
+  clearDevTestRequestLock,
   claimAdReward,
   consumeMagnifyingGlass,
   getAdRewardStatus,
   getAtlasItems,
   getCurrentUserProfile,
+  getDevTestState,
   prepareMagnifyingGlassUsage,
   releaseMagnifyingGlassRequest,
+  resetDevTestTodayState,
+  setDevTestDailyTotalCount,
+  setDevTestLocationTypeCount,
+  setDevTestMagnifyingGlass,
 };

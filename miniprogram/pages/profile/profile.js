@@ -3,6 +3,10 @@ const storyService = require('../../services/storyService');
 const userService = require('../../services/userService');
 
 const AD_REWARD_DEFAULT_LIMIT = 3;
+const DEV_TEST_TOOL_ALLOWED_ENVS = {
+  develop: true,
+  trial: true,
+};
 
 function trimString(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -57,6 +61,41 @@ function getRewardAdUserMessage(error) {
   return '广告暂时不可用，请稍后再试';
 }
 
+function getMiniProgramEnvVersion() {
+  const app = getApp();
+  const appEnvVersion = app
+    && app.globalData
+    && typeof app.globalData.miniProgramEnvVersion === 'string'
+    ? trimString(app.globalData.miniProgramEnvVersion)
+    : '';
+
+  if (appEnvVersion) {
+    return appEnvVersion;
+  }
+
+  if (typeof wx === 'undefined' || typeof wx.getAccountInfoSync !== 'function') {
+    return 'release';
+  }
+
+  try {
+    const accountInfo = wx.getAccountInfoSync();
+    const envVersion = accountInfo
+      && accountInfo.miniProgram
+      && accountInfo.miniProgram.envVersion;
+
+    return trimString(envVersion) || 'release';
+  } catch (error) {
+    console.warn('[profile] getAccountInfoSync failed', {
+      message: error && error.message ? error.message : '',
+    });
+    return 'release';
+  }
+}
+
+function isDevTestToolEnv(envVersion) {
+  return !!DEV_TEST_TOOL_ALLOWED_ENVS[trimString(envVersion)];
+}
+
 Page({
   data: {
     favoriteCount: 0,
@@ -68,6 +107,9 @@ Page({
     adRewardLoading: false,
     adRewardButtonLoading: false,
     adRewardButtonText: '看视频获得 1 枚放大镜',
+    devTestToolsVisible: false,
+    devTestToolsChecking: false,
+    devTestToolsEnvVersion: 'release',
     menuItems: [
       { key: 'atlas', label: '我的图鉴', icon: '🗺', route: '/pages/atlas/atlas' },
       { key: 'favorites', label: '我的收藏', icon: '🤍', route: '/pages/favorites/favorites' },
@@ -92,6 +134,7 @@ Page({
     this.loadProfileAsset();
     this.loadMyStoryCount();
     this.loadAdRewardStatus();
+    this.loadDevTestToolAccess();
   },
 
   onUnload() {
@@ -354,6 +397,43 @@ Page({
     }
   },
 
+  async loadDevTestToolAccess() {
+    const envVersion = getMiniProgramEnvVersion();
+
+    if (!isDevTestToolEnv(envVersion)) {
+      this.setData({
+        devTestToolsVisible: false,
+        devTestToolsChecking: false,
+        devTestToolsEnvVersion: envVersion,
+      });
+      return;
+    }
+
+    this.setData({
+      devTestToolsChecking: true,
+      devTestToolsEnvVersion: envVersion,
+    });
+
+    try {
+      await userService.getDevTestState();
+
+      this.setData({
+        devTestToolsVisible: true,
+        devTestToolsChecking: false,
+      });
+    } catch (error) {
+      console.warn('[profile] loadDevTestToolAccess failed', {
+        code: error && error.code ? error.code : 'INTERNAL_ERROR',
+        message: error && error.message ? error.message : '',
+      });
+
+      this.setData({
+        devTestToolsVisible: false,
+        devTestToolsChecking: false,
+      });
+    }
+  },
+
   async handleWatchAdTap() {
     if (!this.isRewardAdFeatureAvailable() || !this.rewardedVideoAd || this.data.adRewardButtonLoading) {
       return;
@@ -418,6 +498,12 @@ Page({
     wx.showToast({
       title: '功能准备中',
       icon: 'none',
+    });
+  },
+
+  openDevTestTools() {
+    wx.navigateTo({
+      url: '/pages/devTestTools/devTestTools',
     });
   },
 });

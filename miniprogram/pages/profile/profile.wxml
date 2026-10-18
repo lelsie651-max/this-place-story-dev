@@ -77,4 +77,15 @@
       </view>
     </view>
   </view>
+
+  <view wx:if="{{devTestToolsVisible}}" class="dev-tools-panel panel" bindtap="openDevTestTools">
+    <view class="dev-tools-main">
+      <view class="dev-tools-title-row">
+        <text class="dev-tools-title">开发测试工具</text>
+        <text class="dev-tools-badge">{{devTestToolsEnvVersion}}</text>
+      </view>
+      <view class="dev-tools-note">仅 develop / trial 管理员可用，用于调整真机测试状态。</view>
+    </view>
+    <view class="dev-tools-arrow">›</view>
+  </view>
 </view>

@@ -215,3 +215,50 @@
   color: #9d856d;
   font-size: 42rpx;
 }
+
+.dev-tools-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 28rpx;
+  padding-top: 28rpx;
+  padding-bottom: 28rpx;
+  background: linear-gradient(180deg, rgba(255, 248, 236, 0.98), rgba(245, 231, 208, 0.96));
+}
+
+.dev-tools-main {
+  flex: 1;
+}
+
+.dev-tools-title-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.dev-tools-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #4c3424;
+}
+
+.dev-tools-badge {
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(140, 94, 52, 0.12);
+  color: #8b5e34;
+  font-size: 20rpx;
+}
+
+.dev-tools-note {
+  margin-top: 10rpx;
+  color: #8a725c;
+  font-size: 22rpx;
+  line-height: 1.6;
+}
+
+.dev-tools-arrow {
+  margin-left: 20rpx;
+  color: #9d856d;
+  font-size: 42rpx;
+}

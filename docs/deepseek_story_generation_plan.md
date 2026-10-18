@@ -500,6 +500,18 @@ CloudBase 云函数平台超时要求：
 - `users`
 - `magnifying_glass_usage_daily`
 
+当前开发测试辅助：
+
+- 新增独立云函数 `devTestControls`，只用于 `develop / trial` 的管理员测试数据调整
+- 该工具可以修改：
+  - `users.magnifyingGlass`
+  - `magnifying_glass_usage_daily.totalCount`
+  - `magnifying_glass_usage_daily.locationTypeCounts`
+  - `magnifying_glass_usage_daily.recentRequestIds`
+  - `magnifying_glass_usage_daily.activeRequestId / activeLocationKey / activeStoryType / requestLockUntil`
+- 该工具不会改变 `consumeMagnifyingGlass` 的正式判断规则，只是帮助开发阶段快速恢复测试状态
+- `release` 环境必须隐藏入口，服务端默认应关闭 `ENABLE_DEV_TEST_TOOLS`
+
 当前错误码：
 
 - `MAGNIFYING_GLASS_EMPTY`
