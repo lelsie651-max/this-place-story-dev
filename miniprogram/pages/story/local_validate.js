@@ -133,8 +133,8 @@ async function testAiStoryViewData() {
   assert.strictEqual(storyViewData.currentStory.isAiGenerated, true);
   assert.strictEqual(storyViewData.currentStory.aiPost.displayName, '夜巡监控乙机');
   assert.strictEqual(storyViewData.currentStory.aiPost.role, '夜班巡逻与监控复核程序');
-  assert.strictEqual(storyViewData.currentStory.aiPost.complianceLabel, 'AI生成内容');
-  assert.strictEqual(storyViewData.currentStory.aiPost.complianceHelper, '本内容由人工智能生成，仅供娱乐与参考。');
+  assert.strictEqual(storyViewData.currentStory.aiPost.displayRole, '夜班巡逻与监控复核程序');
+  assert.strictEqual(storyViewData.currentStory.aiPost.complianceText, '本内容由人工智能生成，仅供娱乐与参考。');
   assert.strictEqual(storyViewData.currentStory.title, '《夜巡记录没有说出口的那一段》');
   assert.strictEqual(storyViewData.currentStory.content, '我先记下门口那次停顿。\n\n后面的折返才是重点。');
   assert.strictEqual(storyViewData.currentStory.aiPost.identityKey, undefined);
@@ -192,6 +192,32 @@ async function testMissingStoryMetaFallsBackSafely() {
   assert.strictEqual(storyViewData.currentStory.aiPost.avatarKey, 'default_observer');
 }
 
+async function testMuseumIdentityUsesLocationDisplayRole() {
+  mockServices();
+  const pageConfig = requireStoryPage();
+  const page = createPageInstance(pageConfig);
+  const storyViewData = await page.buildStoryViewData(createAiStory({
+    locationId: 'loc-museum-001',
+    locationName: '广州陈家祠',
+    storyMeta: {
+      identityKey: 'museum_docent_model',
+      displayName: '展陈讲解模型',
+      role: '讲解与展陈关系分析模型',
+      emotionalState: '冷静调查',
+      narrativeStance: '分享',
+      voiceStyle: '冷静调查型',
+      narrativeFormat: '分享笔记',
+    },
+  }));
+
+  assert.strictEqual(storyViewData.currentStory.locationName, '南头古城');
+  assert.strictEqual(
+    storyViewData.currentStory.aiPost.displayRole,
+    '一款关于「南头古城」的讲解与展陈关系分析 AI 模型'
+  );
+  assert.strictEqual(storyViewData.currentStory.aiPost.role, '讲解与展陈关系分析模型');
+}
+
 async function testLongDisplayNameAndRoleDoNotBreakViewModel() {
   mockServices();
   const pageConfig = requireStoryPage();
@@ -215,6 +241,35 @@ async function testLongDisplayNameAndRoleDoNotBreakViewModel() {
   assert.strictEqual(storyViewData.currentStory.aiPost.role, longRole);
   assert.ok(storyWxss.indexOf('min-width: 0;') !== -1);
   assert.ok(storyWxss.indexOf('word-break: break-word;') !== -1 || storyWxss.indexOf('word-break: break-all;') !== -1);
+}
+
+async function testMuseumIdentityDisplayRoleHasLengthProtection() {
+  mockServices();
+  const pageConfig = requireStoryPage();
+  const page = createPageInstance(pageConfig);
+  const storyViewData = await page.buildStoryViewData(createAiStory({
+    storyMeta: {
+      identityKey: 'museum_docent_model',
+      displayName: '展陈讲解模型',
+      role: '讲解与展陈关系分析模型',
+      emotionalState: '冷静调查',
+      narrativeStance: '分享',
+      voiceStyle: '冷静调查型',
+      narrativeFormat: '分享笔记',
+    },
+    locationName: '',
+    selectedPlace: {
+      name: '这是一个特别特别特别长的博物馆地点名称用于测试展示长度保护',
+    },
+    locationId: null,
+    isTemporary: true,
+    transientPlace: true,
+  }));
+
+  assert.strictEqual(
+    storyViewData.currentStory.aiPost.displayRole,
+    '一款关于「这是一个特别特别特别长的博物馆地...」的讲解与展陈关系分析 AI 模型'
+  );
 }
 
 async function testTemporaryAiStoryKeepsTransientFlags() {
@@ -274,7 +329,9 @@ async function run() {
     ['Preset story keeps original display', testPresetStoryKeepsOriginalDisplay],
     ['Traveler story keeps original display', testTravelerStoryKeepsOriginalDisplay],
     ['Missing storyMeta falls back safely', testMissingStoryMetaFallsBackSafely],
+    ['Museum identity uses location display role', testMuseumIdentityUsesLocationDisplayRole],
     ['Long display name and role stay safe', testLongDisplayNameAndRoleDoNotBreakViewModel],
+    ['Museum identity display role has length protection', testMuseumIdentityDisplayRoleHasLengthProtection],
     ['Temporary AI story keeps transient flags', testTemporaryAiStoryKeepsTransientFlags],
     ['Generated story load keeps storyMeta', testLoadGeneratedStoryKeepsStoryMeta],
     ['Home slogan and profile entry stay in place', testHomeSloganAndLayout],

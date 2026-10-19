@@ -20,6 +20,7 @@ const DEFAULT_AI_DISPLAY_NAME = 'AI观察者';
 const DEFAULT_AI_ROLE = '地点故事生成器';
 const DEFAULT_AI_PERSPECTIVE = '观察记录视角';
 const DEFAULT_AI_AVATAR_KEY = 'default_observer';
+const MAX_DISPLAY_LOCATION_NAME_LENGTH = 16;
 const AI_AVATAR_PRESETS = {
   access_control_system: {
     emoji: '🚪',
@@ -114,22 +115,63 @@ function buildAiPerspectiveLabel(storyMeta) {
   return narrativeFormat || narrativeStance || voiceStyle || DEFAULT_AI_PERSPECTIVE;
 }
 
-function buildAiPostViewData(story, typeLabel) {
+function truncateDisplayText(value, maxLength) {
+  const text = trimString(value);
+
+  if (!text || !Number.isFinite(maxLength) || maxLength <= 0 || text.length <= maxLength) {
+    return text;
+  }
+
+  return text.slice(0, maxLength) + '...';
+}
+
+function getStoryLocationName(story, location) {
+  const locationName = trimString(location && location.name);
+
+  if (locationName) {
+    return locationName;
+  }
+
+  return trimString(
+    story
+      && (
+        story.locationName
+        || (story.selectedPlace && story.selectedPlace.name)
+      )
+  );
+}
+
+function buildAiDisplayRole(story, storyMeta, locationName) {
+  const role = trimString(storyMeta && storyMeta.role) || DEFAULT_AI_ROLE;
+  const identityKey = trimString(storyMeta && storyMeta.identityKey);
+
+  if (identityKey !== 'museum_docent_model') {
+    return role;
+  }
+
+  const safeLocationName = truncateDisplayText(locationName, MAX_DISPLAY_LOCATION_NAME_LENGTH);
+
+  if (!safeLocationName) {
+    return role;
+  }
+
+  return '一款关于「' + safeLocationName + '」的讲解与展陈关系分析 AI 模型';
+}
+
+function buildAiPostViewData(story, typeLabel, locationName) {
   const storyMeta = normalizeStoryMeta(story);
   const avatarPreset = getAvatarPreset(storyMeta);
-  const emotionalState = trimString(storyMeta && storyMeta.emotionalState);
 
   return {
     displayName: trimString(storyMeta && storyMeta.displayName) || DEFAULT_AI_DISPLAY_NAME,
     role: trimString(storyMeta && storyMeta.role) || DEFAULT_AI_ROLE,
-    emotionalState: emotionalState,
+    displayRole: buildAiDisplayRole(story, storyMeta, locationName),
     perspectiveLabel: buildAiPerspectiveLabel(storyMeta),
     avatarEmoji: avatarPreset.config.emoji,
     avatarPaletteClass: avatarPreset.config.paletteClass,
     avatarKey: avatarPreset.key,
     modeBadge: typeLabel === '民间传说' ? '民间传说 · AI生成' : '',
-    complianceLabel: 'AI生成内容',
-    complianceHelper: '本内容由人工智能生成，仅供娱乐与参考。',
+    complianceText: '本内容由人工智能生成，仅供娱乐与参考。',
   };
 }
 
@@ -297,8 +339,13 @@ Page({
         transientPlace: isTemporary,
         storyMeta: normalizeStoryMeta(story),
         isAiGenerated: isAiGeneratedStory(story),
+        locationName: getStoryLocationName(story, location),
         aiPost: isAiGeneratedStory(story)
-          ? buildAiPostViewData(story, STORY_TYPE_LABELS[story.type] || story.type)
+          ? buildAiPostViewData(
+            story,
+            STORY_TYPE_LABELS[story.type] || story.type,
+            getStoryLocationName(story, location)
+          )
           : null,
       },
       contentParagraphs: (story.content || '').split('\n\n'),
