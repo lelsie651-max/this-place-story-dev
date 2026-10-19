@@ -25,6 +25,8 @@
 3. 命中已有地点时复用真实 `locations._id`
 4. 未命中时进入临时地点故事流程
 5. 最近 7 天内创建的地点显示 `NEW`
+6. 推荐地点卡片点击会异步记录一次真实 `viewCount`
+7. `viewCount > 1000` 时显示 `HOT`
 
 当前代码的真实来源：
 
@@ -33,7 +35,9 @@
 - 页面加载时读取最近已发布地点
 - 当前推荐地点的手动导入模板以 `docs/cloudbase_manual_seed/locations.sprint12.manual.*` 为准
 - 当前推荐地点里的民间传说预设模板以 `docs/cloudbase_manual_seed/stories.sprint12.manual.template.*` 为准
-- `HOT` 标签依赖未来地点点击统计能力，当前版本暂不显示
+- 推荐地点卡片点击通过独立云函数记录真实 `viewCount`
+- `HOT` 标签只在真实 `viewCount > 1000` 时显示
+- 临时微信地点不参与推荐地点 `HOT` 统计
 
 ### 2.2 当前实现的准确定位
 
@@ -427,7 +431,10 @@
 - 不创建新地点
 - 不改变现有 `locations._id`
 - 最近 7 天内创建的地点显示 `NEW`
-- `HOT` 依赖未来点击统计，当前版本不显示
+- 推荐地点卡片点击会异步记录一次 `viewCount`
+- `HOT` 依赖真实 `viewCount`，且只在 `viewCount > 1000` 时显示
+- 点击统计失败不会阻塞进入地点详情页
+- 当前版本不做用户去重和反作弊
 
 当前状态：
 

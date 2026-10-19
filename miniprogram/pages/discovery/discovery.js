@@ -92,18 +92,49 @@ function isNewLocation(createdAt, nowTimestamp) {
   return (currentTimestamp - createdAtTimestamp) <= NEW_LOCATION_WINDOW_MS;
 }
 
-function getLocationViewCount(location) {
-  const countCandidates = [location.viewCount, location.clickCount, location.visitCount];
+function normalizeViewCount(value) {
+  const numericValue = Number(value);
 
-  for (let index = 0; index < countCandidates.length; index += 1) {
-    const numericValue = Number(countCandidates[index]);
-
-    if (Number.isFinite(numericValue)) {
-      return numericValue;
-    }
+  if (!Number.isFinite(numericValue) || numericValue < 0) {
+    return 0;
   }
 
-  return null;
+  return Math.floor(numericValue);
+}
+
+function isRecordableLocationId(locationId) {
+  const normalizedLocationId = typeof locationId === 'string' ? locationId.trim() : '';
+  const lowerCaseLocationId = normalizedLocationId.toLowerCase();
+
+  if (!normalizedLocationId || lowerCaseLocationId === 'null') {
+    return false;
+  }
+
+  if (lowerCaseLocationId.indexOf('temporary:') === 0 || lowerCaseLocationId.indexOf('transient:') === 0) {
+    return false;
+  }
+
+  return true;
+}
+
+function recordLocationViewNonBlocking(locationId) {
+  if (
+    !isRecordableLocationId(locationId)
+    || typeof wx === 'undefined'
+    || !wx.cloud
+    || typeof wx.cloud.callFunction !== 'function'
+  ) {
+    return;
+  }
+
+  wx.cloud.callFunction({
+    name: 'recordLocationView',
+    data: {
+      locationId: locationId,
+    },
+  }).catch(function handleRecordLocationViewError(error) {
+    console.warn('[recordLocationView] failed', error);
+  });
 }
 
 function buildTransientLocationDetail(selectedPlace) {
@@ -158,7 +189,7 @@ Page({
       const locations = await locationService.getPublishedLocations();
       const nowTimestamp = Date.now();
       const mappedLocations = locations.map(function mapLocation(location) {
-        const viewCount = getLocationViewCount(location);
+        const viewCount = normalizeViewCount(location.viewCount);
 
         return {
           id: location.id,
@@ -177,7 +208,7 @@ Page({
           createdAt: location.createdAt || null,
           viewCount: viewCount,
           showNew: isNewLocation(location.createdAt, nowTimestamp),
-          showHot: Number.isFinite(viewCount) && viewCount > 1000,
+          showHot: viewCount > 1000,
         };
       });
 
@@ -205,6 +236,10 @@ Page({
 
     if (!locationId) {
       return;
+    }
+
+    if (isRecordableLocationId(locationId)) {
+      recordLocationViewNonBlocking(locationId);
     }
 
     wx.navigateTo({
@@ -283,3 +318,16 @@ Page({
     });
   },
 });
+
+if (typeof module !== 'undefined') {
+  module.exports._private = {
+    buildTransientLocationDetail: buildTransientLocationDetail,
+    formatLocationMeta: formatLocationMeta,
+    formatLocationText: formatLocationText,
+    isNewLocation: isNewLocation,
+    isRecordableLocationId: isRecordableLocationId,
+    normalizeViewCount: normalizeViewCount,
+    parseCreatedAtToTimestamp: parseCreatedAtToTimestamp,
+    recordLocationViewNonBlocking: recordLocationViewNonBlocking,
+  };
+}
