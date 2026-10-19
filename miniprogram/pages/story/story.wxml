@@ -16,12 +16,11 @@
             <view class="forum-author-row">
               <text class="forum-display-name">{{currentStory.aiPost.displayName}}</text>
               <text class="forum-dot">·</text>
-              <text class="forum-role">{{currentStory.aiPost.role}}</text>
+              <text class="forum-role">{{currentStory.aiPost.displayRole}}</text>
             </view>
             <view wx:if="{{currentStory.aiPost.modeBadge}}" class="forum-badge-row">
               <text class="forum-badge forum-badge-mode">{{currentStory.aiPost.modeBadge}}</text>
             </view>
-            <view class="forum-identity-description">{{currentStory.aiPost.displayRole}}</view>
           </view>
         </view>
 

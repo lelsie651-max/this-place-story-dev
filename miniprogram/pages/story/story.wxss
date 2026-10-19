@@ -136,13 +136,6 @@
   color: #8b5e34;
 }
 
-.forum-identity-description {
-  color: #8a725c;
-  font-size: 24rpx;
-  line-height: 1.6;
-  word-break: break-word;
-}
-
 .forum-title {
   margin-bottom: 14rpx;
   color: #412a1f;

@@ -322,6 +322,16 @@ function testHomeSloganAndLayout() {
   assert.ok(indexWxss.indexOf('.hero-slogan') !== -1);
 }
 
+function testStoryWxmlUsesSingleDisplayRoleRendering() {
+  const storyWxml = fs.readFileSync(path.join(__dirname, 'story.wxml'), 'utf8');
+
+  assert.ok(storyWxml.indexOf('<text class="forum-role">{{currentStory.aiPost.displayRole}}</text>') !== -1);
+  assert.ok(storyWxml.indexOf('forum-identity-description') === -1);
+
+  const displayRoleMatches = storyWxml.match(/currentStory\.aiPost\.displayRole/g) || [];
+  assert.strictEqual(displayRoleMatches.length, 1);
+}
+
 async function run() {
   const tests = [
     ['AI story shows forum profile', testAiStoryViewData],
@@ -335,6 +345,7 @@ async function run() {
     ['Temporary AI story keeps transient flags', testTemporaryAiStoryKeepsTransientFlags],
     ['Generated story load keeps storyMeta', testLoadGeneratedStoryKeepsStoryMeta],
     ['Home slogan and profile entry stay in place', testHomeSloganAndLayout],
+    ['Story WXML uses single displayRole rendering', testStoryWxmlUsesSingleDisplayRoleRendering],
   ];
 
   for (const [label, testFn] of tests) {
