@@ -147,11 +147,12 @@ async function testFolkFallbackAiViewData() {
   const pageConfig = requireStoryPage();
   const page = createPageInstance(pageConfig);
   const storyViewData = await page.buildStoryViewData(createAiStory({
-    type: '民间传说',
+    type: 'folk',
   }));
 
   assert.strictEqual(storyViewData.currentStory.isAiGenerated, true);
-  assert.strictEqual(storyViewData.currentStory.aiPost.modeBadge, '民间传说 · AI生成');
+  assert.strictEqual(storyViewData.currentStory.typeLabel, '民间传说');
+  assert.strictEqual(storyViewData.currentStory.aiPost.modeBadge, undefined);
 }
 
 async function testPresetStoryKeepsOriginalDisplay() {
@@ -325,8 +326,11 @@ function testHomeSloganAndLayout() {
 function testStoryWxmlUsesSingleDisplayRoleRendering() {
   const storyWxml = fs.readFileSync(path.join(__dirname, 'story.wxml'), 'utf8');
 
-  assert.ok(storyWxml.indexOf('<text class="forum-role">{{currentStory.aiPost.displayRole}}</text>') !== -1);
-  assert.ok(storyWxml.indexOf('forum-identity-description') === -1);
+  assert.ok(storyWxml.indexOf('<view class="forum-author-row">') !== -1);
+  assert.ok(storyWxml.indexOf('<text class="forum-display-name">{{currentStory.aiPost.displayName}}</text>') !== -1);
+  assert.ok(storyWxml.indexOf('<view class="forum-identity-description">{{currentStory.aiPost.displayRole}}</view>') !== -1);
+  assert.ok(storyWxml.indexOf('<text class="forum-role">{{currentStory.aiPost.displayRole}}</text>') === -1);
+  assert.ok(storyWxml.indexOf('currentStory.aiPost.modeBadge') === -1);
 
   const displayRoleMatches = storyWxml.match(/currentStory\.aiPost\.displayRole/g) || [];
   assert.strictEqual(displayRoleMatches.length, 1);

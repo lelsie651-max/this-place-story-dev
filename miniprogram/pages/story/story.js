@@ -170,7 +170,6 @@ function buildAiPostViewData(story, typeLabel, locationName) {
     avatarEmoji: avatarPreset.config.emoji,
     avatarPaletteClass: avatarPreset.config.paletteClass,
     avatarKey: avatarPreset.key,
-    modeBadge: typeLabel === '民间传说' ? '民间传说 · AI生成' : '',
     complianceText: '本内容由人工智能生成，仅供娱乐与参考。',
   };
 }

@@ -85,10 +85,6 @@
 }
 
 .forum-author-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 10rpx;
   margin-bottom: 10rpx;
 }
 
@@ -101,11 +97,6 @@
   word-break: break-all;
 }
 
-.forum-dot {
-  color: #8b5e34;
-  font-size: 26rpx;
-}
-
 .forum-role {
   flex: 1;
   min-width: 0;
@@ -115,25 +106,11 @@
   word-break: break-word;
 }
 
-.forum-badge-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-bottom: 10rpx;
-}
-
-.forum-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 6rpx 16rpx;
-  border-radius: 999rpx;
-  font-size: 22rpx;
-  line-height: 1.4;
-}
-
-.forum-badge-mode {
-  background: rgba(155, 105, 55, 0.12);
-  color: #8b5e34;
+.forum-identity-description {
+  color: #8a725c;
+  font-size: 24rpx;
+  line-height: 1.6;
+  word-break: break-word;
 }
 
 .forum-title {
