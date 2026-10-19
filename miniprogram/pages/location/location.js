@@ -29,6 +29,30 @@ const STORY_MODE_DISPLAY_TYPES = {
   ai_comment: 'AI说',
   traveler: '网友说',
 };
+const AI_REQUEST_HINTS = [
+  '正在给这座地点临时安排一位叙述者',
+  '正在召集一位对此地有意见的人工智能',
+  '正在翻阅这座地点可能根本不存在的记忆',
+  '正在询问一件物品对这里的看法',
+  '正在给这个地方安排今天的情绪',
+  '正在寻找一位愿意加班讲故事的叙述者',
+  '正在把地点线索交给一位不太靠谱的观察员',
+  '正在确认这里有没有发生过一点小小的离谱',
+  '正在让某个路过的灵体发表看法',
+  '正在给这段历史配一位性格复杂的讲述者',
+  '正在翻找这里被人类忽略的细节',
+  '正在请一位非人类证人回忆现场',
+  '正在核对这座地点今天适合严肃还是胡说',
+  '正在把普通地名交给一位有脾气的 AI',
+  '正在等待一位对此地颇有微词的观察者',
+  '正在整理一份可能不太客观的地点报告',
+  '正在寻找一条被风吹散的旁支传闻',
+  '正在问问这里的旧物还记不记得什么',
+  '正在给这座地点临时编排一个声音',
+  '正在把一段地点信息交给一位不太安分的讲述者',
+];
+const AI_REQUEST_NOTICE = '后续内容将由人工智能生成，仅供娱乐与参考';
+const AI_REQUEST_HINT_INTERVAL_MS = 5000;
 
 function formatCityText(location) {
   if (location.transientPlace && location.address) {
@@ -475,6 +499,23 @@ function getStoryDisplayTypeByModeKey(modeKey) {
   return STORY_MODE_DISPLAY_TYPES[modeKey] || 'AI说';
 }
 
+function pickRandomAiRequestHint(previousHint) {
+  if (!AI_REQUEST_HINTS.length) {
+    return '';
+  }
+
+  if (!previousHint || AI_REQUEST_HINTS.length === 1) {
+    return AI_REQUEST_HINTS[Math.floor(Math.random() * AI_REQUEST_HINTS.length)];
+  }
+
+  const candidateHints = AI_REQUEST_HINTS.filter(function filterHint(hint) {
+    return hint !== previousHint;
+  });
+  const nextHints = candidateHints.length > 0 ? candidateHints : AI_REQUEST_HINTS;
+
+  return nextHints[Math.floor(Math.random() * nextHints.length)];
+}
+
 Page({
   data: {
     locationDetail: null,
@@ -484,6 +525,7 @@ Page({
     remainingMagnifyingGlass: 0,
     requesting: false,
     requestingTypeLabel: '',
+    requestingHint: '',
   },
 
   onLoad(options) {
@@ -507,6 +549,14 @@ Page({
     this.loadMagnifyingGlassCount();
   },
 
+  onHide() {
+    this.stopAiRequestMask();
+  },
+
+  onUnload() {
+    this.stopAiRequestMask();
+  },
+
   goBack() {
     wx.navigateBack({
       delta: 1,
@@ -523,6 +573,48 @@ Page({
     } catch (error) {
       console.warn('Failed to load magnifyingGlass count:', error);
     }
+  },
+
+  clearRequestingHintTimer() {
+    if (this.requestingHintTimer) {
+      clearInterval(this.requestingHintTimer);
+      this.requestingHintTimer = null;
+    }
+  },
+
+  startAiRequestMask(storyTypeLabel) {
+    const nextHint = pickRandomAiRequestHint(this.data.requestingHint);
+
+    this.clearRequestingHintTimer();
+    this.setData({
+      requesting: true,
+      requestingTypeLabel: storyTypeLabel || '故事',
+      requestingHint: nextHint,
+    });
+
+    this.requestingHintTimer = setInterval(() => {
+      if (!this.data.requesting) {
+        return;
+      }
+
+      this.setData({
+        requestingHint: pickRandomAiRequestHint(this.data.requestingHint),
+      });
+    }, AI_REQUEST_HINT_INTERVAL_MS);
+  },
+
+  stopAiRequestMask() {
+    this.clearRequestingHintTimer();
+
+    if (!this.data.requesting && !this.data.requestingHint && !this.data.requestingTypeLabel) {
+      return;
+    }
+
+    this.setData({
+      requesting: false,
+      requestingTypeLabel: '',
+      requestingHint: '',
+    });
   },
 
   async loadLocationDetail(locationId) {
@@ -750,20 +842,17 @@ Page({
         didPrepare: usagePrepared,
       }));
 
-      this.setData({
-        requesting: true,
-        requestingTypeLabel: label || '故事',
-      });
-
       let story = null;
       const isTransientPlace = !!(
         this.data.locationDetail.transientPlace || this.data.locationDetail.isTemporary
       );
 
       if (type === 'ai_comment') {
+        this.startAiRequestMask(label || '故事');
         story = await this.generateAiStory(type, usagePayload.requestId);
       } else if (type === 'folk') {
         if (isTransientPlace) {
+          this.startAiRequestMask(label || '故事');
           story = await this.generateAiStory(type, usagePayload.requestId);
         } else {
           try {
@@ -775,6 +864,7 @@ Page({
               throw presetError;
             }
 
+            this.startAiRequestMask(label || '故事');
             story = await this.generateAiStory(type, usagePayload.requestId);
           }
         }
@@ -890,10 +980,7 @@ Page({
       });
     } finally {
       this.requestLock = false;
-      this.setData({
-        requesting: false,
-        requestingTypeLabel: '',
-      });
+      this.stopAiRequestMask();
     }
   },
 

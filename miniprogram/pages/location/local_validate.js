@@ -6,6 +6,8 @@ const storyService = require('../../services/storyService');
 let capturedPageConfig = null;
 let currentApp = null;
 let currentWx = null;
+const nativeSetInterval = global.setInterval;
+const nativeClearInterval = global.clearInterval;
 
 global.getApp = function getApp() {
   return currentApp;
@@ -117,6 +119,8 @@ function createHarness(config) {
     lastRequestId: '',
     lastGeneratePayload: null,
     navigationUrls: [],
+    intervalCallbacks: {},
+    nextIntervalId: 1,
   };
 
   currentApp = {
@@ -148,6 +152,44 @@ function createHarness(config) {
         counters.generate += 1;
         state.lastGeneratePayload = options.data;
 
+        function resolveGenerate() {
+          if (config.generateResult && config.generateResult.ok === false) {
+            options.success({
+              result: {
+                ok: false,
+                error: {
+                  code: config.generateResult.code,
+                  message: config.generateResult.message,
+                },
+              },
+            });
+            return;
+          }
+
+          options.success({
+            result: {
+              ok: true,
+              story: {
+                storyId: 'generated-demo-001',
+                locationId: config.expectedTemporary ? null : 'loc-demo-001',
+                type: config.generatedStoryType || 'AI说',
+                title: '测试标题',
+                content: '测试正文第一段。\n\n测试正文第二段。',
+                source: 'deepseek',
+                storyMeta: {
+                  identityKey: 'night_monitoring_program',
+                  displayName: '夜巡监控乙机',
+                  role: '夜班巡逻与监控复核程序',
+                  emotionalState: '冷静调查',
+                  narrativeStance: '调查',
+                  voiceStyle: '冷静调查型',
+                  narrativeFormat: '调查记录',
+                },
+              },
+            },
+          });
+        }
+
         if (config.cloudTransportFail) {
           options.fail({
             code: 'CALL_FAIL',
@@ -156,46 +198,40 @@ function createHarness(config) {
           return;
         }
 
-        if (config.generateResult && config.generateResult.ok === false) {
-          options.success({
-            result: {
-              ok: false,
-              error: {
-                code: config.generateResult.code,
-                message: config.generateResult.message,
-              },
-            },
-          });
+        if (config.holdGenerate) {
+          state.resolveGenerate = resolveGenerate;
           return;
         }
 
-        options.success({
-          result: {
-            ok: true,
-            story: {
-              storyId: 'generated-demo-001',
-              locationId: config.expectedTemporary ? null : 'loc-demo-001',
-              type: config.generatedStoryType || 'AI说',
-              title: '测试标题',
-              content: '测试正文第一段。\n\n测试正文第二段。',
-              source: 'deepseek',
-              storyMeta: {
-                identityKey: 'night_monitoring_program',
-                displayName: '夜巡监控乙机',
-                role: '夜班巡逻与监控复核程序',
-                emotionalState: '冷静调查',
-                narrativeStance: '调查',
-                voiceStyle: '冷静调查型',
-                narrativeFormat: '调查记录',
-              },
-            },
-          },
-        });
+        resolveGenerate();
       },
     },
   };
 
   global.wx = currentWx;
+  global.setInterval = function setIntervalMock(callback) {
+    const intervalId = state.nextIntervalId;
+    state.nextIntervalId += 1;
+    state.intervalCallbacks[intervalId] = callback;
+    return intervalId;
+  };
+  global.clearInterval = function clearIntervalMock(intervalId) {
+    delete state.intervalCallbacks[intervalId];
+  };
+
+  state.getActiveIntervalCount = function getActiveIntervalCount() {
+    return Object.keys(state.intervalCallbacks).length;
+  };
+  state.runLatestInterval = function runLatestInterval() {
+    const ids = Object.keys(state.intervalCallbacks);
+
+    if (!ids.length) {
+      throw new Error('No active interval callback to run.');
+    }
+
+    const latestId = Number(ids[ids.length - 1]);
+    state.intervalCallbacks[latestId]();
+  };
 
   userService.getCurrentUserProfile = async function getCurrentUserProfileMock() {
     counters.profile += 1;
@@ -287,13 +323,18 @@ async function runCase(label, config, execute) {
   const locationDetail = config.temporary ? createTemporaryLocationDetail() : createFormalLocationDetail();
   const page = createPageInstance(pageConfig, locationDetail);
 
-  await execute({
-    page: page,
-    counters: harness.counters,
-    state: harness.state,
-  });
+  try {
+    await execute({
+      page: page,
+      counters: harness.counters,
+      state: harness.state,
+    });
 
-  console.log('[PASS]', label);
+    console.log('[PASS]', label);
+  } finally {
+    global.setInterval = nativeSetInterval;
+    global.clearInterval = nativeClearInterval;
+  }
 }
 
 async function testAiSuccess() {
@@ -312,6 +353,31 @@ async function testAiSuccess() {
   });
 }
 
+async function testAiHintRotationLifecycle() {
+  await runCase('AI hint rotates and clears after request', {
+    generatedStoryType: 'AI说',
+    holdGenerate: true,
+  }, async function execute(ctx) {
+    const requestPromise = ctx.page.handleSelectStoryType(createEvent('ai_comment', '懦词怪说'));
+    await wait(0);
+
+    assert.strictEqual(ctx.page.data.requesting, true);
+    assert.ok(ctx.page.data.requestingHint);
+    assert.strictEqual(ctx.state.getActiveIntervalCount(), 1);
+
+    const firstHint = ctx.page.data.requestingHint;
+    ctx.state.runLatestInterval();
+    assert.notStrictEqual(ctx.page.data.requestingHint, firstHint);
+
+    ctx.state.resolveGenerate();
+    await requestPromise;
+
+    assert.strictEqual(ctx.page.data.requesting, false);
+    assert.strictEqual(ctx.page.data.requestingHint, '');
+    assert.strictEqual(ctx.state.getActiveIntervalCount(), 0);
+  });
+}
+
 async function testAiTimeout() {
   await runCase('AI timeout releases without consume', {
     generateResult: {
@@ -325,6 +391,30 @@ async function testAiTimeout() {
     assert.strictEqual(ctx.counters.consume, 0);
     assert.strictEqual(ctx.counters.release, 1);
     assert.strictEqual(ctx.state.magnifyingGlass, 5);
+  });
+}
+
+async function testAiFailureClearsHintTimer() {
+  await runCase('AI failure clears hint timer', {
+    holdGenerate: true,
+    generateResult: {
+      ok: false,
+      code: 'PROVIDER_ERROR',
+      message: 'AI故事暂时生成失败，请稍后再试',
+    },
+  }, async function execute(ctx) {
+    const requestPromise = ctx.page.handleSelectStoryType(createEvent('ai_comment', '懦词怪说'));
+    await wait(0);
+
+    assert.strictEqual(ctx.page.data.requesting, true);
+    assert.strictEqual(ctx.state.getActiveIntervalCount(), 1);
+
+    ctx.state.resolveGenerate();
+    await requestPromise;
+
+    assert.strictEqual(ctx.page.data.requesting, false);
+    assert.strictEqual(ctx.page.data.requestingHint, '');
+    assert.strictEqual(ctx.state.getActiveIntervalCount(), 0);
   });
 }
 
@@ -381,6 +471,9 @@ async function testPresetStoryHit() {
     assert.strictEqual(ctx.counters.consume, 1);
     assert.strictEqual(ctx.counters.release, 0);
     assert.strictEqual(ctx.state.magnifyingGlass, 4);
+    assert.strictEqual(ctx.page.data.requesting, false);
+    assert.strictEqual(ctx.page.data.requestingHint, '');
+    assert.strictEqual(ctx.state.getActiveIntervalCount(), 0);
   });
 }
 
@@ -418,10 +511,19 @@ async function testFolkFallbackSuccess() {
   await runCase('Folk AI fallback success consumes once', {
     presetMode: 'miss',
     generatedStoryType: '民间传说',
+    holdGenerate: true,
   }, async function execute(ctx) {
-    await ctx.page.handleSelectStoryType(createEvent('folk', '民间传说'));
+    const requestPromise = ctx.page.handleSelectStoryType(createEvent('folk', '民间传说'));
+    await wait(0);
 
     assert.strictEqual(ctx.counters.preset, 1);
+    assert.strictEqual(ctx.page.data.requesting, true);
+    assert.ok(ctx.page.data.requestingHint);
+    assert.strictEqual(ctx.state.getActiveIntervalCount(), 1);
+
+    ctx.state.resolveGenerate();
+    await requestPromise;
+
     assert.strictEqual(ctx.counters.generate, 1);
     assert.strictEqual(ctx.counters.consume, 1);
     assert.strictEqual(ctx.counters.release, 0);
@@ -461,6 +563,17 @@ async function testTemporaryAiSuccess() {
   });
 }
 
+async function testTravelerSkipsAiMask() {
+  await runCase('Traveler mode skips AI mask and generateStory', {}, async function execute(ctx) {
+    await ctx.page.handleSelectStoryType(createEvent('traveler', '街谈巷说'));
+
+    assert.strictEqual(ctx.counters.generate, 0);
+    assert.strictEqual(ctx.page.data.requesting, false);
+    assert.strictEqual(ctx.page.data.requestingHint, '');
+    assert.strictEqual(ctx.state.getActiveIntervalCount(), 0);
+  });
+}
+
 async function testTemporaryAiFailure() {
   await runCase('Temporary AI failure does not consume', {
     temporary: true,
@@ -495,7 +608,9 @@ async function testNavigateFailure() {
 async function run() {
   const tests = [
     testAiSuccess,
+    testAiHintRotationLifecycle,
     testAiTimeout,
+    testAiFailureClearsHintTimer,
     testAiInvalidJson,
     testAiEmptyResponse,
     testCloudFunctionCallFail,
@@ -506,6 +621,7 @@ async function run() {
     testFolkFallbackFailure,
     testTemporaryAiSuccess,
     testTemporaryAiFailure,
+    testTravelerSkipsAiMask,
     testNavigateFailure,
   ];
 

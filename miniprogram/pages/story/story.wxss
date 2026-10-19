@@ -203,13 +203,24 @@
 
 .forum-compliance {
   display: inline-flex;
-  align-items: center;
-  padding: 10rpx 18rpx;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6rpx;
+  padding: 12rpx 18rpx;
   border-radius: 18rpx;
   background: rgba(255, 247, 235, 0.96);
   color: #6b4527;
+}
+
+.forum-compliance-title {
   font-size: 24rpx;
   font-weight: 600;
+}
+
+.forum-compliance-helper {
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #8a725c;
 }
 
 .avatar-preset-access {

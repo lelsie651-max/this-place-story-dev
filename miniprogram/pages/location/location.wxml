@@ -65,10 +65,8 @@
         <view class="magnifier-handle"></view>
         <view class="light-beam"></view>
       </view>
-      <view class="search-title">正在寻找{{requestingTypeLabel}}</view>
-      <view class="search-text">
-        正沿着地点线索整理一篇可阅读的故事，请稍等片刻。
-      </view>
+      <view class="search-title">{{requestingHint}}</view>
+      <view class="search-text">后续内容将由人工智能生成，仅供娱乐与参考</view>
     </view>
   </view>
 </view>

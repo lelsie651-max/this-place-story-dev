@@ -129,6 +129,7 @@ function buildAiPostViewData(story, typeLabel) {
     avatarKey: avatarPreset.key,
     modeBadge: typeLabel === '民间传说' ? '民间传说 · AI生成' : '',
     complianceLabel: 'AI生成内容',
+    complianceHelper: '本内容由人工智能生成，仅供娱乐与参考。',
   };
 }
 
@@ -193,20 +194,8 @@ function getStorySourceLabel(story) {
 }
 
 function getStoryNote(story) {
-  if (story && story.generated && (story.isTemporary || story.transientPlace)) {
-    return '当前展示为本次选点生成的临时故事，仅供阅读参考，暂不支持收藏。';
-  }
-
-  if (story && story.generated) {
-    return '当前展示为 AI 生成内容，仅供阅读参考，暂不支持收藏。';
-  }
-
-  if (story && story.source === 'deepseek') {
-    return '当前展示为 AI 生成内容，仅供阅读参考。';
-  }
-
-  if (isAiStoryType(story)) {
-    return '当前展示为 AI 说内容，仅供阅读参考。';
+  if (isAiGeneratedStory(story)) {
+    return '';
   }
 
   return '当前展示为已收录故事内容，仅供阅读参考。';

@@ -42,7 +42,10 @@
             <text class="forum-footer-tag">{{currentStory.sourceLabel}}</text>
             <text wx:if="{{currentStory.transientPlace}}" class="forum-footer-tag forum-footer-tag-temporary">本次选点临时故事</text>
           </view>
-          <view class="forum-compliance">{{currentStory.aiPost.complianceLabel}}</view>
+          <view class="forum-compliance">
+            <text class="forum-compliance-title">{{currentStory.aiPost.complianceLabel}}</text>
+            <text class="forum-compliance-helper">{{currentStory.aiPost.complianceHelper}}</text>
+          </view>
         </view>
       </view>
     </block>
@@ -84,7 +87,7 @@
       <button class="action-button secondary" bindtap="backToHome">返回</button>
     </view>
 
-    <view class="page-note">{{currentStory.note}}</view>
+    <view wx:if="{{currentStory.note}}" class="page-note">{{currentStory.note}}</view>
   </block>
 
   <view wx:else class="story-card panel error-card">

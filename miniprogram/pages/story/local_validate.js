@@ -134,10 +134,12 @@ async function testAiStoryViewData() {
   assert.strictEqual(storyViewData.currentStory.aiPost.displayName, '夜巡监控乙机');
   assert.strictEqual(storyViewData.currentStory.aiPost.role, '夜班巡逻与监控复核程序');
   assert.strictEqual(storyViewData.currentStory.aiPost.complianceLabel, 'AI生成内容');
+  assert.strictEqual(storyViewData.currentStory.aiPost.complianceHelper, '本内容由人工智能生成，仅供娱乐与参考。');
   assert.strictEqual(storyViewData.currentStory.title, '《夜巡记录没有说出口的那一段》');
   assert.strictEqual(storyViewData.currentStory.content, '我先记下门口那次停顿。\n\n后面的折返才是重点。');
   assert.strictEqual(storyViewData.currentStory.aiPost.identityKey, undefined);
   assert.strictEqual(storyViewData.currentStory.aiPost.voiceStyleKey, undefined);
+  assert.strictEqual(storyViewData.currentStory.note, '');
 }
 
 async function testFolkFallbackAiViewData() {
@@ -161,6 +163,7 @@ async function testPresetStoryKeepsOriginalDisplay() {
   assert.strictEqual(storyViewData.currentStory.isAiGenerated, false);
   assert.strictEqual(storyViewData.currentStory.aiPost, null);
   assert.strictEqual(storyViewData.currentStory.sourceLabel, '预设库');
+  assert.notStrictEqual(storyViewData.currentStory.note, '');
 }
 
 async function testTravelerStoryKeepsOriginalDisplay() {
@@ -172,6 +175,7 @@ async function testTravelerStoryKeepsOriginalDisplay() {
   assert.strictEqual(storyViewData.currentStory.isAiGenerated, false);
   assert.strictEqual(storyViewData.currentStory.aiPost, null);
   assert.strictEqual(storyViewData.currentStory.sourceLabel, '网友投稿');
+  assert.notStrictEqual(storyViewData.currentStory.note, '');
 }
 
 async function testMissingStoryMetaFallsBackSafely() {
