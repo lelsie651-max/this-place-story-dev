@@ -11,16 +11,7 @@
     </view>
 
     <view class="primary-entry panel">
-      <view class="sticker sticker-tape"></view>
-      <view class="sticker sticker-corner">✦</view>
-      <view class="travel-route">
-        <view class="route-dot route-dot-start"></view>
-        <view class="route-line"></view>
-        <view class="route-dot route-dot-end"></view>
-      </view>
       <view class="entry-icon">🔍</view>
-      <view class="entry-badge">旅行手账</view>
-      <view class="entry-compass">🧭</view>
       <view class="actions">
         <button class="action-button" bindtap="goToExplore">寻找传说</button>
         <button class="action-button secondary" bindtap="goToPublish">分享传说</button>
