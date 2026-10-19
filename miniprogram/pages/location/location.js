@@ -11,15 +11,15 @@ const STORY_TYPES = [
   },
   {
     key: 'ai_comment',
-    title: 'AI说',
-    description: '让AI成为这里的观察者，用另一种视角讲述地点。',
+    title: '懦词怪说',
+    description: '听听物件、灵体和其他非人之物怎么讲这里。',
     enabled: true,
     featured: true,
   },
   {
     key: 'traveler',
-    title: '网友说',
-    description: '看看其他旅人的真实分享。',
+    title: '街谈巷说',
+    description: '看看来过这里的人，留下了什么说法。',
     enabled: true,
   },
 ];
