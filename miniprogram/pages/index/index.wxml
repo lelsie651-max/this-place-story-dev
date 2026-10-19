@@ -3,25 +3,30 @@
     <view class="avatar-circle">旅</view>
   </view>
 
-  <view class="hero">
-    <view class="section-label">THIS PLACE HAS LEGENDS</view>
-    <view class="hero-title">此地有传说</view>
-    <view class="hero-subtitle">一个会讲故事的AI地图</view>
-    <view class="hero-slogan">让地点拥有不同的声音</view>
-    <view class="hero-copy">
-      每一个地点都可能藏着另一种讲法。你只需要从这里出发，去听听世界怎么开口。
+  <view class="home-main">
+    <view class="hero">
+      <view class="hero-title">此地有传说</view>
+      <view class="section-label hero-english">THIS PLACE HAS LEGENDS</view>
+      <view class="hero-slogan">让地点拥有不同的声音</view>
+    </view>
+
+    <view class="primary-entry panel">
+      <view class="sticker sticker-tape"></view>
+      <view class="sticker sticker-corner">✦</view>
+      <view class="travel-route">
+        <view class="route-dot route-dot-start"></view>
+        <view class="route-line"></view>
+        <view class="route-dot route-dot-end"></view>
+      </view>
+      <view class="entry-icon">🔍</view>
+      <view class="entry-badge">旅行手账</view>
+      <view class="entry-compass">🧭</view>
+      <view class="actions">
+        <button class="action-button" bindtap="goToExplore">寻找传说</button>
+        <button class="action-button secondary" bindtap="goToPublish">分享传说</button>
+      </view>
     </view>
   </view>
 
-  <view class="primary-entry panel">
-    <view class="entry-icon">🔍</view>
-    <view class="panel-title">寻找传说</view>
-    <view class="panel-text">
-      从不同视角进入地点故事，先看看民间传说和 AI 观察会怎样描述这里。
-    </view>
-    <view class="actions">
-      <button class="action-button" bindtap="goToExplore">寻找传说</button>
-      <button class="action-button secondary" bindtap="goToPublish">分享传说</button>
-    </view>
-  </view>
+  <view class="company-footer">深圳市筠竹科技有限公司</view>
 </view>
