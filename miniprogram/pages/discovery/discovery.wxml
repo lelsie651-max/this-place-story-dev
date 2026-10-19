@@ -1,33 +1,21 @@
 <view class="page">
-  <view class="section-label">LOCATION DISCOVERY</view>
-  <view class="page-title">选择地点</view>
-  <view class="page-subtitle">
-    先看看最近公开的地点线索。选中一个地点后，再决定你想听哪一种故事。
+  <view class="hero">
+    <view class="hero-title">选择地点</view>
+    <view class="section-label hero-english">LOCATION DISCOVERY</view>
   </view>
 
-  <view class="search-panel panel">
-    <view class="search-box">
-      <input
-        class="search-input"
-        type="text"
-        value="{{searchKeyword}}"
-        placeholder="搜索地点"
-        confirm-type="search"
-        bindinput="handleSearchInput"
-      />
-      <view wx:if="{{searchKeyword}}" class="clear-button" bindtap="clearSearchKeyword">清除</view>
-    </view>
-    <view class="search-hint">仅在当前已加载的地点中筛选，不会发起新的地图或地点搜索。</view>
+  <view class="location-entry panel">
     <button class="choose-location-button" bindtap="handleChooseLocation" loading="{{chooseLocationLoading}}">
-      在地图中选择地点
+      选择你的位置
     </button>
-    <view class="search-hint">也可以直接打开微信地图选点。命中已有地点时复用正式地点，未命中时按本次临时地点处理。</view>
   </view>
+
+  <view class="location-section-title">看看其他有意思的地方！</view>
 
   <block wx:if="{{loading}}">
     <view class="mode-card panel">
       <view class="panel-title">正在寻找地点</view>
-      <view class="panel-text">正在从云端读取已发布地点，请稍等片刻。</view>
+      <view class="panel-text">正在从云端读取推荐地点，请稍等片刻。</view>
     </view>
   </block>
 
@@ -35,13 +23,6 @@
     <view class="mode-card panel empty-card">
       <view class="panel-title">地点暂时不可用</view>
       <view class="panel-text">{{errorMessage}}</view>
-    </view>
-  </block>
-
-  <block wx:elif="{{searchKeyword && filteredLocations.length === 0}}">
-    <view class="mode-card panel empty-card">
-      <view class="panel-title">没有找到相关地点</view>
-      <view class="panel-text">可以换一个关键词，试试地点名称、城市或地点简介中的词。</view>
     </view>
   </block>
 
@@ -63,7 +44,10 @@
       <view class="mode-top">
         <view class="mode-title-wrap">
           <view class="panel-title">{{item.title}}</view>
-          <view class="tag">已发布</view>
+          <view wx:if="{{item.showNew || item.showHot}}" class="location-badges">
+            <view wx:if="{{item.showNew}}" class="location-badge-new">NEW</view>
+            <view wx:if="{{item.showHot}}" class="location-badge-hot">HOT</view>
+          </view>
         </view>
       </view>
 
@@ -72,7 +56,7 @@
       </view>
 
       <view class="mode-footer">
-        <text class="mode-entry">进入地点选择故事</text>
+        <text class="mode-entry">点击查看</text>
       </view>
     </view>
   </block>

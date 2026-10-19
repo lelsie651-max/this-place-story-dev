@@ -1,8 +1,6 @@
 const locationService = require('../../services/locationService');
 
-function normalizeSearchKeyword(value) {
-  return String(value || '').trim().toLowerCase();
-}
+const NEW_LOCATION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 function formatLocationText(location) {
   const parts = [location.province, location.city, location.name].filter(Boolean);
@@ -34,17 +32,78 @@ function formatLocationMeta(location) {
   return '等待补充地点说明';
 }
 
-function buildSearchFields(location) {
-  return [
-    location.name,
-    location.city,
-    location.province,
-    location.country,
-    location.intro,
-    location.description,
-    location.level,
-    location.tags && location.tags.length > 0 ? location.tags.join(' ') : '',
-  ].filter(Boolean);
+function parseCreatedAtToTimestamp(createdAt) {
+  if (!createdAt) {
+    return null;
+  }
+
+  if (createdAt instanceof Date) {
+    const timestamp = createdAt.getTime();
+    return Number.isFinite(timestamp) ? timestamp : null;
+  }
+
+  if (typeof createdAt === 'number') {
+    return Number.isFinite(createdAt) ? createdAt : null;
+  }
+
+  if (typeof createdAt === 'string') {
+    const parsedTimestamp = Date.parse(createdAt);
+    return Number.isFinite(parsedTimestamp) ? parsedTimestamp : null;
+  }
+
+  if (typeof createdAt.toDate === 'function') {
+    const dateValue = createdAt.toDate();
+    if (dateValue instanceof Date) {
+      const timestamp = dateValue.getTime();
+      return Number.isFinite(timestamp) ? timestamp : null;
+    }
+  }
+
+  const seconds = Number(createdAt.seconds);
+  const nanoseconds = Number(createdAt.nanoseconds);
+  if (Number.isFinite(seconds)) {
+    const normalizedNanoseconds = Number.isFinite(nanoseconds) ? nanoseconds : 0;
+    return (seconds * 1000) + Math.floor(normalizedNanoseconds / 1000000);
+  }
+
+  const legacySeconds = Number(createdAt._seconds);
+  const legacyNanoseconds = Number(createdAt._nanoseconds);
+  if (Number.isFinite(legacySeconds)) {
+    const normalizedLegacyNanoseconds = Number.isFinite(legacyNanoseconds) ? legacyNanoseconds : 0;
+    return (legacySeconds * 1000) + Math.floor(normalizedLegacyNanoseconds / 1000000);
+  }
+
+  return null;
+}
+
+function isNewLocation(createdAt, nowTimestamp) {
+  const createdAtTimestamp = parseCreatedAtToTimestamp(createdAt);
+
+  if (!Number.isFinite(createdAtTimestamp)) {
+    return false;
+  }
+
+  const currentTimestamp = Number.isFinite(nowTimestamp) ? nowTimestamp : Date.now();
+
+  if (!Number.isFinite(currentTimestamp) || createdAtTimestamp > currentTimestamp) {
+    return false;
+  }
+
+  return (currentTimestamp - createdAtTimestamp) <= NEW_LOCATION_WINDOW_MS;
+}
+
+function getLocationViewCount(location) {
+  const countCandidates = [location.viewCount, location.clickCount, location.visitCount];
+
+  for (let index = 0; index < countCandidates.length; index += 1) {
+    const numericValue = Number(countCandidates[index]);
+
+    if (Number.isFinite(numericValue)) {
+      return numericValue;
+    }
+  }
+
+  return null;
 }
 
 function buildTransientLocationDetail(selectedPlace) {
@@ -76,7 +135,6 @@ Page({
   data: {
     allLocations: [],
     filteredLocations: [],
-    searchKeyword: '',
     loading: true,
     emptyState: false,
     emptyMessage: '暂时没有发现新的地点',
@@ -98,7 +156,10 @@ Page({
 
     try {
       const locations = await locationService.getPublishedLocations();
+      const nowTimestamp = Date.now();
       const mappedLocations = locations.map(function mapLocation(location) {
+        const viewCount = getLocationViewCount(location);
+
         return {
           id: location.id,
           title: formatLocationText(location),
@@ -113,7 +174,10 @@ Page({
           tags: location.tags || [],
           latitude: location.latitude,
           longitude: location.longitude,
-          searchFields: buildSearchFields(location),
+          createdAt: location.createdAt || null,
+          viewCount: viewCount,
+          showNew: isNewLocation(location.createdAt, nowTimestamp),
+          showHot: Number.isFinite(viewCount) && viewCount > 1000,
         };
       });
 
@@ -134,38 +198,6 @@ Page({
         errorMessage: error.message || '地点加载失败，请稍后再试。',
       });
     }
-  },
-
-  handleSearchInput(event) {
-    const rawValue = event && event.detail ? event.detail.value : '';
-    const searchKeyword = String(rawValue || '').trim();
-    const normalizedKeyword = normalizeSearchKeyword(rawValue);
-    const allLocations = this.data.allLocations || [];
-    const filteredLocations = !normalizedKeyword
-      ? allLocations.slice()
-      : allLocations.filter(function matchLocation(location) {
-          return (location.searchFields || []).some(function matchField(fieldValue) {
-            return normalizeSearchKeyword(fieldValue).indexOf(normalizedKeyword) !== -1;
-          });
-        });
-
-    this.setData({
-      searchKeyword: searchKeyword,
-      filteredLocations: filteredLocations,
-      emptyState: !this.data.loading && !this.data.errorMessage && allLocations.length === 0,
-      emptyMessage: normalizedKeyword ? '没有找到相关地点' : '暂时没有发现新的地点',
-    });
-  },
-
-  clearSearchKeyword() {
-    const allLocations = this.data.allLocations || [];
-
-    this.setData({
-      searchKeyword: '',
-      filteredLocations: allLocations.slice(),
-      emptyState: !this.data.loading && !this.data.errorMessage && allLocations.length === 0,
-      emptyMessage: '暂时没有发现新的地点',
-    });
   },
 
   goToLocation(event) {

@@ -115,6 +115,9 @@ function normalizeLocation(doc) {
     description: doc.description || doc.introduction || doc.summary || '',
     status: doc.status,
     createdAt: doc.createdAt,
+    viewCount: doc.viewCount,
+    clickCount: doc.clickCount,
+    visitCount: doc.visitCount,
   };
 }
 
