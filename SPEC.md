@@ -342,8 +342,9 @@
 - 在 `develop / trial` 环境显示“开发测试工具”入口，具体操作需在页面内输入开发测试口令
 - 当前支持展示：
   - `pending` -> 审核中
-  - `published` -> 已发布
+  - `published` -> 已通过
   - `rejected` -> 未通过
+  - `hidden` -> 已隐藏
 
 #### 当前广告奖励约束
 
@@ -655,8 +656,39 @@
   - `isTemporary = true`
   - `placeSnapshot`
 - 个人中心“我的投稿”通过 `getMyStories` 云函数读取当前用户自己的投稿
-- “我的投稿”展示 `pending / published / rejected`
+- “我的投稿”展示 `pending / published / rejected / hidden`
+- 当投稿 `status = rejected` 时：
+  - 优先展示 `rejectionReason`
+  - 未提供时显示“暂未提供具体原因”
 - 公共网友故事页只展示 `published`
+- 普通 `storyId` 详情链路只允许打开 `status = published` 的故事
+
+### 7.9 第一阶段网友投稿人工审核
+
+第一阶段不开发管理员小程序页面，当前冻结为 CloudBase 控制台手动审核：
+
+1. 打开 CloudBase 数据库中的 `stories` 集合
+2. 按以下条件筛选待审投稿：
+   - `source = user`
+   - `status = pending`
+3. 审核通过时，手动修改：
+   - `status = published`
+4. 审核拒绝时，手动修改：
+   - `status = rejected`
+   - `rejectionReason = '具体原因'`
+5. 需要下架已发布内容时，手动修改：
+   - `status = hidden`
+6. 管理员当前允许补充以下字段：
+   - `reviewedAt`
+   - `reviewerId`
+   - `updatedAt`
+
+当前工程约束：
+
+- 不覆盖用户原始标题和正文
+- 不新增审核日志集合
+- 不增加小程序管理员页面
+- `pending / rejected / hidden` 不进入公共网友故事页
 
 ---
 

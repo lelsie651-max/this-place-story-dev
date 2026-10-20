@@ -2,6 +2,13 @@ const favoriteService = require('../../services/favoriteService');
 const locationService = require('../../services/locationService');
 const storyService = require('../../services/storyService');
 
+function isUnavailableStoryError(error) {
+  const code = error && error.code ? String(error.code) : '';
+  const message = error && error.message ? String(error.message) : '';
+
+  return code === 'CONTENT_NOT_AVAILABLE' || message.indexOf('该内容暂不可查看') !== -1;
+}
+
 function formatLocationText(location) {
   if (!location) {
     return '地点信息暂不可用';
@@ -33,10 +40,21 @@ Page({
 
     try {
       const favorites = await favoriteService.getFavorites(favoriteService.TEST_USER_ID);
-      const favoriteItems = await Promise.all(
+      const favoriteItems = (await Promise.all(
         favorites.map(async function buildFavoriteItem(favorite) {
           const storyId = favorite.storyId || favorite.id;
-          const story = await storyService.getStoryById(storyId);
+          let story = null;
+
+          try {
+            story = await storyService.getStoryById(storyId);
+          } catch (error) {
+            if (isUnavailableStoryError(error)) {
+              return null;
+            }
+
+            throw error;
+          }
+
           let location = null;
 
           try {
@@ -52,7 +70,7 @@ Page({
             location: formatLocationText(location),
           };
         })
-      );
+      )).filter(Boolean);
 
       this.setData({
         favoriteItems: favoriteItems,

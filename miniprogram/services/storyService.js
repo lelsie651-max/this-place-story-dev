@@ -13,6 +13,8 @@ const AI_SOURCE_VALUES = {
 const USER_SOURCE_VALUES = {
   user: true,
 };
+const CONTENT_NOT_AVAILABLE_CODE = 'CONTENT_NOT_AVAILABLE';
+const CONTENT_NOT_AVAILABLE_MESSAGE = '该内容暂不可查看。';
 
 function normalizeStorySource(doc) {
   if (!doc || typeof doc !== 'object') {
@@ -79,6 +81,10 @@ function createServiceError(code, message) {
   return error;
 }
 
+function createContentNotAvailableError() {
+  return createServiceError(CONTENT_NOT_AVAILABLE_CODE, CONTENT_NOT_AVAILABLE_MESSAGE);
+}
+
 function normalizePlaceSnapshot(snapshot) {
   if (!snapshot || typeof snapshot !== 'object') {
     return null;
@@ -133,6 +139,14 @@ function isUserStory(doc) {
   }
 
   return normalizeStorySource(doc) === 'user';
+}
+
+function isPublishedStory(doc) {
+  return trimString(doc && doc.status) === 'published';
+}
+
+function normalizeRejectionReason(value) {
+  return trimString(value);
 }
 
 async function listStories() {
@@ -195,13 +209,29 @@ async function getStoryById(storyId) {
   try {
     const result = await db.collection(getCollections().stories).doc(storyId).get();
 
-    if (!result.data) {
-      throw new Error('Story "' + storyId + '" does not exist.');
+    if (!result.data || !isPublishedStory(result.data)) {
+      throw createContentNotAvailableError();
     }
 
     return normalizeStory(result.data);
   } catch (error) {
-    throw new Error('Failed to load story by id from CloudBase: ' + error.message);
+    if (error && error.code === CONTENT_NOT_AVAILABLE_CODE) {
+      throw error;
+    }
+
+    const rawMessage = error && error.message ? String(error.message) : '';
+
+    if (
+      rawMessage.indexOf('does not exist') !== -1
+      || rawMessage.indexOf('non-existent') !== -1
+      || rawMessage.indexOf('document.get:fail') !== -1
+      || rawMessage.indexOf('not exist') !== -1
+      || rawMessage.indexOf('not found') !== -1
+    ) {
+      throw createContentNotAvailableError();
+    }
+
+    throw createServiceError('INTERNAL_ERROR', '故事加载失败，请稍后再试。');
   }
 }
 
@@ -302,12 +332,14 @@ async function getRandomUserStoryByLocation(locationId) {
       .collection(getCollections().stories)
       .where({
         locationId: normalizedLocationId,
+        type: 'traveler',
+        source: 'user',
         status: 'published',
       })
       .orderBy('createdAt', 'desc')
       .get();
 
-    const userStories = (result.data || []).filter(isUserStory);
+    const userStories = result.data || [];
 
     if (userStories.length === 0) {
       throw new Error('这里暂时还没有网友投稿。');
@@ -332,14 +364,14 @@ async function listPublishedUserStoriesByLocation(locationId) {
       .collection(getCollections().stories)
       .where({
         locationId: normalizedLocationId,
+        type: 'traveler',
+        source: 'user',
         status: 'published',
       })
       .orderBy('createdAt', 'desc')
       .get();
 
-    return (result.data || [])
-      .filter(isUserStory)
-      .map(normalizeStory);
+    return (result.data || []).map(normalizeStory);
   } catch (error) {
     throw new Error('Failed to load user stories by location from CloudBase: ' + error.message);
   }
@@ -424,11 +456,15 @@ async function submitTravelerStory(payload) {
 
 function normalizeMyStoryStatus(status) {
   if (status === 'published') {
-    return '已发布';
+    return '已通过';
   }
 
   if (status === 'rejected') {
     return '未通过';
+  }
+
+  if (status === 'hidden') {
+    return '已隐藏';
   }
 
   return '审核中';
@@ -472,6 +508,7 @@ async function getMyStories() {
         content: story.content || '',
         status: story.status || 'pending',
         statusLabel: story.statusLabel || normalizeMyStoryStatus(story.status),
+        rejectionReason: normalizeRejectionReason(story.rejectionReason),
         locationName: story.locationName || '',
         createdAt: story.createdAt,
       };

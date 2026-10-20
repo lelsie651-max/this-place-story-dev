@@ -243,7 +243,12 @@ function getStoryNote(story) {
 }
 
 function getUserFacingStoryErrorMessage(error, fallbackMessage) {
+  const code = error && error.code ? String(error.code) : '';
   const rawMessage = error && error.message ? String(error.message) : '';
+
+  if (code === 'CONTENT_NOT_AVAILABLE') {
+    return '该内容暂不可查看。';
+  }
 
   if (!rawMessage) {
     return fallbackMessage;
@@ -262,6 +267,10 @@ function getUserFacingStoryErrorMessage(error, fallbackMessage) {
 
   if (rawMessage.indexOf('does not exist') !== -1) {
     return '这篇故事暂时不可用。';
+  }
+
+  if (rawMessage.indexOf('该内容暂不可查看') !== -1) {
+    return '该内容暂不可查看。';
   }
 
   if (

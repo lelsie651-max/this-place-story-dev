@@ -40,6 +40,9 @@
       </view>
       <view wx:if="{{item.locationName}}" class="story-location">{{item.locationName}}</view>
       <view class="story-content">{{item.content}}</view>
+      <view wx:if="{{item.status === 'rejected'}}" class="story-reason">
+        拒绝原因：{{item.rejectionReason || '暂未提供具体原因'}}
+      </view>
     </view>
   </block>
 </view>

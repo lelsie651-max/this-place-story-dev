@@ -59,11 +59,15 @@ function buildError(code, message) {
 
 function getStatusLabel(status) {
   if (status === 'published') {
-    return '已发布';
+    return '已通过';
   }
 
   if (status === 'rejected') {
     return '未通过';
+  }
+
+  if (status === 'hidden') {
+    return '已隐藏';
   }
 
   return '审核中';
@@ -129,6 +133,7 @@ function normalizeStory(doc, locationNameMap) {
     content: doc.content || '',
     status: doc.status || 'pending',
     statusLabel: getStatusLabel(doc.status),
+    rejectionReason: trimString(doc && doc.rejectionReason),
     locationName: locationName,
     createdAt: doc.createdAt,
   };
