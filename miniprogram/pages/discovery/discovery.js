@@ -137,15 +137,12 @@ function recordLocationViewNonBlocking(locationId) {
   });
 }
 
-function buildTransientLocationDetail(selectedPlace) {
+function buildPendingSelectedPlaceDetail(selectedPlace) {
   return {
-    isTemporary: true,
-    transientPlace: true,
     source: selectedPlace.source,
-    locationId: null,
-    id: null,
     name: selectedPlace.name || '未命名地点',
-    city: '',
+    city: selectedPlace.city || '',
+    province: selectedPlace.province || '',
     address: selectedPlace.address || '',
     latitude: selectedPlace.latitude,
     longitude: selectedPlace.longitude,
@@ -157,7 +154,7 @@ function buildTransientLocationDetail(selectedPlace) {
       longitude: selectedPlace.longitude,
       poiid: selectedPlace.poiid || '',
     },
-    intro: selectedPlace.address || '本次地点来自微信地图选点，将按临时地点处理。',
+    intro: selectedPlace.address || '本次地点来自微信地图选点，进入地点页后会先确认正式地点身份。',
     rawSelectedPlace: selectedPlace.rawPlace || null,
   };
 }
@@ -291,11 +288,11 @@ Page({
         const app = getApp();
 
         if (app && app.globalData) {
-          app.globalData.pendingSelectedPlace = buildTransientLocationDetail(normalizedResult.selectedPlace);
+          app.globalData.pendingSelectedPlace = buildPendingSelectedPlaceDetail(normalizedResult.selectedPlace);
         }
 
         wx.navigateTo({
-          url: '/pages/location/location?transientPlace=1',
+          url: '/pages/location/location?selectedPlace=1',
         });
       },
       fail: (error) => {
@@ -324,10 +321,11 @@ if (typeof module !== 'undefined') {
     buildTransientLocationDetail: buildTransientLocationDetail,
     formatLocationMeta: formatLocationMeta,
     formatLocationText: formatLocationText,
+    buildPendingSelectedPlaceDetail: buildPendingSelectedPlaceDetail,
     isNewLocation: isNewLocation,
     isRecordableLocationId: isRecordableLocationId,
     normalizeViewCount: normalizeViewCount,
     parseCreatedAtToTimestamp: parseCreatedAtToTimestamp,
     recordLocationViewNonBlocking: recordLocationViewNonBlocking,
-  };
+}
 }

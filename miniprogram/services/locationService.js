@@ -1,4 +1,4 @@
-const { getCollections, getDatabase } = require('./cloud');
+const { getCollections, getDatabase, initCloud } = require('./cloud');
 
 const LOCATION_MATCH_DISTANCE_METERS = 1200;
 
@@ -104,17 +104,22 @@ function normalizeLocation(doc) {
   return {
     id: doc._id || doc.id,
     name: doc.name,
+    address: doc.address || '',
     city: doc.city,
     province: doc.province,
     country: doc.country,
     latitude: doc.latitude,
     longitude: doc.longitude,
+    poiid: doc.poiid || '',
+    source: doc.source || '',
+    dedupeKey: doc.dedupeKey || '',
     level: doc.level,
     tags: normalizeTags(doc.tags),
     intro: doc.intro || doc.description || doc.introduction || doc.summary || '',
     description: doc.description || doc.introduction || doc.summary || '',
     status: doc.status,
     createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
     viewCount: doc.viewCount,
     clickCount: doc.clickCount,
     visitCount: doc.visitCount,
@@ -157,6 +162,8 @@ function normalizeSelectedPlace(rawPlace) {
   const latitude = normalizeCoordinate(rawPlace.latitude);
   const longitude = normalizeCoordinate(rawPlace.longitude);
   const poiid = String(rawPlace.poiid || '').trim();
+  const city = String(rawPlace.city || '').trim();
+  const province = String(rawPlace.province || '').trim();
 
   if (!name) {
     return {
@@ -183,9 +190,144 @@ function normalizeSelectedPlace(rawPlace) {
       latitude: latitude,
       longitude: longitude,
       poiid: poiid,
+      city: city,
+      province: province,
       rawPlace: rawPlace,
     },
   };
+}
+
+function createServiceError(code, message) {
+  const error = new Error(message || '地点服务暂时不可用，请稍后再试。');
+
+  if (code) {
+    error.code = code;
+  }
+
+  return error;
+}
+
+function shouldUseLocalFallback() {
+  return typeof wx === 'undefined'
+    || !wx.cloud
+    || typeof wx.cloud.callFunction !== 'function';
+}
+
+function validateEnsureLocationPayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    throw createServiceError('INVALID_INPUT', '地点信息不完整，请重新选择地点。');
+  }
+
+  const source = String(payload.source || '').trim() || 'wechat_chooseLocation';
+  const name = String(payload.name || '').trim();
+  const address = String(payload.address || '').trim();
+  const poiid = String(payload.poiid || '').trim();
+  const city = String(payload.city || '').trim();
+  const province = String(payload.province || '').trim();
+  const latitude = normalizeCoordinate(payload.latitude);
+  const longitude = normalizeCoordinate(payload.longitude);
+
+  if (!name) {
+    throw createServiceError('INVALID_INPUT', '地点名称不能为空，请重新选择地点。');
+  }
+
+  if (!hasValidCoordinates(latitude, longitude)) {
+    throw createServiceError('INVALID_INPUT', '地点坐标无效，请重新选择地点。');
+  }
+
+  return {
+    source: source,
+    name: name,
+    address: address,
+    latitude: latitude,
+    longitude: longitude,
+    poiid: poiid,
+    city: city,
+    province: province,
+  };
+}
+
+async function ensureLocation(payload) {
+  const normalizedPayload = validateEnsureLocationPayload(payload);
+
+  if (shouldUseLocalFallback()) {
+    return {
+      locationId: '',
+      isTemporary: false,
+      fallbackToTemporary: false,
+      location: {
+        id: '',
+        name: normalizedPayload.name,
+        address: normalizedPayload.address,
+        city: normalizedPayload.city,
+        province: normalizedPayload.province,
+        latitude: normalizedPayload.latitude,
+        longitude: normalizedPayload.longitude,
+        poiid: normalizedPayload.poiid,
+        source: normalizedPayload.source,
+        status: 'candidate',
+      },
+      matchReason: '当前环境未接入云端地点确认，保留本次选点信息。',
+    };
+  }
+
+  initCloud();
+
+  try {
+    const result = await new Promise(function callEnsureLocation(resolve, reject) {
+      wx.cloud.callFunction({
+        name: 'ensureLocation',
+        data: normalizedPayload,
+        success: resolve,
+        fail: reject,
+      });
+    });
+
+    const functionResult = result && result.result ? result.result : null;
+
+    if (!functionResult || typeof functionResult.ok !== 'boolean') {
+      throw createServiceError('DEPLOY_REQUIRED', '地点确认服务尚未更新，请重新部署 ensureLocation 云函数。');
+    }
+
+    if (functionResult.ok !== true) {
+      const errorCode = functionResult && functionResult.error && functionResult.error.code
+        ? functionResult.error.code
+        : 'INTERNAL_ERROR';
+      const message = functionResult && functionResult.error && functionResult.error.message
+        ? functionResult.error.message
+        : '地点确认失败，请稍后再试。';
+      throw createServiceError(errorCode, message);
+    }
+
+    const data = functionResult.data && typeof functionResult.data === 'object'
+      ? functionResult.data
+      : {};
+
+    return {
+      locationId: typeof data.locationId === 'string' ? data.locationId : '',
+      isTemporary: !!data.isTemporary,
+      fallbackToTemporary: !!data.fallbackToTemporary,
+      matchReason: typeof data.matchReason === 'string' ? data.matchReason : '',
+      fallbackReason: typeof data.fallbackReason === 'string' ? data.fallbackReason : '',
+      created: !!data.created,
+      reused: !!data.reused,
+      status: typeof data.status === 'string' ? data.status : '',
+      location: data.location ? normalizeLocation(data.location) : null,
+    };
+  } catch (error) {
+    const rawMessage = error && error.message ? String(error.message) : '';
+    const errorCode = error && error.code ? String(error.code) : '';
+
+    if (
+      rawMessage.indexOf('FunctionName parameter could not be found') !== -1
+      || rawMessage.indexOf('找不到') !== -1
+      || rawMessage.indexOf('not found') !== -1
+    ) {
+      throw createServiceError('DEPLOY_REQUIRED', '地点确认服务尚未更新，请重新部署 ensureLocation 云函数。');
+    }
+
+    throw createServiceError(errorCode || 'INTERNAL_ERROR', rawMessage || '地点确认失败，请稍后再试。');
+  }
 }
 
 function matchSelectedPlaceToLocations(selectedPlace, locations) {
@@ -377,6 +519,7 @@ async function getStoriesByLocationId(locationId) {
 }
 
 module.exports = {
+  ensureLocation,
   getLocationById,
   getPublishedLocations,
   getStoriesByLocationId,

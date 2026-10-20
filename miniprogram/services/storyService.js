@@ -55,6 +55,13 @@ function normalizeStory(doc) {
     authorId: doc.authorId,
     status: doc.status,
     createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+    storyMeta: doc.storyMeta || null,
+    isTemporary: !!doc.isTemporary,
+    placeSnapshot: doc.placeSnapshot || null,
+    poolCycle: doc.poolCycle || '',
+    poolStatus: doc.poolStatus || '',
+    archivedAt: doc.archivedAt || null,
   };
 }
 

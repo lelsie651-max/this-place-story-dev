@@ -91,6 +91,30 @@ function createFormalStory(overrides) {
   }, overrides || {});
 }
 
+function createPersistedAiStory(overrides) {
+  return Object.assign({
+    id: 'story-real-001',
+    locationId: 'loc-demo-001',
+    type: 'ai_comment',
+    title: '《夜巡记录没有说出口的那一段》',
+    content: '我先记下门口那次停顿。\n\n后面的折返才是重点。',
+    source: 'deepseek',
+    generated: false,
+    locationName: '南头古城',
+    city: '深圳',
+    locationAddress: '深圳市南山区南头古城',
+    storyMeta: {
+      identityKey: 'night_monitoring_program',
+      displayName: '夜巡监控乙机',
+      role: '夜班巡逻与监控复核程序',
+      emotionalState: '冷静调查',
+      narrativeStance: '调查',
+      voiceStyle: '冷静调查型',
+      narrativeFormat: '调查记录',
+    },
+  }, overrides || {});
+}
+
 function createTravelerStory(overrides) {
   return Object.assign({
     id: 'traveler-story-001',
@@ -294,6 +318,17 @@ async function testTemporaryAiStoryKeepsTransientFlags() {
   assert.strictEqual(storyViewData.currentStory.collectible, false);
 }
 
+async function testPersistedAiStoryIsCollectible() {
+  mockServices();
+  const pageConfig = requireStoryPage();
+  const page = createPageInstance(pageConfig);
+  const storyViewData = await page.buildStoryViewData(createPersistedAiStory());
+
+  assert.strictEqual(storyViewData.currentStory.isAiGenerated, true);
+  assert.strictEqual(storyViewData.currentStory.generated, false);
+  assert.strictEqual(storyViewData.currentStory.collectible, true);
+}
+
 async function testLoadGeneratedStoryKeepsStoryMeta() {
   mockServices();
   currentApp = {
@@ -347,6 +382,7 @@ async function run() {
     ['Long display name and role stay safe', testLongDisplayNameAndRoleDoNotBreakViewModel],
     ['Museum identity display role has length protection', testMuseumIdentityDisplayRoleHasLengthProtection],
     ['Temporary AI story keeps transient flags', testTemporaryAiStoryKeepsTransientFlags],
+    ['Persisted AI story stays collectible', testPersistedAiStoryIsCollectible],
     ['Generated story load keeps storyMeta', testLoadGeneratedStoryKeepsStoryMeta],
     ['Home slogan and profile entry stay in place', testHomeSloganAndLayout],
     ['Story WXML uses single displayRole rendering', testStoryWxmlUsesSingleDisplayRoleRendering],

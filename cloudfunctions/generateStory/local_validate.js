@@ -1,4 +1,6 @@
 const assert = require('assert');
+const Module = require('module');
+const path = require('path');
 
 const generateStoryModule = require('./index.js');
 
@@ -8,6 +10,8 @@ const {
   AI_VOICE_PROFILE_POOL,
   buildStoryMeta,
   buildSystemPrompt,
+  buildPersistedStoryResponse,
+  buildPoolDocumentId,
   buildUserPrompt,
   cloneStoryMeta,
   extractJsonText,
@@ -15,9 +19,26 @@ const {
   GenerateStoryError,
   LAST_GENERATION_MEMORY,
   normalizeStoryPayload,
+  normalizeRequestedStoryType,
+  persistFormalAiStory,
+  reserveFormalStoryPool,
   validateAiGeneratedStory,
   validateEvent,
 } = generateStoryModule._private;
+
+function toCanonicalStoryType(type) {
+  return normalizeRequestedStoryType(type) || 'ai_comment';
+}
+
+function toDisplayStoryType(type) {
+  return toCanonicalStoryType(type) === 'folk' ? '民间传说' : 'AI说';
+}
+
+function getCurrentPoolCycle() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return String(now.getFullYear()) + '-' + month;
+}
 
 function resetGenerationMemory() {
   LAST_GENERATION_MEMORY.folk.variantKey = '';
@@ -107,14 +128,19 @@ function createVoiceStyleSampleContent(storyMeta, locationName) {
 }
 
 function createInput(type) {
+  const canonicalType = toCanonicalStoryType(type);
+
   return {
     isTemporary: false,
+    requestId: 'mg-demo-123',
     locationId: 'loc-demo-001',
     selectedPlace: null,
     locationName: '南头古城',
     locationDescription: '一座保留古城肌理、游客与居民交错生活的老城。',
     city: '深圳',
-    type: type,
+    province: '广东',
+    type: canonicalType,
+    displayType: toDisplayStoryType(canonicalType),
   };
 }
 
@@ -125,6 +151,224 @@ function createValidationContext(overrides) {
     attempt: 1,
     providerFinishReason: 'stop',
   }, overrides || {});
+}
+
+function createMockCloudEnvironment(seed) {
+  const state = {
+    collections: Object.assign({
+      ai_usage_daily: {},
+      locations: {},
+      stories: {},
+      story_pools: {},
+    }, seed || {}),
+  };
+
+  function clone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function materialize(value) {
+    if (value && typeof value === 'object' && value.__serverDate === true) {
+      return '2099-01-01T00:00:00.000Z';
+    }
+
+    if (Array.isArray(value)) {
+      return value.map(materialize);
+    }
+
+    if (value && typeof value === 'object') {
+      return Object.keys(value).reduce(function assignField(result, key) {
+        result[key] = materialize(value[key]);
+        return result;
+      }, {});
+    }
+
+    return value;
+  }
+
+  function matchesQuery(doc, query) {
+    return Object.keys(query || {}).every(function matchField(key) {
+      const expected = query[key];
+
+      if (expected && typeof expected === 'object' && expected.__op === 'in') {
+        return expected.values.indexOf(doc[key]) !== -1;
+      }
+
+      return doc[key] === expected;
+    });
+  }
+
+  function createCollectionApi(collectionName) {
+    if (!state.collections[collectionName]) {
+      state.collections[collectionName] = {};
+    }
+
+    const collectionStore = state.collections[collectionName];
+
+    function makeQueryApi(query, orderField, orderDirection, limitCount) {
+      return {
+        where(nextQuery) {
+          return makeQueryApi(nextQuery, orderField, orderDirection, limitCount);
+        },
+        orderBy(field, direction) {
+          return makeQueryApi(query, field, direction, limitCount);
+        },
+        limit(count) {
+          return makeQueryApi(query, orderField, orderDirection, count);
+        },
+        async get() {
+          let data = Object.keys(collectionStore)
+            .map(function mapDocId(docId) {
+              return clone(collectionStore[docId]);
+            })
+            .filter(function filterDoc(doc) {
+              return matchesQuery(doc, query || {});
+            });
+
+          if (orderField) {
+            data = data.sort(function sortDocs(left, right) {
+              const leftValue = left[orderField];
+              const rightValue = right[orderField];
+
+              if (leftValue === rightValue) {
+                return 0;
+              }
+
+              const comparison = leftValue > rightValue ? 1 : -1;
+              return orderDirection === 'desc' ? -comparison : comparison;
+            });
+          }
+
+          if (typeof limitCount === 'number') {
+            data = data.slice(0, limitCount);
+          }
+
+          return {
+            data: data,
+          };
+        },
+      };
+    }
+
+    return {
+      doc(docId) {
+        return {
+          async get() {
+            if (!collectionStore[docId]) {
+              throw new Error('document.get:fail');
+            }
+
+            return {
+              data: clone(collectionStore[docId]),
+            };
+          },
+          async set(options) {
+            const docData = materialize(options && options.data ? options.data : {});
+            collectionStore[docId] = Object.assign({
+              _id: docId,
+            }, docData);
+            return {
+              _id: docId,
+            };
+          },
+          async update(options) {
+            if (!collectionStore[docId]) {
+              throw new Error('document.get:fail');
+            }
+
+            const patchData = materialize(options && options.data ? options.data : {});
+            collectionStore[docId] = Object.assign({}, collectionStore[docId], patchData, {
+              _id: docId,
+            });
+            return {
+              updated: 1,
+            };
+          },
+        };
+      },
+      where(query) {
+        return makeQueryApi(query, '', '', null);
+      },
+      orderBy(field, direction) {
+        return makeQueryApi({}, field, direction, null);
+      },
+      async get() {
+        return {
+          data: Object.keys(collectionStore).map(function mapDocId(docId) {
+            return clone(collectionStore[docId]);
+          }),
+        };
+      },
+    };
+  }
+
+  const mockDb = {
+    command: {
+      in(values) {
+        return {
+          __op: 'in',
+          values: values.slice(0),
+        };
+      },
+    },
+    collection(collectionName) {
+      return createCollectionApi(collectionName);
+    },
+    serverDate() {
+      return {
+        __serverDate: true,
+      };
+    },
+    async runTransaction(callback) {
+      return callback({
+        collection(collectionName) {
+          return createCollectionApi(collectionName);
+        },
+      });
+    },
+  };
+
+  return {
+    state: state,
+    sdk: {
+      DYNAMIC_CURRENT_ENV: 'mock-env',
+      init() {},
+      database() {
+        return mockDb;
+      },
+      getWXContext() {
+        return {
+          OPENID: 'openid-demo',
+        };
+      },
+    },
+  };
+}
+
+function loadGenerateStoryModuleWithMockDb(seed) {
+  const targetPath = path.join(__dirname, 'index.js');
+  const originalLoad = Module._load;
+  const mockCloud = createMockCloudEnvironment(seed);
+
+  delete require.cache[targetPath];
+
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (request === 'wx-server-sdk') {
+      return mockCloud.sdk;
+    }
+
+    return originalLoad.call(this, request, parent, isMain);
+  };
+
+  try {
+    return {
+      module: require(targetPath),
+      state: mockCloud.state,
+    };
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[targetPath];
+  }
 }
 
 function assertNormalizationError(error, expectedStableCode, expectedStage, extraChecks) {
@@ -142,7 +386,7 @@ function assertNormalizationError(error, expectedStableCode, expectedStage, extr
 async function testAiMetaAndPrompt() {
   resetGenerationMemory();
 
-  const input = createInput('AI说');
+  const input = createInput('ai_comment');
   const storyMeta = buildStoryMeta(input);
   const systemPrompt = buildSystemPrompt(input, storyMeta);
   const userPrompt = buildUserPrompt(input, storyMeta, {
@@ -172,7 +416,7 @@ async function testAiMetaAndPrompt() {
 async function testFolkVariantsSwitch() {
   resetGenerationMemory();
 
-  const input = createInput('民间传说');
+  const input = createInput('folk');
   const firstMeta = buildStoryMeta(input);
   const secondMeta = buildStoryMeta(input);
   const firstPrompt = buildUserPrompt(input, firstMeta, {
@@ -192,8 +436,8 @@ async function testFolkVariantsSwitch() {
 async function testPromptModesDiffer() {
   resetGenerationMemory();
 
-  const folkInput = createInput('民间传说');
-  const aiInput = createInput('AI说');
+  const folkInput = createInput('folk');
+  const aiInput = createInput('ai_comment');
   const folkMeta = buildStoryMeta(folkInput);
   const aiMeta = buildStoryMeta(aiInput);
   const folkPrompt = buildUserPrompt(folkInput, folkMeta, {
@@ -219,7 +463,7 @@ async function testAiMetaVariesAcrossTwentyRuns() {
   const narrativeFormats = new Set();
 
   for (let index = 0; index < 20; index += 1) {
-    const storyMeta = buildStoryMeta(createInput('AI说'));
+    const storyMeta = buildStoryMeta(createInput('ai_comment'));
 
     displayNames.add(storyMeta.displayName);
     roles.add(storyMeta.role);
@@ -238,7 +482,7 @@ async function testAiMetaVariesAcrossTwentyRuns() {
 async function testRetryReusesSameStoryMeta() {
   resetGenerationMemory();
 
-  const input = createInput('AI说');
+  const input = createInput('ai_comment');
   const storyMeta = buildStoryMeta(input);
   const capturedMeta = [];
 
@@ -291,14 +535,14 @@ async function testRetryReusesSameStoryMeta() {
   assert.deepStrictEqual(normalizedStory, {
     title: '《门禁系统迟到观察》',
     content: createVoiceStyleSampleContent(storyMeta, input.locationName),
-    type: 'AI说',
+    type: 'ai_comment',
   });
 }
 
 async function testNormalizationFailureStillThrowsStableError() {
   resetGenerationMemory();
 
-  const input = createInput('民间传说');
+  const input = createInput('folk');
   const storyMeta = buildStoryMeta(input);
   let callCount = 0;
 
@@ -347,7 +591,7 @@ async function testNormalizationFailureStillThrowsStableError() {
 async function testEmptyResponseStillThrowsStableError() {
   resetGenerationMemory();
 
-  const input = createInput('AI说');
+  const input = createInput('ai_comment');
   const storyMeta = buildStoryMeta(input);
   let callCount = 0;
 
@@ -393,6 +637,8 @@ async function testValidateEventCarriesRequestId() {
   });
 
   assert.strictEqual(input.requestId, 'mg-demo-123');
+  assert.strictEqual(input.type, 'ai_comment');
+  assert.strictEqual(input.displayType, 'AI说');
 }
 
 async function testVoiceStyleSamplesPassValidation() {
@@ -414,7 +660,7 @@ async function testVoiceStyleSamplesPassValidation() {
     const content = createVoiceStyleSampleContent(storyMeta, '南头古城');
     const normalizedStory = await generateNormalizedStoryWithRetry({
       apiKey: 'demo-key',
-      input: createInput('AI说'),
+      input: createInput('ai_comment'),
       storyMeta: storyMeta,
       timeoutMs: 1000,
       skipQuotaConsumption: true,
@@ -460,7 +706,7 @@ async function testGenericPlaceIntroGetsRejected() {
       title: '《通用介绍》',
       content: '先说结论：我负责刷卡复核；据记录，南头古城位于深圳，是一座历史悠久、风景优美、游客众多的著名景点，因此这段描述更像旅游简介。',
       type: 'AI说',
-    }, createInput('AI说'), storyMeta, createValidationContext());
+    }, createInput('ai_comment'), storyMeta, createValidationContext());
   }, function validateError(error) {
     assertNormalizationError(error, 'GENERIC_PLACE_INTRO', 'validate_ai_content_rules', function checkDiagnostics(diagnostics) {
       assert.strictEqual(diagnostics.hasTitle, true);
@@ -574,7 +820,7 @@ async function testMissingAiMetadataHasDiagnostics() {
       title: '《缺叙述设定》',
       content: createVoiceStyleSampleContent(storyMeta, '南头古城'),
       type: 'AI说',
-    }, createInput('AI说'), storyMeta, createValidationContext());
+    }, createInput('ai_comment'), storyMeta, createValidationContext());
     assert.fail('Expected missing AI metadata failure');
   } catch (error) {
     assertNormalizationError(error, 'MISSING_AI_METADATA', 'validate_ai_story_meta');
@@ -594,7 +840,7 @@ async function testMissingAiRulesHasDiagnostics() {
       title: '《缺规则》',
       content: createVoiceStyleSampleContent(storyMeta, '南头古城'),
       type: 'AI说',
-    }, createInput('AI说'), storyMeta, createValidationContext());
+    }, createInput('ai_comment'), storyMeta, createValidationContext());
     assert.fail('Expected missing AI rules failure');
   } catch (error) {
     assertNormalizationError(error, 'MISSING_AI_RULES', 'validate_ai_story_rules');
@@ -613,7 +859,7 @@ async function testMissingNarratorHasDiagnostics() {
       title: '《缺叙述者》',
       content: '先说结论：南头古城的秩序今天又松了；经核对，播报、提示和游客停留出现了重复变化，因此现场比表面上更乱。',
       type: 'AI说',
-    }, createInput('AI说'), storyMeta, createValidationContext());
+    }, createInput('ai_comment'), storyMeta, createValidationContext());
     assert.fail('Expected missing narrator failure');
   } catch (error) {
     assertNormalizationError(error, 'MISSING_NARRATOR', 'validate_ai_content_rules');
@@ -632,7 +878,7 @@ async function testMissingVoiceFeatureHasDiagnostics() {
       title: '《缺语气特征》',
       content: '我负责刷卡、通行和闸机复核。南头古城的入口今天三次折返，访客登记也比平时更混乱，我把这些异常记下来了。',
       type: 'AI说',
-    }, createInput('AI说'), storyMeta, createValidationContext());
+    }, createInput('ai_comment'), storyMeta, createValidationContext());
     assert.fail('Expected missing voice feature failure');
   } catch (error) {
     assertNormalizationError(error, 'MISSING_VOICE_FEATURE', 'validate_ai_content_rules');
@@ -651,11 +897,257 @@ async function testMissingRoleLexiconHasDiagnostics() {
       title: '《缺岗位词汇》',
       content: '你听我说，我今天在南头古城看见三个人在同一块石阶前来回停了三次！结果他们把普通散步走成了悬疑片，你要是路过也会多看两眼。',
       type: 'AI说',
-    }, createInput('AI说'), storyMeta, createValidationContext());
+    }, createInput('ai_comment'), storyMeta, createValidationContext());
     assert.fail('Expected missing role lexicon failure');
   } catch (error) {
     assertNormalizationError(error, 'MISSING_ROLE_LEXICON', 'validate_ai_content_rules');
   }
+}
+
+async function testBuildPersistedStoryResponseUsesRealStoryId() {
+  const response = buildPersistedStoryResponse({
+    _id: 'story_real_001',
+    locationId: 'loc-demo-001',
+    type: 'folk',
+    title: '《真实故事》',
+    summary: '摘要',
+    content: '正文',
+    source: 'deepseek',
+    storyMeta: {
+      storyType: '民间传说',
+    },
+  }, {
+    fromPool: false,
+  });
+
+  assert.strictEqual(response.persisted, true);
+  assert.strictEqual(response.storyId, 'story_real_001');
+  assert.ok(response.storyId.indexOf('generated-') !== 0);
+  assert.strictEqual(response.fromPool, false);
+}
+
+async function testReserveFormalPoolUsesPendingReservationGuard() {
+  const currentPoolCycle = getCurrentPoolCycle();
+  const loaded = loadGenerateStoryModuleWithMockDb({
+    locations: {
+      'loc-demo-001': {
+        _id: 'loc-demo-001',
+        name: '南头古城',
+        status: 'published',
+      },
+    },
+    stories: {
+      'story-001': {
+        _id: 'story-001',
+        locationId: 'loc-demo-001',
+        type: 'ai_comment',
+        title: '《旧故事1》',
+        summary: '摘要',
+        content: '正文',
+        source: 'deepseek',
+        status: 'published',
+        poolCycle: currentPoolCycle,
+        poolStatus: 'active',
+      },
+      'story-002': {
+        _id: 'story-002',
+        locationId: 'loc-demo-001',
+        type: 'ai_comment',
+        title: '《旧故事2》',
+        summary: '摘要',
+        content: '正文',
+        source: 'deepseek',
+        status: 'published',
+        poolCycle: currentPoolCycle,
+        poolStatus: 'active',
+      },
+      'story-003': {
+        _id: 'story-003',
+        locationId: 'loc-demo-001',
+        type: 'ai_comment',
+        title: '《旧故事3》',
+        summary: '摘要',
+        content: '正文',
+        source: 'deepseek',
+        status: 'published',
+        poolCycle: currentPoolCycle,
+        poolStatus: 'active',
+      },
+      'story-004': {
+        _id: 'story-004',
+        locationId: 'loc-demo-001',
+        type: 'ai_comment',
+        title: '《旧故事4》',
+        summary: '摘要',
+        content: '正文',
+        source: 'deepseek',
+        status: 'published',
+        poolCycle: currentPoolCycle,
+        poolStatus: 'active',
+      },
+      'story-005': {
+        _id: 'story-005',
+        locationId: 'loc-demo-001',
+        type: 'ai_comment',
+        title: '《旧故事5》',
+        summary: '摘要',
+        content: '正文',
+        source: 'deepseek',
+        status: 'published',
+        poolCycle: currentPoolCycle,
+        poolStatus: 'active',
+      },
+      'story-006': {
+        _id: 'story-006',
+        locationId: 'loc-demo-001',
+        type: 'ai_comment',
+        title: '《旧故事6》',
+        summary: '摘要',
+        content: '正文',
+        source: 'deepseek',
+        status: 'published',
+        poolCycle: currentPoolCycle,
+        poolStatus: 'active',
+      },
+      'story-007': {
+        _id: 'story-007',
+        locationId: 'loc-demo-001',
+        type: 'ai_comment',
+        title: '《旧故事7》',
+        summary: '摘要',
+        content: '正文',
+        source: 'deepseek',
+        status: 'published',
+        poolCycle: currentPoolCycle,
+        poolStatus: 'active',
+      },
+      'story-008': {
+        _id: 'story-008',
+        locationId: 'loc-demo-001',
+        type: 'ai_comment',
+        title: '《旧故事8》',
+        summary: '摘要',
+        content: '正文',
+        source: 'deepseek',
+        status: 'published',
+        poolCycle: currentPoolCycle,
+        poolStatus: 'active',
+      },
+      'story-009': {
+        _id: 'story-009',
+        locationId: 'loc-demo-001',
+        type: 'ai_comment',
+        title: '《旧故事9》',
+        summary: '摘要',
+        content: '正文',
+        source: 'deepseek',
+        status: 'published',
+        poolCycle: currentPoolCycle,
+        poolStatus: 'active',
+      },
+    },
+  });
+  const privateApi = loaded.module._private;
+  const firstRequest = createInput('ai_comment');
+  const secondRequest = Object.assign({}, createInput('ai_comment'), {
+    requestId: 'mg-demo-456',
+  });
+
+  const firstReservation = await privateApi.reserveFormalStoryPool(firstRequest);
+  const secondReservation = await privateApi.reserveFormalStoryPool(secondRequest);
+
+  assert.strictEqual(firstReservation.fromPool, false);
+  assert.strictEqual(secondReservation.fromPool, true);
+  assert.strictEqual(loaded.state.collections.story_pools[firstReservation.poolDocId].pendingCount, 1);
+}
+
+async function testReserveFormalPoolKeepsTagsSeparated() {
+  const currentPoolCycle = getCurrentPoolCycle();
+  const loaded = loadGenerateStoryModuleWithMockDb({
+    locations: {
+      'loc-demo-001': {
+        _id: 'loc-demo-001',
+        name: '南头古城',
+        status: 'published',
+      },
+    },
+    stories: {
+      'story-ai-001': {
+        _id: 'story-ai-001',
+        locationId: 'loc-demo-001',
+        type: 'ai_comment',
+        title: '《AI旧故事》',
+        summary: '摘要',
+        content: '正文',
+        source: 'deepseek',
+        status: 'published',
+        poolCycle: currentPoolCycle,
+        poolStatus: 'active',
+      },
+    },
+  });
+  const privateApi = loaded.module._private;
+  const folkReservation = await privateApi.reserveFormalStoryPool(createInput('folk'));
+
+  assert.strictEqual(folkReservation.fromPool, false);
+  assert.ok(loaded.state.collections.story_pools[folkReservation.poolDocId]);
+}
+
+async function testPersistFormalAiStoryWritesPublishedStoryAndPromotesLocation() {
+  const currentPoolCycle = getCurrentPoolCycle();
+  const poolDocId = buildPoolDocumentId('loc-demo-001', 'folk', currentPoolCycle);
+  const loaded = loadGenerateStoryModuleWithMockDb({
+    locations: {
+      'loc-demo-001': {
+        _id: 'loc-demo-001',
+        name: '南头古城',
+        status: 'candidate',
+      },
+    },
+    story_pools: {
+      [poolDocId]: {
+        _id: poolDocId,
+        locationId: 'loc-demo-001',
+        type: 'folk',
+        poolCycle: currentPoolCycle,
+        capacity: 10,
+        activeCount: 0,
+        pendingCount: 1,
+        reservations: {
+          'mg-demo-123': Date.now() + 60000,
+        },
+        poolStatus: 'active',
+      },
+    },
+  });
+  const privateApi = loaded.module._private;
+  const result = await privateApi.persistFormalAiStory({
+    input: createInput('folk'),
+    normalizedStory: {
+      title: '《新故事》',
+      content: '第一段。\n\n第二段。',
+      type: 'folk',
+    },
+    storyMeta: {
+      storyType: '民间传说',
+      variantKey: 'secret_incident',
+    },
+    poolDocId: poolDocId,
+    poolCycle: currentPoolCycle,
+  });
+  const storyDocs = Object.values(loaded.state.collections.stories);
+
+  assert.strictEqual(result.persisted, true);
+  assert.ok(result.storyId);
+  assert.ok(result.storyId.indexOf('generated-') !== 0);
+  assert.strictEqual(result.type, 'folk');
+  assert.strictEqual(storyDocs.length, 1);
+  assert.strictEqual(storyDocs[0].locationId, 'loc-demo-001');
+  assert.strictEqual(storyDocs[0].poolCycle, currentPoolCycle);
+  assert.strictEqual(storyDocs[0].poolStatus, 'active');
+  assert.strictEqual(storyDocs[0].source, 'deepseek');
+  assert.strictEqual(storyDocs[0].authorId, 'system_deepseek');
+  assert.strictEqual(loaded.state.collections.locations['loc-demo-001'].status, 'published');
 }
 
 async function testTechnicalTermBlockedHasDiagnostics() {
@@ -670,7 +1162,7 @@ async function testTechnicalTermBlockedHasDiagnostics() {
       title: '《技术提示词拦截》',
       content: '你听我说，我这台访客闸机乙号今天在入口又看见三次刷卡折返！说真的，这段通行记录简直像有人把 prompt 写进了闸机流程。',
       type: 'AI说',
-    }, createInput('AI说'), storyMeta, createValidationContext());
+    }, createInput('ai_comment'), storyMeta, createValidationContext());
     assert.fail('Expected technical term failure');
   } catch (error) {
     assertNormalizationError(error, 'TECHNICAL_TERM_BLOCKED', 'validate_ai_content_rules');
@@ -701,6 +1193,10 @@ async function run() {
     ['Missing role lexicon has diagnostics', testMissingRoleLexiconHasDiagnostics],
     ['Generic place intro gets rejected', testGenericPlaceIntroGetsRejected],
     ['Technical term gets rejected', testTechnicalTermBlockedHasDiagnostics],
+    ['Persisted response uses real story id', testBuildPersistedStoryResponseUsesRealStoryId],
+    ['Formal pool guards pending reservation', testReserveFormalPoolUsesPendingReservationGuard],
+    ['Formal pool keeps tags separated', testReserveFormalPoolKeepsTagsSeparated],
+    ['Persist formal AI story writes published story', testPersistFormalAiStoryWritesPublishedStoryAndPromotesLocation],
   ];
 
   for (const [label, testFn] of tests) {

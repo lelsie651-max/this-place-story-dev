@@ -170,9 +170,13 @@ function createHarness(config) {
             result: {
               ok: true,
               story: {
-                storyId: 'generated-demo-001',
+                storyId: config.storyId || (
+                  config.persisted === false ? 'generated-demo-001' : 'story-real-001'
+                ),
+                persisted: config.persisted !== false,
+                fromPool: !!config.fromPool,
                 locationId: config.expectedTemporary ? null : 'loc-demo-001',
-                type: config.generatedStoryType || 'AI说',
+                type: config.generatedStoryType || options.data.type || 'ai_comment',
                 title: '测试标题',
                 content: '测试正文第一段。\n\n测试正文第二段。',
                 source: 'deepseek',
@@ -339,7 +343,8 @@ async function runCase(label, config, execute) {
 
 async function testAiSuccess() {
   await runCase('AI success consumes once', {
-    generatedStoryType: 'AI说',
+    generatedStoryType: 'ai_comment',
+    persisted: true,
   }, async function execute(ctx) {
     await ctx.page.handleSelectStoryType(createEvent('ai_comment', 'AI说'));
 
@@ -348,8 +353,8 @@ async function testAiSuccess() {
     assert.strictEqual(ctx.counters.release, 0);
     assert.strictEqual(ctx.state.magnifyingGlass, 4);
     assert.strictEqual(ctx.counters.generate, 1);
-    assert.ok(currentApp.globalData.pendingGeneratedStory);
-    assert.strictEqual(currentApp.globalData.pendingGeneratedStory.storyMeta.displayName, '夜巡监控乙机');
+    assert.strictEqual(currentApp.globalData.pendingGeneratedStory, undefined);
+    assert.strictEqual(ctx.state.navigationUrls[0], '/pages/story/story?storyId=story-real-001');
   });
 }
 
@@ -463,17 +468,21 @@ async function testCloudFunctionCallFail() {
 }
 
 async function testPresetStoryHit() {
-  await runCase('Preset story hit consumes without generateStory', {}, async function execute(ctx) {
+  await runCase('Formal folk story uses generateStory and consumes once', {
+    generatedStoryType: 'folk',
+    persisted: true,
+  }, async function execute(ctx) {
     await ctx.page.handleSelectStoryType(createEvent('folk', '民间传说'));
 
-    assert.strictEqual(ctx.counters.preset, 1);
-    assert.strictEqual(ctx.counters.generate, 0);
+    assert.strictEqual(ctx.counters.preset, 0);
+    assert.strictEqual(ctx.counters.generate, 1);
     assert.strictEqual(ctx.counters.consume, 1);
     assert.strictEqual(ctx.counters.release, 0);
     assert.strictEqual(ctx.state.magnifyingGlass, 4);
     assert.strictEqual(ctx.page.data.requesting, false);
     assert.strictEqual(ctx.page.data.requestingHint, '');
     assert.strictEqual(ctx.state.getActiveIntervalCount(), 0);
+    assert.strictEqual(ctx.state.navigationUrls[0], '/pages/story/story?storyId=story-real-001');
   });
 }
 
@@ -508,15 +517,15 @@ async function testRapidRepeatClick() {
 }
 
 async function testFolkFallbackSuccess() {
-  await runCase('Folk AI fallback success consumes once', {
-    presetMode: 'miss',
-    generatedStoryType: '民间传说',
+  await runCase('Pool hit still consumes and opens real story', {
+    generatedStoryType: 'folk',
+    persisted: true,
+    fromPool: true,
     holdGenerate: true,
   }, async function execute(ctx) {
     const requestPromise = ctx.page.handleSelectStoryType(createEvent('folk', '民间传说'));
     await wait(0);
 
-    assert.strictEqual(ctx.counters.preset, 1);
     assert.strictEqual(ctx.page.data.requesting, true);
     assert.ok(ctx.page.data.requestingHint);
     assert.strictEqual(ctx.state.getActiveIntervalCount(), 1);
@@ -527,12 +536,12 @@ async function testFolkFallbackSuccess() {
     assert.strictEqual(ctx.counters.generate, 1);
     assert.strictEqual(ctx.counters.consume, 1);
     assert.strictEqual(ctx.counters.release, 0);
+    assert.strictEqual(ctx.state.navigationUrls[0], '/pages/story/story?storyId=story-real-001');
   });
 }
 
 async function testFolkFallbackFailure() {
-  await runCase('Folk AI fallback failure releases without consume', {
-    presetMode: 'miss',
+  await runCase('Formal folk AI failure releases without consume', {
     generateResult: {
       ok: false,
       code: 'PROVIDER_ERROR',
@@ -551,7 +560,8 @@ async function testTemporaryAiSuccess() {
   await runCase('Temporary AI success consumes once', {
     temporary: true,
     expectedTemporary: true,
-    generatedStoryType: 'AI说',
+    generatedStoryType: 'ai_comment',
+    persisted: false,
   }, async function execute(ctx) {
     await ctx.page.handleSelectStoryType(createEvent('ai_comment', 'AI说'));
 
@@ -560,6 +570,8 @@ async function testTemporaryAiSuccess() {
     assert.ok(ctx.state.lastGeneratePayload);
     assert.strictEqual(ctx.state.lastGeneratePayload.locationId, null);
     assert.strictEqual(ctx.state.lastGeneratePayload.isTemporary, true);
+    assert.ok(currentApp.globalData.pendingGeneratedStory);
+    assert.strictEqual(ctx.state.navigationUrls[0], '/pages/story/story?generatedStory=1');
   });
 }
 
@@ -568,6 +580,8 @@ async function testTravelerSkipsAiMask() {
     await ctx.page.handleSelectStoryType(createEvent('traveler', '街谈巷说'));
 
     assert.strictEqual(ctx.counters.generate, 0);
+    assert.strictEqual(ctx.counters.prepare, 0);
+    assert.strictEqual(ctx.counters.consume, 0);
     assert.strictEqual(ctx.page.data.requesting, false);
     assert.strictEqual(ctx.page.data.requestingHint, '');
     assert.strictEqual(ctx.state.getActiveIntervalCount(), 0);
@@ -595,7 +609,8 @@ async function testTemporaryAiFailure() {
 async function testNavigateFailure() {
   await runCase('Navigate failure releases without consume', {
     navigateFail: true,
-    generatedStoryType: 'AI说',
+    generatedStoryType: 'ai_comment',
+    persisted: true,
   }, async function execute(ctx) {
     await ctx.page.handleSelectStoryType(createEvent('ai_comment', 'AI说'));
 

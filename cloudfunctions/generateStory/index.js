@@ -23,10 +23,22 @@ cloud.init({
 });
 
 const db = cloud.database ? cloud.database() : null;
+const _ = db && db.command ? db.command : null;
 const AI_USAGE_DAILY_COLLECTION = 'ai_usage_daily';
+const LOCATIONS_COLLECTION = 'locations';
+const STORIES_COLLECTION = 'stories';
+const STORY_POOLS_COLLECTION = 'story_pools';
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
 const DEEPSEEK_CHAT_PATH = '/chat/completions';
 const DEEPSEEK_MODEL = 'deepseek-flash';
+const STORY_POOL_CAPACITY = 10;
+const ACTIVE_POOL_STATUS = 'active';
+const ARCHIVED_POOL_STATUS = 'archived';
+const SYSTEM_AI_AUTHOR_ID = 'system_deepseek';
+const LEGACY_PRESET_SOURCES = {
+  preset: true,
+  folk_archive: true,
+};
 const AI_GUARD_LIMITS = {
   GLOBAL_DAILY_LIMIT: 200,
   REQUEST_TIMEOUT_MS: 60000,
@@ -41,9 +53,15 @@ const AI_GUARD_LIMITS = {
   REQUEST_LOCK_WINDOW_MS: 70000,
   MAX_REQUEST_ID_LENGTH: 80,
 };
-const SUPPORTED_STORY_TYPES = {
-  AI说: true,
-  民间传说: true,
+const STORY_TYPE_ALIASES = {
+  ai_comment: 'ai_comment',
+  'AI说': 'ai_comment',
+  folk: 'folk',
+  '民间传说': 'folk',
+};
+const STORY_TYPE_DISPLAY = {
+  ai_comment: 'AI说',
+  folk: '民间传说',
 };
 const PRODUCT_STYLE_RULES = [
   '整体风格要风趣、荒诞、节奏轻快，可以一本正经地讲离谱事情。',
@@ -524,6 +542,48 @@ function getStringLength(value) {
   return trimString(String(value || '')).length;
 }
 
+function normalizeRequestedStoryType(value) {
+  const normalizedValue = trimString(value);
+  return STORY_TYPE_ALIASES[normalizedValue] || '';
+}
+
+function getStoryDisplayType(value) {
+  const canonicalType = normalizeRequestedStoryType(value) || trimString(value);
+  return STORY_TYPE_DISPLAY[canonicalType] || 'AI说';
+}
+
+function getPoolCycle(nowMs) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+  });
+
+  return formatter.format(new Date(typeof nowMs === 'number' ? nowMs : Date.now())).slice(0, 7);
+}
+
+function buildPoolDocumentId(locationId, storyType, poolCycle) {
+  return 'pool__' + createDigest([
+    trimString(locationId),
+    normalizeRequestedStoryType(storyType),
+    trimString(poolCycle),
+  ].join('|')).slice(0, 24);
+}
+
+function createRealStoryId() {
+  return 'story_' + Date.now() + '_' + createDigest(Math.random().toString(36)).slice(0, 12);
+}
+
+function buildStorySummary(content) {
+  const normalizedContent = trimString(String(content || '')).replace(/\s+/g, ' ');
+
+  if (normalizedContent.length <= 80) {
+    return normalizedContent;
+  }
+
+  return normalizedContent.slice(0, 80) + '...';
+}
+
 function buildValidationContext(options) {
   return {
     requestId: trimString(options && options.requestId),
@@ -976,7 +1036,7 @@ function buildStoryMeta(input) {
     throw new GenerateStoryError('INVALID_INPUT', '缺少故事类型');
   }
 
-  if (input.type === '民间传说') {
+  if (input.type === 'folk') {
     return buildFolkStoryMeta();
   }
 
@@ -1079,7 +1139,8 @@ function validateEvent(event) {
   const locationName = normalizeWhitespace(event.locationName);
   const locationDescription = trimString(event.locationDescription || '');
   const city = normalizeWhitespace(event.city || '');
-  const type = trimString(event.type);
+  const requestedType = trimString(event.type);
+  const canonicalType = normalizeRequestedStoryType(requestedType);
   const requestId = validateRequestId(event.requestId);
   let selectedPlace = null;
 
@@ -1087,7 +1148,7 @@ function validateEvent(event) {
     throw new GenerateStoryError('INVALID_INPUT', 'locationName 不能为空');
   }
 
-  if (!SUPPORTED_STORY_TYPES[type]) {
+  if (!canonicalType) {
     throw new GenerateStoryError('INVALID_INPUT', '当前仅支持 AI说 或 民间传说');
   }
 
@@ -1117,7 +1178,9 @@ function validateEvent(event) {
     locationName: locationName,
     locationDescription: locationDescription,
     city: city,
-    type: type,
+    province: trimString(event.province || ''),
+    type: canonicalType,
+    displayType: getStoryDisplayType(canonicalType),
   };
 
   validateProviderInputLength(normalizedInput);
@@ -1126,7 +1189,7 @@ function validateEvent(event) {
 }
 
 function buildSystemPrompt(input, storyMeta) {
-  const modeInstruction = input.type === '民间传说'
+  const modeInstruction = input.type === 'folk'
     ? [
       '你负责生成“民间传说”模式内容。',
       '这是一则围绕地点本身、建筑、街道、历史背景、地方传闻或公开信息展开的传说化讲述。',
@@ -1170,7 +1233,7 @@ function buildUserPrompt(input, storyMeta, options) {
     ? '本次是重试输出，必须只返回一个 JSON 对象，不得包含任何解释、前后说明、代码围栏或额外文本。'
     : '不要输出任何 JSON 以外的说明文字。';
 
-  if (input.type === '民间传说') {
+  if (input.type === 'folk') {
     return [
       '请根据以下地点信息生成一篇“民间传说”故事。',
       '地点名称：' + input.locationName,
@@ -1399,7 +1462,9 @@ function normalizeStoryPayload(rawContent, expectedType, context) {
 
   const title = normalizeWhitespace(parsed.title);
   const content = trimString(parsed.content);
-  const type = normalizeWhitespace(parsed.type || expectedType || '');
+  const rawType = normalizeWhitespace(parsed.type || expectedType || '');
+  const type = normalizeRequestedStoryType(rawType);
+  const expectedCanonicalType = normalizeRequestedStoryType(expectedType);
 
   if (!title) {
     throw createNormalizationError('MISSING_TITLE', 'AI返回结果缺少标题', Object.assign(
@@ -1409,7 +1474,7 @@ function normalizeStoryPayload(rawContent, expectedType, context) {
         validationStage: 'validate_story_fields',
         title: title,
         content: content,
-        typeValue: type,
+        typeValue: rawType,
       }
     ));
   }
@@ -1422,7 +1487,7 @@ function normalizeStoryPayload(rawContent, expectedType, context) {
         validationStage: 'validate_story_fields',
         title: title,
         content: content,
-        typeValue: type,
+        typeValue: rawType,
       }
     ));
   }
@@ -1435,25 +1500,12 @@ function normalizeStoryPayload(rawContent, expectedType, context) {
         validationStage: 'validate_story_fields',
         title: title,
         content: content,
-        typeValue: type,
+        typeValue: rawType,
       }
     ));
   }
 
-  if (!SUPPORTED_STORY_TYPES[type]) {
-    throw createNormalizationError('INVALID_TYPE', 'AI返回结果缺少有效类型', Object.assign(
-      {},
-      validationContext,
-      {
-        validationStage: 'validate_story_fields',
-        title: title,
-        content: content,
-        typeValue: type,
-      }
-    ));
-  }
-
-  if (expectedType && type !== expectedType) {
+  if (expectedCanonicalType && type !== expectedCanonicalType) {
     throw createNormalizationError('TYPE_MISMATCH', 'AI返回结果类型与请求不一致', Object.assign(
       {},
       validationContext,
@@ -1461,7 +1513,7 @@ function normalizeStoryPayload(rawContent, expectedType, context) {
         validationStage: 'validate_story_fields',
         title: title,
         content: content,
-        typeValue: type,
+        typeValue: rawType,
       }
     ));
   }
@@ -1540,7 +1592,7 @@ function validateAiGeneratedStory(story, input, storyMeta, context) {
     {},
     buildValidationContext(context),
     {
-      requestMode: trimString(input && input.type) || trimString(context && context.requestMode),
+      requestMode: trimString(input && input.displayType) || trimString(context && context.requestMode),
       title: story && story.title,
       content: content,
       typeValue: story && story.type,
@@ -1801,7 +1853,7 @@ async function requestAndNormalizeStory(options) {
   const providerMessageInfo = extractProviderMessageInfo(providerResponse);
   const validationContext = {
     requestId: trimString(options.input && options.input.requestId),
-    requestMode: trimString(options.input && options.input.type),
+    requestMode: trimString(options.input && options.input.displayType),
     attempt: typeof options.attempt === 'number' ? options.attempt : 1,
     providerFinishReason: providerMessageInfo.finishReason,
   };
@@ -1811,7 +1863,7 @@ async function requestAndNormalizeStory(options) {
     validationContext
   );
 
-  if (options.input.type === 'AI说') {
+  if (options.input.type === 'ai_comment') {
     validateAiGeneratedStory(normalizedStory, options.input, options.storyMeta, validationContext);
   }
 
@@ -1879,17 +1931,362 @@ async function generateNormalizedStoryWithRetry(options) {
   }
 }
 
+function normalizeStoryDocument(doc) {
+  if (!doc || typeof doc !== 'object') {
+    return null;
+  }
+
+  return {
+    _id: doc._id,
+    locationId: trimString(doc.locationId),
+    type: normalizeRequestedStoryType(doc.type),
+    title: trimString(doc.title),
+    summary: trimString(doc.summary),
+    content: trimString(doc.content),
+    source: trimString(doc.source),
+    authorId: trimString(doc.authorId),
+    status: trimString(doc.status),
+    storyMeta: isPlainObject(doc.storyMeta) ? doc.storyMeta : null,
+    poolCycle: trimString(doc.poolCycle),
+    poolStatus: trimString(doc.poolStatus),
+    archivedAt: doc.archivedAt || null,
+    createdAt: doc.createdAt || null,
+    updatedAt: doc.updatedAt || null,
+  };
+}
+
+function isLegacyPresetStory(doc) {
+  return !!(
+    doc
+    && LEGACY_PRESET_SOURCES[trimString(doc.source)]
+    && !trimString(doc.poolCycle)
+    && !trimString(doc.poolStatus)
+    && !doc.archivedAt
+  );
+}
+
+function isActivePoolStory(doc, poolCycle) {
+  return !!(
+    doc
+    && trimString(doc.status) === 'published'
+    && (
+      (trimString(doc.poolCycle) === poolCycle && trimString(doc.poolStatus) === ACTIVE_POOL_STATUS)
+      || isLegacyPresetStory(doc)
+    )
+  );
+}
+
+async function listPoolStoriesWithActor(actor, locationId, storyType, poolCycle) {
+  const result = await actor
+    .collection(STORIES_COLLECTION)
+    .where({
+      locationId: locationId,
+      type: storyType,
+      status: 'published',
+    })
+    .get();
+
+  return (result.data || [])
+    .map(normalizeStoryDocument)
+    .filter(function filterActiveStory(doc) {
+      return isActivePoolStory(doc, poolCycle);
+    });
+}
+
+async function getLocationDocumentById(actor, locationId) {
+  const doc = await safeGetDocument(actor, LOCATIONS_COLLECTION, locationId);
+  return doc && typeof doc === 'object' ? doc : null;
+}
+
+function prunePoolReservations(reservations, nowMs) {
+  const reservationMap = isPlainObject(reservations) ? reservations : {};
+  const nextReservations = {};
+
+  Object.keys(reservationMap).forEach(function keepActiveReservation(requestId) {
+    const expiresAt = Number(reservationMap[requestId]);
+
+    if (Number.isFinite(expiresAt) && expiresAt > nowMs) {
+      nextReservations[requestId] = expiresAt;
+    }
+  });
+
+  return nextReservations;
+}
+
+function buildPoolDocument(options) {
+  return {
+    locationId: options.locationId,
+    type: options.type,
+    poolCycle: options.poolCycle,
+    capacity: STORY_POOL_CAPACITY,
+    activeCount: options.activeCount,
+    pendingCount: Object.keys(options.reservations).length,
+    reservations: options.reservations,
+    poolStatus: ACTIVE_POOL_STATUS,
+    updatedAt: db.serverDate(),
+  };
+}
+
+function buildPersistedStoryResponse(story, options) {
+  return {
+    storyId: story._id,
+    persisted: true,
+    fromPool: !!(options && options.fromPool),
+    generatedFromPool: !!(options && options.fromPool),
+    isTemporary: false,
+    locationId: story.locationId,
+    type: story.type,
+    title: story.title,
+    summary: story.summary,
+    content: story.content,
+    source: story.source,
+    storyMeta: story.storyMeta || null,
+  };
+}
+
+async function reserveFormalStoryPool(input) {
+  ensureDatabaseAvailable();
+
+  if (!input.locationId) {
+    throw new GenerateStoryError('INVALID_INPUT', '正式地点缺少有效 locationId');
+  }
+
+  const nowMs = Date.now();
+  const poolCycle = getPoolCycle(nowMs);
+  const poolDocId = buildPoolDocumentId(input.locationId, input.type, poolCycle);
+
+  try {
+    return await db.runTransaction(async function reservePoolTransaction(transaction) {
+      const locationDoc = await getLocationDocumentById(transaction, input.locationId);
+
+      if (!locationDoc) {
+        throw new GenerateStoryError('INVALID_INPUT', '当前地点不存在，暂时无法生成故事。');
+      }
+
+      const existingPoolDoc = await safeGetDocument(transaction, STORY_POOLS_COLLECTION, poolDocId);
+      const activeStories = await listPoolStoriesWithActor(transaction, input.locationId, input.type, poolCycle);
+      const reservations = prunePoolReservations(existingPoolDoc && existingPoolDoc.reservations, nowMs);
+      const activeCount = activeStories.length;
+      const pendingCount = Object.keys(reservations).length;
+      const nextPoolDoc = buildPoolDocument({
+        locationId: input.locationId,
+        type: input.type,
+        poolCycle: poolCycle,
+        activeCount: activeCount,
+        reservations: reservations,
+      });
+
+      if (activeCount >= STORY_POOL_CAPACITY || activeCount + pendingCount >= STORY_POOL_CAPACITY) {
+        if (existingPoolDoc) {
+          await transaction.collection(STORY_POOLS_COLLECTION).doc(poolDocId).update({
+            data: nextPoolDoc,
+          });
+        } else {
+          await transaction.collection(STORY_POOLS_COLLECTION).doc(poolDocId).set({
+            data: Object.assign({
+              createdAt: db.serverDate(),
+            }, nextPoolDoc),
+          });
+        }
+
+        if (!activeStories.length) {
+          throw new GenerateStoryError('AI_REQUEST_IN_PROGRESS', '故事池刷新中，请稍后再试。');
+        }
+
+        return {
+          fromPool: true,
+          poolCycle: poolCycle,
+          story: pickRandomItem(activeStories),
+          poolDocId: poolDocId,
+        };
+      }
+
+      reservations[input.requestId] = nowMs + AI_GUARD_LIMITS.REQUEST_TIMEOUT_MS + 10000;
+      const reservedPoolDoc = buildPoolDocument({
+        locationId: input.locationId,
+        type: input.type,
+        poolCycle: poolCycle,
+        activeCount: activeCount,
+        reservations: reservations,
+      });
+
+      if (existingPoolDoc) {
+        await transaction.collection(STORY_POOLS_COLLECTION).doc(poolDocId).update({
+          data: reservedPoolDoc,
+        });
+      } else {
+        await transaction.collection(STORY_POOLS_COLLECTION).doc(poolDocId).set({
+          data: Object.assign({
+            createdAt: db.serverDate(),
+          }, reservedPoolDoc),
+        });
+      }
+
+      return {
+        fromPool: false,
+        poolCycle: poolCycle,
+        poolDocId: poolDocId,
+        locationStatus: trimString(locationDoc.status),
+      };
+    });
+  } catch (error) {
+    if (error instanceof GenerateStoryError) {
+      throw error;
+    }
+
+    console.error('[generateStory] reserveFormalStoryPool failed', {
+      requestId: trimString(input && input.requestId),
+      locationId: trimString(input && input.locationId),
+      type: trimString(input && input.type),
+      name: error && error.name ? error.name : 'Error',
+    });
+    throw new GenerateStoryError('CLOUD_FUNCTION_ERROR', '故事服务暂时不可用，请稍后再试');
+  }
+}
+
+async function releaseFormalStoryPoolReservation(reservationToken) {
+  if (!db || !reservationToken || !reservationToken.poolDocId || !reservationToken.requestId) {
+    return;
+  }
+
+  try {
+    const currentPoolDoc = await safeGetDocument(db, STORY_POOLS_COLLECTION, reservationToken.poolDocId);
+
+    if (!currentPoolDoc) {
+      return;
+    }
+
+    const reservations = prunePoolReservations(currentPoolDoc.reservations, Date.now());
+
+    if (!reservations[reservationToken.requestId]) {
+      return;
+    }
+
+    delete reservations[reservationToken.requestId];
+
+    await db.collection(STORY_POOLS_COLLECTION).doc(reservationToken.poolDocId).update({
+      data: buildPoolDocument({
+        locationId: trimString(currentPoolDoc.locationId),
+        type: normalizeRequestedStoryType(currentPoolDoc.type),
+        poolCycle: trimString(currentPoolDoc.poolCycle),
+        activeCount: getNumericValue(currentPoolDoc.activeCount),
+        reservations: reservations,
+      }),
+    });
+  } catch (error) {
+    console.warn('[generateStory] releaseFormalStoryPoolReservation failed', {
+      requestId: reservationToken.requestId,
+      name: error && error.name ? error.name : 'Error',
+    });
+  }
+}
+
+async function persistFormalAiStory(options) {
+  ensureDatabaseAvailable();
+
+  const input = options.input;
+  const normalizedStory = options.normalizedStory;
+  const storyMeta = options.storyMeta;
+  const requestId = trimString(input && input.requestId);
+
+  return db.runTransaction(async function persistStoryTransaction(transaction) {
+    const currentPoolDoc = await safeGetDocument(transaction, STORY_POOLS_COLLECTION, options.poolDocId);
+    const locationDoc = await getLocationDocumentById(transaction, input.locationId);
+
+    if (!currentPoolDoc || !locationDoc) {
+      throw new GenerateStoryError('CLOUD_FUNCTION_ERROR', '故事写入失败，请稍后再试。');
+    }
+
+    const reservations = prunePoolReservations(currentPoolDoc.reservations, Date.now());
+
+    if (!reservations[requestId]) {
+      throw new GenerateStoryError('AI_REQUEST_IN_PROGRESS', '故事生成处理中，请稍后再试');
+    }
+
+    const activeStories = await listPoolStoriesWithActor(transaction, input.locationId, input.type, options.poolCycle);
+
+    if (activeStories.length >= STORY_POOL_CAPACITY) {
+      const fallbackStory = pickRandomItem(activeStories);
+      delete reservations[requestId];
+
+      await transaction.collection(STORY_POOLS_COLLECTION).doc(options.poolDocId).update({
+        data: buildPoolDocument({
+          locationId: input.locationId,
+          type: input.type,
+          poolCycle: options.poolCycle,
+          activeCount: activeStories.length,
+          reservations: reservations,
+        }),
+      });
+
+      return buildPersistedStoryResponse(fallbackStory, {
+        fromPool: true,
+      });
+    }
+
+    const storyId = createRealStoryId();
+    const storyDoc = {
+      locationId: input.locationId,
+      type: input.type,
+      title: normalizedStory.title,
+      summary: buildStorySummary(normalizedStory.content),
+      content: normalizedStory.content,
+      source: 'deepseek',
+      language: 'zh-CN',
+      authorId: SYSTEM_AI_AUTHOR_ID,
+      status: 'published',
+      storyMeta: cloneStoryMeta(storyMeta),
+      poolCycle: options.poolCycle,
+      poolStatus: ACTIVE_POOL_STATUS,
+      archivedAt: null,
+      createdAt: db.serverDate(),
+      updatedAt: db.serverDate(),
+    };
+
+    await transaction.collection(STORIES_COLLECTION).doc(storyId).set({
+      data: storyDoc,
+    });
+
+    delete reservations[requestId];
+
+    await transaction.collection(STORY_POOLS_COLLECTION).doc(options.poolDocId).update({
+      data: buildPoolDocument({
+        locationId: input.locationId,
+        type: input.type,
+        poolCycle: options.poolCycle,
+        activeCount: activeStories.length + 1,
+        reservations: reservations,
+      }),
+    });
+
+    if (trimString(locationDoc.status) === 'candidate') {
+      await transaction.collection(LOCATIONS_COLLECTION).doc(input.locationId).update({
+        data: {
+          status: 'published',
+          updatedAt: db.serverDate(),
+        },
+      });
+    }
+
+    return buildPersistedStoryResponse(normalizeStoryDocument(Object.assign({
+      _id: storyId,
+    }, storyDoc)), {
+      fromPool: false,
+    });
+  });
+}
+
 function createGeneratedStoryId() {
   return 'generated-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
 }
 
 async function main(event) {
   let requestLockToken = null;
+  let poolReservationToken = null;
   const startedAt = Date.now();
 
   try {
     const input = validateEvent(event);
-    const storyMeta = buildStoryMeta(input);
     const apiKey = trimString(process.env.DEEPSEEK_API_KEY);
 
     if (!apiKey) {
@@ -1908,6 +2305,24 @@ async function main(event) {
       return buildError('UNAUTHORIZED', '当前用户身份读取失败，请稍后再试。');
     }
 
+    if (!input.isTemporary) {
+      const poolResult = await reserveFormalStoryPool(input);
+
+      if (poolResult.fromPool) {
+        return buildSuccess(buildPersistedStoryResponse(poolResult.story, {
+          fromPool: true,
+        }));
+      }
+
+      poolReservationToken = {
+        poolDocId: poolResult.poolDocId,
+        poolCycle: poolResult.poolCycle,
+        requestId: input.requestId,
+      };
+    }
+
+    const storyMeta = buildStoryMeta(input);
+
     requestLockToken = await acquireRequestLock(input, openId);
     requestLockToken.requestId = input.requestId;
 
@@ -1919,13 +2334,29 @@ async function main(event) {
       lockToken: requestLockToken,
     });
 
+    if (!input.isTemporary && poolReservationToken) {
+      const persistedStory = await persistFormalAiStory({
+        input: input,
+        normalizedStory: normalizedStory,
+        storyMeta: storyMeta,
+        poolDocId: poolReservationToken.poolDocId,
+        poolCycle: poolReservationToken.poolCycle,
+      });
+
+      poolReservationToken = null;
+      return buildSuccess(persistedStory);
+    }
+
     return buildSuccess({
       storyId: createGeneratedStoryId(),
       isTemporary: input.isTemporary,
       locationId: input.locationId,
       selectedPlace: input.selectedPlace,
       type: input.type,
+      persisted: false,
+      fromPool: false,
       title: normalizedStory.title,
+      summary: buildStorySummary(normalizedStory.content),
       content: normalizedStory.content,
       source: 'deepseek',
       storyMeta: cloneStoryMeta(storyMeta),
@@ -1953,6 +2384,7 @@ async function main(event) {
     return buildError('UNKNOWN_ERROR', 'AI故事暂时生成失败，请稍后再试');
   } finally {
     await releaseRequestLock(requestLockToken);
+    await releaseFormalStoryPoolReservation(poolReservationToken);
   }
 }
 
@@ -1970,6 +2402,9 @@ module.exports = {
     buildError: buildError,
     buildGlobalUsageDocId: buildGlobalUsageDocId,
     buildGlobalUsageDocument: buildGlobalUsageDocument,
+    buildPersistedStoryResponse: buildPersistedStoryResponse,
+    buildPoolDocument: buildPoolDocument,
+    buildPoolDocumentId: buildPoolDocumentId,
     buildStoryMeta: buildStoryMeta,
     buildSuccess: buildSuccess,
     buildSystemPrompt: buildSystemPrompt,
@@ -1988,6 +2423,8 @@ module.exports = {
     generateNormalizedStoryWithRetry: generateNormalizedStoryWithRetry,
     getUsageDateKey: getUsageDateKey,
     isCircuitOpen: isCircuitOpen,
+    isActivePoolStory: isActivePoolStory,
+    isLegacyPresetStory: isLegacyPresetStory,
     LAST_GENERATION_MEMORY: LAST_GENERATION_MEMORY,
     PRODUCT_STYLE_RULES: PRODUCT_STYLE_RULES,
     AI_ENDING_POOL: AI_ENDING_POOL,
@@ -2006,8 +2443,11 @@ module.exports = {
     pickRandomItem: pickRandomItem,
     pickRandomItemAvoidingKey: pickRandomItemAvoidingKey,
     pickRandomValueAvoidingRepeat: pickRandomValueAvoidingRepeat,
+    persistFormalAiStory: persistFormalAiStory,
     releaseRequestLock: releaseRequestLock,
+    releaseFormalStoryPoolReservation: releaseFormalStoryPoolReservation,
     rememberStoryMeta: rememberStoryMeta,
+    reserveFormalStoryPool: reserveFormalStoryPool,
     requestAndNormalizeStory: requestAndNormalizeStory,
     requestDeepSeek: requestDeepSeek,
     safeGetDocument: safeGetDocument,
@@ -2016,5 +2456,7 @@ module.exports = {
     validateAiStoryMeta: validateAiStoryMeta,
     validateEvent: validateEvent,
     validateProviderInputLength: validateProviderInputLength,
+    normalizeRequestedStoryType: normalizeRequestedStoryType,
+    normalizeStoryDocument: normalizeStoryDocument,
   },
 };

@@ -52,6 +52,7 @@ const AI_REQUEST_HINTS = [
   '正在把一段地点信息交给一位不太安分的讲述者',
 ];
 const AI_REQUEST_NOTICE = '后续内容将由人工智能生成，仅供娱乐与参考';
+const GENERIC_REQUEST_NOTICE = '正在查询当前地点故事池，请稍等片刻';
 const AI_REQUEST_HINT_INTERVAL_MS = 5000;
 
 function formatCityText(location) {
@@ -69,6 +70,11 @@ function formatCityText(location) {
 }
 
 function formatLocationIntro(location) {
+  if (location.pendingEnsureLocation) {
+    const addressText = location.address ? '微信地图返回地址：' + location.address + '。' : '';
+    return addressText + '正在确认这个选点是否已有正式地点身份。';
+  }
+
   if (location.transientPlace) {
     const addressText = location.address ? '微信地图返回地址：' + location.address + '。' : '';
     return addressText + '当前地点尚未写入系统地点库，本次会按临时选定地点生成故事。';
@@ -104,6 +110,10 @@ function formatHeroIntro(location) {
 }
 
 function formatTags(location) {
+  if (location.pendingEnsureLocation) {
+    return '微信地图选点 / 待确认地点';
+  }
+
   if (location.transientPlace) {
     return '微信地图选点 / 临时地点';
   }
@@ -132,8 +142,17 @@ function formatLocationAddress(location) {
 }
 
 function createStoryModes(options) {
+  const settings = options && typeof options === 'object' ? options : {};
+
   return STORY_TYPES.map(function cloneStoryMode(mode) {
-    return Object.assign({}, mode);
+    const nextMode = Object.assign({}, mode);
+
+    if (mode.key !== 'traveler' && settings.disableChargedTypes) {
+      nextMode.enabled = false;
+      nextMode.statusText = settings.statusText || '地点确认中';
+    }
+
+    return nextMode;
   });
 }
 
@@ -150,6 +169,96 @@ function buildTemporarySelectedPlace(locationDetail) {
     latitude: selectedPlace.latitude,
     longitude: selectedPlace.longitude,
     poiid: selectedPlace.poiid || locationDetail.poiid || '',
+  };
+}
+
+function createLocationDetailFromSelection(selectedPlace) {
+  return {
+    id: null,
+    locationId: null,
+    isTemporary: false,
+    transientPlace: false,
+    pendingEnsureLocation: true,
+    source: selectedPlace.source || 'wechat_chooseLocation',
+    name: selectedPlace.name || '未命名地点',
+    city: selectedPlace.city || '',
+    province: selectedPlace.province || '',
+    address: selectedPlace.address || '',
+    latitude: selectedPlace.latitude,
+    longitude: selectedPlace.longitude,
+    poiid: selectedPlace.poiid || '',
+    selectedPlace: buildTemporarySelectedPlace(selectedPlace),
+    cityText: formatCityText(selectedPlace),
+    intro: formatLocationIntro({
+      pendingEnsureLocation: true,
+      address: selectedPlace.address || '',
+    }),
+    heroIntro: formatHeroIntro({
+      pendingEnsureLocation: true,
+      address: selectedPlace.address || '',
+    }),
+    tagsText: formatTags({
+      pendingEnsureLocation: true,
+    }),
+    storyCountText: '地点身份确认中',
+  };
+}
+
+function createLocationDetailFromFormalLocation(location) {
+  return {
+    id: location.id,
+    locationId: location.id,
+    isTemporary: false,
+    transientPlace: false,
+    pendingEnsureLocation: false,
+    source: location.source || '',
+    name: location.name || '未命名地点',
+    city: location.city || '',
+    province: location.province || '',
+    country: location.country || '',
+    address: formatLocationAddress(location),
+    latitude: location.latitude,
+    longitude: location.longitude,
+    poiid: location.poiid || '',
+    selectedPlace: null,
+    cityText: formatCityText(location),
+    intro: formatLocationIntro(location),
+    heroIntro: formatHeroIntro(location),
+    tagsText: formatTags(location),
+    storyCountText: location.storyCountText || '',
+  };
+}
+
+function createLocationDetailFromTemporaryFallback(selectedPlace, fallbackReason) {
+  const temporaryLocation = Object.assign({}, selectedPlace, {
+    isTemporary: true,
+    transientPlace: true,
+    pendingEnsureLocation: false,
+    intro: fallbackReason || selectedPlace.intro || '',
+  });
+
+  return {
+    id: null,
+    locationId: null,
+    isTemporary: true,
+    transientPlace: true,
+    pendingEnsureLocation: false,
+    source: temporaryLocation.source || 'wechat_chooseLocation',
+    name: temporaryLocation.name || '未命名地点',
+    city: temporaryLocation.city || '',
+    province: temporaryLocation.province || '',
+    address: temporaryLocation.address || '',
+    latitude: temporaryLocation.latitude,
+    longitude: temporaryLocation.longitude,
+    poiid: temporaryLocation.poiid || '',
+    selectedPlace: buildTemporarySelectedPlace(temporaryLocation),
+    cityText: formatCityText(temporaryLocation),
+    intro: fallbackReason || formatLocationIntro(temporaryLocation),
+    heroIntro: formatHeroIntro(Object.assign({}, temporaryLocation, {
+      intro: fallbackReason || formatLocationIntro(temporaryLocation),
+    })),
+    tagsText: formatTags(temporaryLocation),
+    storyCountText: '本次按临时地点处理',
   };
 }
 
@@ -181,7 +290,7 @@ function validateAiStoryRequestPayload(payload) {
   return payload;
 }
 
-function buildAiStoryRequestPayload(locationDetail, storyDisplayType) {
+function buildAiStoryRequestPayload(locationDetail, storyModeKey) {
   const requestId = arguments.length > 2 ? arguments[2] : '';
   const isTemporary = !!(locationDetail && (locationDetail.isTemporary || locationDetail.transientPlace));
 
@@ -194,7 +303,8 @@ function buildAiStoryRequestPayload(locationDetail, storyDisplayType) {
       locationName: locationDetail.name || '',
       locationDescription: locationDetail.intro || '',
       city: locationDetail.city || '',
-      type: storyDisplayType,
+      province: locationDetail.province || '',
+      type: storyModeKey,
     });
   }
 
@@ -206,7 +316,8 @@ function buildAiStoryRequestPayload(locationDetail, storyDisplayType) {
     locationName: locationDetail.name || '',
     locationDescription: locationDetail.intro || '',
     city: locationDetail.city || '',
-    type: storyDisplayType,
+    province: locationDetail.province || '',
+    type: storyModeKey,
   });
 }
 
@@ -226,6 +337,7 @@ function buildGeneratedStoryForPage(resultStory, locationDetail) {
     locationAddress: locationDetail.address || '',
     selectedPlace: buildTemporarySelectedPlace(locationDetail),
     transientPlace: !!locationDetail.transientPlace,
+    fromPool: !!resultStory.fromPool,
   };
 }
 
@@ -365,6 +477,7 @@ function validateDisplayableStory(story, expectedType, options) {
   const title = typeof story.title === 'string' ? story.title.trim() : '';
   const content = typeof story.content === 'string' ? story.content.trim() : '';
   const type = typeof story.type === 'string' ? story.type.trim() : '';
+  const expectedTypeValue = typeof expectedType === 'string' ? expectedType.trim() : '';
 
   if (!title || !content) {
     throw createAiServiceError('NORMALIZATION_ERROR', '故事暂时生成失败，请稍后再试', {
@@ -373,7 +486,11 @@ function validateDisplayableStory(story, expectedType, options) {
     });
   }
 
-  if (expectedType && type !== expectedType) {
+  if (
+    expectedTypeValue
+    && type !== expectedTypeValue
+    && getStoryDisplayTypeByModeKey(type) !== getStoryDisplayTypeByModeKey(expectedTypeValue)
+  ) {
     throw createAiServiceError('NORMALIZATION_ERROR', '故事暂时生成失败，请稍后再试', {
       phase: options && options.phase ? options.phase : 'story_validation',
       requestId: options && options.requestId ? options.requestId : '',
@@ -499,6 +616,18 @@ function getStoryDisplayTypeByModeKey(modeKey) {
   return STORY_MODE_DISPLAY_TYPES[modeKey] || 'AI说';
 }
 
+function shouldShowAiRequestNotice(locationDetail, storyModeKey) {
+  if (!locationDetail) {
+    return false;
+  }
+
+  if (storyModeKey === 'ai_comment') {
+    return true;
+  }
+
+  return !!(locationDetail.isTemporary || locationDetail.transientPlace);
+}
+
 function pickRandomAiRequestHint(previousHint) {
   if (!AI_REQUEST_HINTS.length) {
     return '';
@@ -526,11 +655,12 @@ Page({
     requesting: false,
     requestingTypeLabel: '',
     requestingHint: '',
+    requestingNotice: '',
   },
 
   onLoad(options) {
-    if (options && options.transientPlace === '1') {
-      this.loadTransientLocationDetail();
+    if (options && (options.selectedPlace === '1' || options.transientPlace === '1')) {
+      this.loadSelectedPlaceLocationDetail();
       return;
     }
 
@@ -582,14 +712,20 @@ Page({
     }
   },
 
-  startAiRequestMask(storyTypeLabel) {
+  startAiRequestMask(storyTypeLabel, storyModeKey) {
+    const locationDetail = this.data.locationDetail;
     const nextHint = pickRandomAiRequestHint(this.data.requestingHint);
+    const shouldShowAiNotice = shouldShowAiRequestNotice(
+      locationDetail,
+      storyModeKey || ''
+    );
 
     this.clearRequestingHintTimer();
     this.setData({
       requesting: true,
       requestingTypeLabel: storyTypeLabel || '故事',
       requestingHint: nextHint,
+      requestingNotice: shouldShowAiNotice ? AI_REQUEST_NOTICE : GENERIC_REQUEST_NOTICE,
     });
 
     this.requestingHintTimer = setInterval(() => {
@@ -614,6 +750,7 @@ Page({
       requesting: false,
       requestingTypeLabel: '',
       requestingHint: '',
+      requestingNotice: '',
     });
   },
 
@@ -666,7 +803,7 @@ Page({
     }
   },
 
-  async loadTransientLocationDetail() {
+  async loadSelectedPlaceLocationDetail() {
     const app = getApp();
     const selectedPlace = app && app.globalData ? app.globalData.pendingSelectedPlace : null;
 
@@ -686,40 +823,74 @@ Page({
 
     try {
       const profile = await userService.getCurrentUserProfile();
+      const pendingLocationDetail = createLocationDetailFromSelection(selectedPlace);
 
       this.setData({
-        locationDetail: {
-          id: null,
-          locationId: null,
-          isTemporary: true,
-          transientPlace: true,
-          source: selectedPlace.source || 'wechat_chooseLocation',
-          name: selectedPlace.name || '未命名地点',
-          city: selectedPlace.city || '',
-          address: selectedPlace.address || '',
-          latitude: selectedPlace.latitude,
-          longitude: selectedPlace.longitude,
-          poiid: selectedPlace.poiid || '',
-          selectedPlace: buildTemporarySelectedPlace(selectedPlace),
-          cityText: formatCityText(selectedPlace),
-          intro: formatLocationIntro(selectedPlace),
-          heroIntro: formatHeroIntro(selectedPlace),
-          tagsText: formatTags(selectedPlace),
-          storyCountText: '本次选点临时生成',
-        },
+        locationDetail: pendingLocationDetail,
         storyModes: createStoryModes({
-          transientPlace: true,
+          disableChargedTypes: true,
+          statusText: '地点确认中',
         }),
         remainingMagnifyingGlass: profile.magnifyingGlass || 0,
+        loading: true,
+        errorMessage: '',
+      });
+
+      const ensureResult = await locationService.ensureLocation(selectedPlace);
+
+      if (ensureResult && ensureResult.isTemporary) {
+        this.setData({
+          locationDetail: createLocationDetailFromTemporaryFallback(
+            selectedPlace,
+            ensureResult.fallbackReason
+          ),
+          storyModes: createStoryModes(),
+          loading: false,
+          errorMessage: '',
+        });
+        return;
+      }
+
+      const ensuredLocation = ensureResult && ensureResult.location
+        ? ensureResult.location
+        : null;
+
+      if (!ensuredLocation || !ensureResult.locationId) {
+        this.setData({
+          locationDetail: createLocationDetailFromTemporaryFallback(
+            selectedPlace,
+            '当前地点身份确认失败，本次按临时地点处理。'
+          ),
+          storyModes: createStoryModes(),
+          loading: false,
+          errorMessage: '',
+        });
+        return;
+      }
+
+      const formalLocationDetail = createLocationDetailFromFormalLocation(ensuredLocation);
+
+      formalLocationDetail.storyCountText = ensureResult.created
+        ? '已建立正式地点身份'
+        : '已复用正式地点身份';
+
+      this.setData({
+        locationDetail: formalLocationDetail,
+        storyModes: createStoryModes(),
         loading: false,
         errorMessage: '',
       });
     } catch (error) {
+      const fallbackDetail = createLocationDetailFromTemporaryFallback(
+        selectedPlace,
+        error && error.message ? error.message : '当前地点身份确认失败，本次按临时地点处理。'
+      );
+
       this.setData({
-        locationDetail: null,
+        locationDetail: fallbackDetail,
         storyModes: createStoryModes(),
         loading: false,
-        errorMessage: '临时地点加载失败，请重新选择地点。',
+        errorMessage: '',
       });
     }
   },
@@ -843,42 +1014,17 @@ Page({
       }));
 
       let story = null;
-      const isTransientPlace = !!(
-        this.data.locationDetail.transientPlace || this.data.locationDetail.isTemporary
-      );
 
-      if (type === 'ai_comment') {
-        this.startAiRequestMask(label || '故事');
+      if (type === 'ai_comment' || type === 'folk') {
+        this.startAiRequestMask(label || '故事', type);
         story = await this.generateAiStory(type, usagePayload.requestId);
-      } else if (type === 'folk') {
-        if (isTransientPlace) {
-          this.startAiRequestMask(label || '故事');
-          story = await this.generateAiStory(type, usagePayload.requestId);
-        } else {
-          try {
-            story = await storyService.getRandomPresetStoryByLocationAndType(this.data.locationDetail.id, type);
-          } catch (presetError) {
-            const rawMessage = presetError && presetError.message ? String(presetError.message) : '';
-
-            if (rawMessage.indexOf('这个地点暂时还没有这种类型的预设故事。') === -1) {
-              throw presetError;
-            }
-
-            this.startAiRequestMask(label || '故事');
-            story = await this.generateAiStory(type, usagePayload.requestId);
-          }
-        }
       } else {
-        try {
-          story = await storyService.getRandomStoryByLocationAndType(this.data.locationDetail.id, type);
-        } catch (error) {
-          throw error;
-        }
+        story = await storyService.getRandomStoryByLocationAndType(this.data.locationDetail.id, type);
       }
 
       story = validateDisplayableStory(
         story,
-        getStoryDisplayTypeByModeKey(type),
+        type,
         {
           requestId: usagePayload.requestId,
           phase: 'story_validation',
@@ -996,7 +1142,7 @@ Page({
 
     const payload = buildAiStoryRequestPayload(
       this.data.locationDetail,
-      getStoryDisplayTypeByModeKey(storyModeKey),
+      storyModeKey,
       requestId || ''
     );
     const startedAt = Date.now();
@@ -1033,6 +1179,27 @@ Page({
         durationMs: Date.now() - startedAt,
         diagnostics: diagnostics,
       });
+    }
+
+    if (result.story && result.story.persisted) {
+      const persistedStory = {
+        id: result.story.storyId,
+        locationId: result.story.locationId,
+        type: result.story.type,
+        title: result.story.title,
+        content: result.story.content,
+        source: result.story.source,
+        generated: false,
+        storyMeta: result.story.storyMeta || null,
+        fromPool: !!result.story.fromPool,
+      };
+
+      validateDisplayableStory(persistedStory, payload.type, {
+        requestId: requestId || payload.requestId || '',
+        phase: 'generate_story_validation',
+      });
+
+      return persistedStory;
     }
 
     const app = getApp();
