@@ -7,11 +7,35 @@
 
   <view class="summary-card panel">
     <view class="summary-number">{{atlasItems.length}}</view>
-    <view class="summary-label">已探索地点</view>
+    <view class="summary-label">已记录足迹</view>
   </view>
 
-  <view wx:for="{{atlasItems}}" wx:key="id" class="atlas-card panel">
-    <view class="atlas-location">📍 {{item.location}}</view>
-    <view class="atlas-type">{{item.type}}</view>
+  <view wx:if="{{loading}}" class="panel atlas-status-card">
+    <view class="atlas-status-title">正在整理足迹</view>
+    <view class="atlas-status-text">请稍等片刻，我们正在更新你最近探索过的地点。</view>
   </view>
+
+  <view wx:elif="{{errorMessage}}" class="panel atlas-status-card">
+    <view class="atlas-status-title">读取失败</view>
+    <view class="atlas-status-text">{{errorMessage}}</view>
+  </view>
+
+  <view wx:elif="{{empty}}" class="panel atlas-status-card">
+    <view class="atlas-status-title">还没有探索足迹</view>
+    <view class="atlas-status-text">去寻找一段传说吧</view>
+  </view>
+
+  <block wx:else>
+    <view
+      wx:for="{{atlasItems}}"
+      wx:key="id"
+      class="atlas-card panel"
+      bindtap="handleAtlasItemTap"
+      data-location-id="{{item.locationId}}"
+    >
+      <view class="atlas-location">📍 {{item.locationName}}</view>
+      <view class="atlas-type">{{item.storyTypeLabel}}</view>
+      <view class="atlas-time">最近探索：{{item.lastExploredAtText}}</view>
+    </view>
+  </block>
 </view>

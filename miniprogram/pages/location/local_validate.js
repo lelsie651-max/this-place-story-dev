@@ -2,6 +2,7 @@ const assert = require('assert');
 
 const userService = require('../../services/userService');
 const storyService = require('../../services/storyService');
+const explorationService = require('../../services/explorationService');
 
 let capturedPageConfig = null;
 let currentApp = null;
@@ -112,13 +113,16 @@ function createHarness(config) {
     generate: 0,
     preset: 0,
     navigate: 0,
+    recordExploration: 0,
     toast: 0,
   };
   const state = {
     magnifyingGlass: typeof config.magnifyingGlass === 'number' ? config.magnifyingGlass : 5,
     lastRequestId: '',
     lastGeneratePayload: null,
+    lastExplorationPayload: null,
     navigationUrls: [],
+    sequence: [],
     intervalCallbacks: {},
     nextIntervalId: 1,
   };
@@ -135,6 +139,7 @@ function createHarness(config) {
     navigateTo(options) {
       counters.navigate += 1;
       state.navigationUrls.push(options.url);
+      state.sequence.push('navigate');
 
       if (config.navigateFail) {
         options.fail({
@@ -268,6 +273,7 @@ function createHarness(config) {
 
   userService.consumeMagnifyingGlass = async function consumeMock(payload) {
     counters.consume += 1;
+    state.sequence.push('consume');
 
     if (config.consumeError) {
       const error = new Error(config.consumeError.message);
@@ -285,8 +291,32 @@ function createHarness(config) {
 
   userService.releaseMagnifyingGlassRequest = async function releaseMock() {
     counters.release += 1;
+    state.sequence.push('release');
     return {
       released: true,
+    };
+  };
+
+  explorationService.recordExploration = async function recordExplorationMock(payload) {
+    counters.recordExploration += 1;
+    state.lastExplorationPayload = payload;
+    state.sequence.push('record');
+
+    if (config.recordExplorationError) {
+      const error = new Error(config.recordExplorationError.message);
+      error.code = config.recordExplorationError.code;
+      throw error;
+    }
+
+    return {
+      explorationId: 'exp-demo-001',
+      created: true,
+      item: {
+        id: 'exp-demo-001',
+        locationId: payload.locationId,
+        locationName: payload.locationName,
+        storyType: payload.storyType,
+      },
     };
   };
 
@@ -353,8 +383,11 @@ async function testAiSuccess() {
     assert.strictEqual(ctx.counters.release, 0);
     assert.strictEqual(ctx.state.magnifyingGlass, 4);
     assert.strictEqual(ctx.counters.generate, 1);
+    assert.strictEqual(ctx.counters.recordExploration, 1);
     assert.strictEqual(currentApp.globalData.pendingGeneratedStory, undefined);
     assert.strictEqual(ctx.state.navigationUrls[0], '/pages/story/story?storyId=story-real-001');
+    assert.deepStrictEqual(ctx.state.sequence.slice(-3), ['consume', 'navigate', 'record']);
+    assert.strictEqual(ctx.state.lastExplorationPayload.storyType, 'ai_comment');
   });
 }
 
@@ -395,6 +428,7 @@ async function testAiTimeout() {
 
     assert.strictEqual(ctx.counters.consume, 0);
     assert.strictEqual(ctx.counters.release, 1);
+    assert.strictEqual(ctx.counters.recordExploration, 0);
     assert.strictEqual(ctx.state.magnifyingGlass, 5);
   });
 }
@@ -435,6 +469,7 @@ async function testAiInvalidJson() {
 
     assert.strictEqual(ctx.counters.consume, 0);
     assert.strictEqual(ctx.counters.release, 1);
+    assert.strictEqual(ctx.counters.recordExploration, 0);
     assert.strictEqual(ctx.state.magnifyingGlass, 5);
   });
 }
@@ -451,6 +486,7 @@ async function testAiEmptyResponse() {
 
     assert.strictEqual(ctx.counters.consume, 0);
     assert.strictEqual(ctx.counters.release, 1);
+    assert.strictEqual(ctx.counters.recordExploration, 0);
     assert.strictEqual(ctx.state.magnifyingGlass, 5);
   });
 }
@@ -463,6 +499,7 @@ async function testCloudFunctionCallFail() {
 
     assert.strictEqual(ctx.counters.consume, 0);
     assert.strictEqual(ctx.counters.release, 1);
+    assert.strictEqual(ctx.counters.recordExploration, 0);
     assert.strictEqual(ctx.state.magnifyingGlass, 5);
   });
 }
@@ -478,6 +515,7 @@ async function testPresetStoryHit() {
     assert.strictEqual(ctx.counters.generate, 1);
     assert.strictEqual(ctx.counters.consume, 1);
     assert.strictEqual(ctx.counters.release, 0);
+    assert.strictEqual(ctx.counters.recordExploration, 1);
     assert.strictEqual(ctx.state.magnifyingGlass, 4);
     assert.strictEqual(ctx.page.data.requesting, false);
     assert.strictEqual(ctx.page.data.requestingHint, '');
@@ -495,6 +533,7 @@ async function testMagnifyingGlassEmpty() {
     assert.strictEqual(ctx.counters.prepare, 0);
     assert.strictEqual(ctx.counters.generate, 0);
     assert.strictEqual(ctx.counters.consume, 0);
+    assert.strictEqual(ctx.counters.recordExploration, 0);
     assert.strictEqual(ctx.state.magnifyingGlass, 0);
   });
 }
@@ -513,6 +552,7 @@ async function testRapidRepeatClick() {
     assert.strictEqual(ctx.counters.generate, 1);
     assert.strictEqual(ctx.counters.consume, 1);
     assert.strictEqual(ctx.counters.release, 0);
+    assert.strictEqual(ctx.counters.recordExploration, 1);
   });
 }
 
@@ -536,6 +576,7 @@ async function testFolkFallbackSuccess() {
     assert.strictEqual(ctx.counters.generate, 1);
     assert.strictEqual(ctx.counters.consume, 1);
     assert.strictEqual(ctx.counters.release, 0);
+    assert.strictEqual(ctx.counters.recordExploration, 1);
     assert.strictEqual(ctx.state.navigationUrls[0], '/pages/story/story?storyId=story-real-001');
   });
 }
@@ -552,6 +593,7 @@ async function testFolkFallbackFailure() {
 
     assert.strictEqual(ctx.counters.consume, 0);
     assert.strictEqual(ctx.counters.release, 1);
+    assert.strictEqual(ctx.counters.recordExploration, 0);
     assert.strictEqual(ctx.state.magnifyingGlass, 5);
   });
 }
@@ -567,6 +609,7 @@ async function testTemporaryAiSuccess() {
 
     assert.strictEqual(ctx.counters.consume, 1);
     assert.strictEqual(ctx.counters.release, 0);
+    assert.strictEqual(ctx.counters.recordExploration, 0);
     assert.ok(ctx.state.lastGeneratePayload);
     assert.strictEqual(ctx.state.lastGeneratePayload.locationId, null);
     assert.strictEqual(ctx.state.lastGeneratePayload.isTemporary, true);
@@ -575,16 +618,30 @@ async function testTemporaryAiSuccess() {
   });
 }
 
-async function testTravelerSkipsAiMask() {
-  await runCase('Traveler mode skips AI mask and generateStory', {}, async function execute(ctx) {
+async function testTravelerFormalSuccessRecordsExploration() {
+  await runCase('Traveler mode records after navigate success', {}, async function execute(ctx) {
     await ctx.page.handleSelectStoryType(createEvent('traveler', '街谈巷说'));
 
     assert.strictEqual(ctx.counters.generate, 0);
     assert.strictEqual(ctx.counters.prepare, 0);
     assert.strictEqual(ctx.counters.consume, 0);
+    assert.strictEqual(ctx.counters.recordExploration, 1);
     assert.strictEqual(ctx.page.data.requesting, false);
     assert.strictEqual(ctx.page.data.requestingHint, '');
     assert.strictEqual(ctx.state.getActiveIntervalCount(), 0);
+    assert.strictEqual(ctx.state.navigationUrls[0], '/pages/userStories/userStories?source=location');
+    assert.deepStrictEqual(ctx.state.sequence.slice(-2), ['navigate', 'record']);
+  });
+}
+
+async function testTravelerTemporarySkipsExploration() {
+  await runCase('Temporary traveler skips exploration record', {
+    temporary: true,
+  }, async function execute(ctx) {
+    await ctx.page.handleSelectStoryType(createEvent('traveler', '街谈巷说'));
+
+    assert.strictEqual(ctx.counters.recordExploration, 0);
+    assert.strictEqual(ctx.state.navigationUrls[0], '/pages/userStories/userStories?source=location');
   });
 }
 
@@ -602,21 +659,58 @@ async function testTemporaryAiFailure() {
 
     assert.strictEqual(ctx.counters.consume, 0);
     assert.strictEqual(ctx.counters.release, 1);
+    assert.strictEqual(ctx.counters.recordExploration, 0);
     assert.strictEqual(ctx.state.magnifyingGlass, 5);
   });
 }
 
 async function testNavigateFailure() {
-  await runCase('Navigate failure releases without consume', {
+  await runCase('Navigate failure after consume does not record', {
     navigateFail: true,
     generatedStoryType: 'ai_comment',
     persisted: true,
   }, async function execute(ctx) {
     await ctx.page.handleSelectStoryType(createEvent('ai_comment', 'AI说'));
 
-    assert.strictEqual(ctx.counters.consume, 0);
+    assert.strictEqual(ctx.counters.consume, 1);
+    assert.strictEqual(ctx.counters.release, 0);
+    assert.strictEqual(ctx.counters.recordExploration, 0);
+    assert.strictEqual(ctx.state.magnifyingGlass, 4);
+  });
+}
+
+async function testConsumeFailureSkipsExploration() {
+  await runCase('Consume failure skips exploration record', {
+    generatedStoryType: 'folk',
+    persisted: true,
+    consumeError: {
+      code: 'MAGNIFYING_GLASS_CONCURRENT_REQUEST',
+      message: '当前探索请求已失效，请重新选择。',
+    },
+  }, async function execute(ctx) {
+    await ctx.page.handleSelectStoryType(createEvent('folk', '民间传说'));
+
+    assert.strictEqual(ctx.counters.consume, 1);
+    assert.strictEqual(ctx.counters.recordExploration, 0);
     assert.strictEqual(ctx.counters.release, 1);
-    assert.strictEqual(ctx.state.magnifyingGlass, 5);
+    assert.strictEqual(ctx.state.navigationUrls.length, 0);
+  });
+}
+
+async function testExplorationFailureDoesNotBlockStory() {
+  await runCase('Exploration failure does not block story page', {
+    generatedStoryType: 'folk',
+    persisted: true,
+    recordExplorationError: {
+      code: 'DATABASE_ERROR',
+      message: '足迹写入失败',
+    },
+  }, async function execute(ctx) {
+    await ctx.page.handleSelectStoryType(createEvent('folk', '民间传说'));
+
+    assert.strictEqual(ctx.counters.consume, 1);
+    assert.strictEqual(ctx.counters.recordExploration, 1);
+    assert.strictEqual(ctx.state.navigationUrls[0], '/pages/story/story?storyId=story-real-001');
   });
 }
 
@@ -636,8 +730,11 @@ async function run() {
     testFolkFallbackFailure,
     testTemporaryAiSuccess,
     testTemporaryAiFailure,
-    testTravelerSkipsAiMask,
+    testTravelerFormalSuccessRecordsExploration,
+    testTravelerTemporarySkipsExploration,
     testNavigateFailure,
+    testConsumeFailureSkipsExploration,
+    testExplorationFailureDoesNotBlockStory,
   ];
 
   for (const testFn of tests) {

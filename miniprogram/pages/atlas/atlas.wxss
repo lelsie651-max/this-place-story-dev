@@ -18,6 +18,22 @@
   position: relative;
 }
 
+.atlas-status-card {
+  text-align: center;
+}
+
+.atlas-status-title {
+  margin-bottom: 14rpx;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #4c3424;
+}
+
+.atlas-status-text {
+  color: #8b5e34;
+  line-height: 1.7;
+}
+
 .atlas-location {
   margin-bottom: 12rpx;
   font-size: 36rpx;
@@ -32,4 +48,11 @@
   background: rgba(140, 94, 52, 0.12);
   color: #8b5e34;
   font-size: 24rpx;
+}
+
+.atlas-time {
+  margin-top: 18rpx;
+  color: #8b5e34;
+  font-size: 26rpx;
+  line-height: 1.7;
 }

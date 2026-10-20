@@ -1,6 +1,7 @@
 const locationService = require('../../services/locationService');
 const storyService = require('../../services/storyService');
 const userService = require('../../services/userService');
+const explorationService = require('../../services/explorationService');
 
 const STORY_TYPES = [
   {
@@ -319,6 +320,36 @@ function buildAiStoryRequestPayload(locationDetail, storyModeKey) {
     province: locationDetail.province || '',
     type: storyModeKey,
   });
+}
+
+function canRecordExploration(locationDetail) {
+  return !!(
+    locationDetail
+    && !locationDetail.isTemporary
+    && !locationDetail.transientPlace
+    && typeof locationDetail.id === 'string'
+    && locationDetail.id.trim()
+  );
+}
+
+function buildExplorationPayload(locationDetail, storyType) {
+  if (!canRecordExploration(locationDetail)) {
+    return null;
+  }
+
+  const locationName = typeof locationDetail.name === 'string'
+    ? locationDetail.name.trim()
+    : '';
+
+  if (!locationName) {
+    return null;
+  }
+
+  return {
+    locationId: locationDetail.id.trim(),
+    locationName: locationName,
+    storyType: storyType,
+  };
 }
 
 function buildGeneratedStoryForPage(resultStory, locationDetail) {
@@ -929,6 +960,26 @@ Page({
 
     wx.navigateTo({
       url: '/pages/userStories/userStories?source=location',
+      success: () => {
+        this.recordExplorationNonBlocking('traveler');
+      },
+    });
+  },
+
+  recordExplorationNonBlocking(storyType) {
+    const payload = buildExplorationPayload(this.data.locationDetail, storyType);
+
+    if (!payload) {
+      return Promise.resolve();
+    }
+
+    return explorationService.recordExploration(payload).catch(function swallowExplorationError(error) {
+      console.warn('[location] recordExploration failed', {
+        code: error && error.code ? error.code : 'INTERNAL_ERROR',
+        message: error && error.message ? error.message : '足迹记录失败',
+        locationId: payload.locationId,
+        storyType: payload.storyType,
+      });
     });
   },
 
@@ -1031,22 +1082,6 @@ Page({
         }
       );
 
-      await new Promise(function navigateToStory(resolve, reject) {
-        wx.navigateTo({
-          url: story.generated
-            ? '/pages/story/story?generatedStory=1'
-            : '/pages/story/story?storyId=' + story.id,
-          success: resolve,
-          fail: function onFail() {
-            reject(createAiServiceError('UNKNOWN_ERROR', '故事暂时打开失败，请稍后再试', {
-              requestId: usagePayload.requestId,
-              phase: 'navigate_failed',
-              durationMs: Date.now() - requestStartedAt,
-            }));
-          },
-        });
-      });
-
       console.warn('[location][debug] consume start', buildAiRequestDebugInfo({
         requestId: usagePayload.requestId,
         phase: 'consume_start',
@@ -1068,6 +1103,23 @@ Page({
       this.setData({
         remainingMagnifyingGlass: updatedProfile.magnifyingGlass || 0,
       });
+
+      await new Promise(function navigateToStory(resolve, reject) {
+        wx.navigateTo({
+          url: story.generated
+            ? '/pages/story/story?generatedStory=1'
+            : '/pages/story/story?storyId=' + story.id,
+          success: resolve,
+          fail: function onFail() {
+            reject(createAiServiceError('UNKNOWN_ERROR', '故事暂时打开失败，请稍后再试', {
+              requestId: usagePayload.requestId,
+              phase: 'navigate_failed',
+              durationMs: Date.now() - requestStartedAt,
+            }));
+          },
+        });
+      });
+      this.recordExplorationNonBlocking(type);
     } catch (error) {
       let releaseSucceeded = false;
 
