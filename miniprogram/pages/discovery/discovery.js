@@ -318,7 +318,7 @@ Page({
 
 if (typeof module !== 'undefined') {
   module.exports._private = {
-    buildTransientLocationDetail: buildTransientLocationDetail,
+    buildTransientLocationDetail: buildPendingSelectedPlaceDetail,
     formatLocationMeta: formatLocationMeta,
     formatLocationText: formatLocationText,
     buildPendingSelectedPlaceDetail: buildPendingSelectedPlaceDetail,
@@ -327,5 +327,5 @@ if (typeof module !== 'undefined') {
     normalizeViewCount: normalizeViewCount,
     parseCreatedAtToTimestamp: parseCreatedAtToTimestamp,
     recordLocationViewNonBlocking: recordLocationViewNonBlocking,
-}
+  };
 }
