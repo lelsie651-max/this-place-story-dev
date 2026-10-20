@@ -3,6 +3,7 @@ const locationService = require('../../services/locationService');
 
 const TITLE_MAX_LENGTH = 40;
 const CONTENT_MAX_LENGTH = 2000;
+const DEFAULT_SUBMIT_FAILURE_MESSAGE = '投稿提交失败，请稍后再试。';
 
 function trimString(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -25,7 +26,7 @@ function getUserFacingErrorMessage(error) {
   }
 
   if (!message) {
-    return '投稿提交失败，请稍后再试。';
+    return DEFAULT_SUBMIT_FAILURE_MESSAGE;
   }
 
   if (message.indexOf('locationId') !== -1 || message.indexOf('地点') !== -1) {
@@ -41,7 +42,57 @@ function getUserFacingErrorMessage(error) {
     return message;
   }
 
-  return '投稿提交失败，请稍后再试。';
+  return DEFAULT_SUBMIT_FAILURE_MESSAGE;
+}
+
+function encodeQueryValue(value) {
+  return encodeURIComponent(trimString(value));
+}
+
+function buildPublishResultUrl(options) {
+  const resultType = options && options.resultType === 'failure' ? 'failure' : 'success';
+  const query = ['resultType=' + resultType];
+
+  if (resultType === 'failure') {
+    const failureReason = trimString(options && options.reason) || DEFAULT_SUBMIT_FAILURE_MESSAGE;
+    query.push('reason=' + encodeQueryValue(failureReason));
+  }
+
+  return '/pages/publishResult/publishResult?' + query.join('&');
+}
+
+function redirectToPage(url) {
+  return new Promise(function redirectPromise(resolve, reject) {
+    wx.redirectTo({
+      url: url,
+      success: resolve,
+      fail: reject,
+    });
+  });
+}
+
+function reLaunchToPage(url) {
+  return new Promise(function relaunchPromise(resolve, reject) {
+    wx.reLaunch({
+      url: url,
+      success: resolve,
+      fail: reject,
+    });
+  });
+}
+
+async function goToPublishResult(options) {
+  const url = buildPublishResultUrl(options);
+
+  try {
+    await redirectToPage(url);
+  } catch (redirectError) {
+    console.error('[publish] redirectTo publishResult failed', {
+      message: redirectError && redirectError.message ? redirectError.message : '',
+      resultType: options && options.resultType ? options.resultType : 'success',
+    });
+    await reLaunchToPage(url);
+  }
 }
 
 Page({
@@ -282,27 +333,25 @@ Page({
         }
       }
 
-      wx.showToast({
-        title: result.message || '投稿已提交，审核通过后会展示。',
-        icon: 'none',
-      });
+      if (!result || !result.storyId) {
+        throw new Error(DEFAULT_SUBMIT_FAILURE_MESSAGE);
+      }
 
-      setTimeout(() => {
-        this.setData({
-          entrySource: '',
-        });
-        wx.navigateBack({
-          delta: 1,
-        });
-      }, 600);
+      await goToPublishResult({
+        resultType: 'success',
+      });
     } catch (error) {
+      const safeReason = getUserFacingErrorMessage(error) || DEFAULT_SUBMIT_FAILURE_MESSAGE;
+
       console.error('[publish] submitStory failed', {
         code: error && error.code ? error.code : 'INTERNAL_ERROR',
         message: error && error.message ? error.message : '',
+        safeReason: safeReason,
       });
-      wx.showToast({
-        title: getUserFacingErrorMessage(error),
-        icon: 'none',
+
+      await goToPublishResult({
+        resultType: 'failure',
+        reason: safeReason,
       });
     } finally {
       this.submitLock = false;
@@ -312,3 +361,12 @@ Page({
     }
   },
 });
+
+if (typeof module !== 'undefined') {
+  module.exports._private = {
+    DEFAULT_SUBMIT_FAILURE_MESSAGE: DEFAULT_SUBMIT_FAILURE_MESSAGE,
+    buildPublishResultUrl: buildPublishResultUrl,
+    getUserFacingErrorMessage: getUserFacingErrorMessage,
+    goToPublishResult: goToPublishResult,
+  };
+}

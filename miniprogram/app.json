@@ -10,6 +10,7 @@
     "pages/devTestTools/devTestTools",
     "pages/myStories/myStories",
     "pages/publish/publish",
+    "pages/publishResult/publishResult",
     "pages/atlas/atlas",
     "pages/favorites/favorites"
   ],

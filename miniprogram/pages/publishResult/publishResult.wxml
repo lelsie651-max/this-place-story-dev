@@ -1,0 +1,11 @@
+<view class="page">
+  <view class="section-label">PUBLISH RESULT</view>
+  <view class="panel result-card {{isSuccess ? 'result-card--success' : 'result-card--failure'}}">
+    <view class="result-badge">{{isSuccess ? '已提交' : '未提交'}}</view>
+    <view class="page-title result-title">{{title}}</view>
+    <view wx:if="{{message}}" class="panel-text">{{message}}</view>
+    <view wx:if="{{failureReason}}" class="panel-text">{{failureReason}}</view>
+  </view>
+
+  <button class="action-button" bindtap="goHome">返回首页</button>
+</view>

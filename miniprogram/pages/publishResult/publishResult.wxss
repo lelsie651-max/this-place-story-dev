@@ -1,0 +1,29 @@
+.result-card {
+  padding-top: 40rpx;
+  padding-bottom: 40rpx;
+}
+
+.result-card--success {
+  background: linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(245, 237, 222, 0.94));
+}
+
+.result-card--failure {
+  background: linear-gradient(180deg, rgba(255, 248, 242, 0.98), rgba(246, 231, 223, 0.94));
+}
+
+.result-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20rpx;
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(140, 94, 52, 0.12);
+  color: #8b5e34;
+  font-size: 24rpx;
+  letter-spacing: 2rpx;
+}
+
+.result-title {
+  margin-bottom: 16rpx;
+}
