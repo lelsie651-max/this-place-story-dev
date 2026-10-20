@@ -115,6 +115,22 @@ async function testPublishWxmlCleanup() {
   assert.ok(source.indexOf('📍 选择地点') !== -1);
   assert.ok(source.indexOf('bindtap="chooseLocation"') !== -1);
   assert.ok(source.indexOf('{{locationName || \'\'}}') !== -1);
+  assert.ok(source.indexOf('field-address') !== -1);
+  assert.ok(source.indexOf('坐标：') === -1);
+  assert.ok(source.indexOf('当前地点会按临时投稿') === -1);
+  assert.ok(source.indexOf('当前地点会绑定到已有地点库中的正式地点') === -1);
+}
+
+async function testSubmitPayloadStillKeepsLocationFields() {
+  const source = fs.readFileSync(path.join(__dirname, 'publish.js'), 'utf8');
+
+  assert.ok(source.indexOf('latitude: pendingLocation.latitude') !== -1);
+  assert.ok(source.indexOf('longitude: pendingLocation.longitude') !== -1);
+  assert.ok(source.indexOf('placeSnapshot: placeSnapshot') !== -1);
+  assert.ok(source.indexOf('locationId: locationId') !== -1);
+  assert.ok(source.indexOf('isTemporary: isTemporary') !== -1);
+  assert.ok(source.indexOf('async chooseLocation()') !== -1);
+  assert.ok(source.indexOf('await storyService.submitTravelerStory({') !== -1);
 }
 
 async function testSuccessSubmissionRedirectsWithoutToast() {
@@ -288,6 +304,7 @@ async function testSubmittingGuardStillExists() {
 async function run() {
   const tests = [
     ['Publish WXML cleanup', testPublishWxmlCleanup],
+    ['Submit payload still keeps location fields', testSubmitPayloadStillKeepsLocationFields],
     ['Success submission redirects without toast', testSuccessSubmissionRedirectsWithoutToast],
     ['Failure submission redirects with safe reason', testFailureSubmissionRedirectsWithSafeReason],
     ['Submitting guard still exists', testSubmittingGuardStillExists],

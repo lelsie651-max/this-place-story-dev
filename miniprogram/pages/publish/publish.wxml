@@ -6,9 +6,6 @@
     <view class="field-label">📍 选择地点</view>
     <view class="field-value">{{locationName || ''}}</view>
     <view wx:if="{{locationAddress}}" class="field-address">{{locationAddress}}</view>
-    <view wx:if="{{latitude !== null && longitude !== null}}" class="field-note">坐标：{{latitude}}, {{longitude}}</view>
-    <view wx:if="{{locationName && !isTemporary && locationId}}" class="field-note">当前地点会绑定到已有地点库中的正式地点。</view>
-    <view wx:elif="{{locationName && isTemporary}}" class="field-note">当前地点会按临时投稿写入审核队列，不会伪造正式 locationId。</view>
   </view>
 
   <view class="panel field-card">
