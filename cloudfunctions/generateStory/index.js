@@ -474,10 +474,14 @@ const ALLOWED_ERROR_CODES = {
 };
 
 class GenerateStoryError extends Error {
-  constructor(code, message) {
+  constructor(code, message, options) {
     super(message);
     this.name = 'GenerateStoryError';
     this.code = code;
+
+    if (isPlainObject(options && options.diagnostics)) {
+      this.diagnostics = Object.assign({}, options.diagnostics);
+    }
   }
 }
 
@@ -488,13 +492,19 @@ function buildSuccess(story) {
   };
 }
 
-function buildError(code, message) {
+function buildError(code, message, details) {
+  const error = {
+    code: code,
+    message: message,
+  };
+
+  if (isPlainObject(details) && Object.keys(details).length > 0) {
+    error.details = Object.assign({}, details);
+  }
+
   return {
     ok: false,
-    error: {
-      code: code,
-      message: message,
-    },
+    error: error,
   };
 }
 
@@ -508,6 +518,54 @@ function isBoolean(value) {
 
 function trimString(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function getStringLength(value) {
+  return trimString(String(value || '')).length;
+}
+
+function buildValidationContext(options) {
+  return {
+    requestId: trimString(options && options.requestId),
+    requestMode: trimString(options && options.requestMode),
+    attempt: typeof (options && options.attempt) === 'number' ? options.attempt : 0,
+    providerFinishReason: trimString(options && options.providerFinishReason),
+  };
+}
+
+function buildNormalizationDiagnostics(options) {
+  return {
+    requestId: trimString(options && options.requestId),
+    validationStage: trimString(options && options.validationStage),
+    stableCode: trimString(options && options.stableCode),
+    stableReason: trimString(options && options.stableReason),
+    hasTitle: !!trimString(options && options.title),
+    hasContent: !!trimString(options && options.content),
+    contentLength: getStringLength(options && options.content),
+    typeValue: trimString(options && options.typeValue),
+    requestMode: trimString(options && options.requestMode),
+    attempt: typeof (options && options.attempt) === 'number' ? options.attempt : 0,
+    providerFinishReason: trimString(options && options.providerFinishReason),
+  };
+}
+
+function getErrorDiagnostics(error) {
+  return isPlainObject(error && error.diagnostics)
+    ? Object.assign({}, error.diagnostics)
+    : null;
+}
+
+function createNormalizationError(stableCode, stableReason, options) {
+  return new GenerateStoryError(
+    'NORMALIZATION_ERROR',
+    trimString(options && options.userMessage) || stableReason,
+    {
+      diagnostics: buildNormalizationDiagnostics(Object.assign({}, options, {
+        stableCode: stableCode,
+        stableReason: stableReason,
+      })),
+    }
+  );
 }
 
 function createFallbackRequestId() {
@@ -1260,7 +1318,7 @@ function requestDeepSeek(options) {
   });
 }
 
-function extractProviderMessage(payload) {
+function extractProviderMessageInfo(payload) {
   if (!isPlainObject(payload) || !Array.isArray(payload.choices) || payload.choices.length === 0) {
     throw new GenerateStoryError('EMPTY_RESPONSE', 'AI故事暂时生成失败，请稍后再试');
   }
@@ -1268,12 +1326,20 @@ function extractProviderMessage(payload) {
   const firstChoice = payload.choices[0];
   const message = isPlainObject(firstChoice && firstChoice.message) ? firstChoice.message : null;
   const content = message && typeof message.content === 'string' ? message.content : '';
+  const finishReason = trimString(firstChoice && firstChoice.finish_reason);
 
   if (!content) {
     throw new GenerateStoryError('EMPTY_RESPONSE', 'AI故事暂时生成失败，请稍后再试');
   }
 
-  return content;
+  return {
+    content: content,
+    finishReason: finishReason,
+  };
+}
+
+function extractProviderMessage(payload) {
+  return extractProviderMessageInfo(payload).content;
 }
 
 function stripCodeFence(value) {
@@ -1283,50 +1349,121 @@ function stripCodeFence(value) {
     .trim();
 }
 
-function extractJsonText(value) {
+function extractJsonText(value, context) {
   const text = stripCodeFence(trimString(String(value || '')));
   const startIndex = text.indexOf('{');
   const endIndex = text.lastIndexOf('}');
 
   if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果格式不正确');
+    throw createNormalizationError('JSON_EXTRACTION_FAILED', 'AI返回结果缺少可提取 JSON', Object.assign(
+      buildValidationContext(context),
+      {
+        validationStage: 'extract_json_text',
+      }
+    ));
   }
 
   return text.slice(startIndex, endIndex + 1);
 }
 
-function normalizeStoryPayload(rawContent, expectedType) {
+function normalizeStoryPayload(rawContent, expectedType, context) {
   const responseText = trimString(String(rawContent || ''));
+  const validationContext = buildValidationContext(context);
   let parsed = null;
 
   try {
-    parsed = JSON.parse(extractJsonText(responseText));
+    parsed = JSON.parse(extractJsonText(responseText, validationContext));
   } catch (error) {
     if (error instanceof GenerateStoryError) {
       throw error;
     }
 
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果不是有效 JSON');
+    throw createNormalizationError('JSON_PARSE_FAILED', 'AI返回结果不是有效 JSON', Object.assign(
+      {},
+      validationContext,
+      {
+        validationStage: 'parse_json',
+      }
+    ));
   }
 
   if (!isPlainObject(parsed)) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果格式不正确');
+    throw createNormalizationError('INVALID_JSON_OBJECT', 'AI返回结果格式不正确', Object.assign(
+      {},
+      validationContext,
+      {
+        validationStage: 'validate_json_object',
+      }
+    ));
   }
 
   const title = normalizeWhitespace(parsed.title);
   const content = trimString(parsed.content);
   const type = normalizeWhitespace(parsed.type || expectedType || '');
 
-  if (!title || !content || !type) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果缺少标题或正文');
+  if (!title) {
+    throw createNormalizationError('MISSING_TITLE', 'AI返回结果缺少标题', Object.assign(
+      {},
+      validationContext,
+      {
+        validationStage: 'validate_story_fields',
+        title: title,
+        content: content,
+        typeValue: type,
+      }
+    ));
+  }
+
+  if (!content) {
+    throw createNormalizationError('MISSING_CONTENT', 'AI返回结果缺少正文', Object.assign(
+      {},
+      validationContext,
+      {
+        validationStage: 'validate_story_fields',
+        title: title,
+        content: content,
+        typeValue: type,
+      }
+    ));
+  }
+
+  if (!type) {
+    throw createNormalizationError('MISSING_TYPE', 'AI返回结果缺少类型', Object.assign(
+      {},
+      validationContext,
+      {
+        validationStage: 'validate_story_fields',
+        title: title,
+        content: content,
+        typeValue: type,
+      }
+    ));
   }
 
   if (!SUPPORTED_STORY_TYPES[type]) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果缺少有效类型');
+    throw createNormalizationError('INVALID_TYPE', 'AI返回结果缺少有效类型', Object.assign(
+      {},
+      validationContext,
+      {
+        validationStage: 'validate_story_fields',
+        title: title,
+        content: content,
+        typeValue: type,
+      }
+    ));
   }
 
   if (expectedType && type !== expectedType) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果类型与请求不一致');
+    throw createNormalizationError('TYPE_MISMATCH', 'AI返回结果类型与请求不一致', Object.assign(
+      {},
+      validationContext,
+      {
+        validationStage: 'validate_story_fields',
+        title: title,
+        content: content,
+        typeValue: type,
+      }
+    ));
   }
 
   validateLength(title, AI_GUARD_LIMITS.MAX_TITLE_LENGTH, 'title');
@@ -1339,7 +1476,7 @@ function normalizeStoryPayload(rawContent, expectedType) {
   };
 }
 
-function validateAiStoryMeta(storyMeta) {
+function validateAiStoryMeta(storyMeta, context) {
   const requiredFields = [
     'displayName',
     'role',
@@ -1357,7 +1494,16 @@ function validateAiStoryMeta(storyMeta) {
   });
 
   if (missingField) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果缺少有效叙述设定');
+    throw createNormalizationError('MISSING_AI_METADATA', 'AI返回结果缺少有效叙述设定', Object.assign(
+      {},
+      buildValidationContext(context),
+      {
+        validationStage: 'validate_ai_story_meta',
+        title: context && context.title,
+        content: context && context.content,
+        typeValue: context && context.typeValue,
+      }
+    ));
   }
 }
 
@@ -1386,38 +1532,84 @@ function hasAiNarratorPresence(content, storyMeta) {
     || (!!roleFragment && content.indexOf(roleFragment) !== -1);
 }
 
-function validateAiGeneratedStory(story, input, storyMeta) {
+function validateAiGeneratedStory(story, input, storyMeta, context) {
   const content = trimString(story && story.content);
   const voiceProfile = findPoolItemByKey(AI_VOICE_PROFILE_POOL, storyMeta && storyMeta.voiceStyleKey);
   const identity = findPoolItemByKey(AI_IDENTITY_POOL, storyMeta && storyMeta.identityKey);
+  const validationContext = Object.assign(
+    {},
+    buildValidationContext(context),
+    {
+      requestMode: trimString(input && input.type) || trimString(context && context.requestMode),
+      title: story && story.title,
+      content: content,
+      typeValue: story && story.type,
+    }
+  );
 
-  validateAiStoryMeta(storyMeta);
+  validateAiStoryMeta(storyMeta, validationContext);
 
   if (!voiceProfile || !identity) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果缺少有效叙述规则');
+    throw createNormalizationError('MISSING_AI_RULES', 'AI返回结果缺少有效叙述规则', Object.assign(
+      {},
+      validationContext,
+      {
+        validationStage: 'validate_ai_story_rules',
+      }
+    ));
   }
 
   if (countMatchedPatterns(content, AI_TECHNICAL_TERM_PATTERNS) > 0) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI返回结果包含技术提示词');
+    throw createNormalizationError('TECHNICAL_TERM_BLOCKED', 'AI返回结果包含技术提示词', Object.assign(
+      {},
+      validationContext,
+      {
+        validationStage: 'validate_ai_content_rules',
+      }
+    ));
   }
 
   if (!hasAiNarratorPresence(content, storyMeta)) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI说正文缺少明确叙述者存在感');
+    throw createNormalizationError('MISSING_NARRATOR', 'AI说正文缺少明确叙述者存在感', Object.assign(
+      {},
+      validationContext,
+      {
+        validationStage: 'validate_ai_content_rules',
+      }
+    ));
   }
 
   if (countMatchedSignalGroups(content, voiceProfile.featureChecks) < 2) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI说正文未体现足够的语气特征');
+    throw createNormalizationError('MISSING_VOICE_FEATURE', 'AI说正文未体现足够的语气特征', Object.assign(
+      {},
+      validationContext,
+      {
+        validationStage: 'validate_ai_content_rules',
+      }
+    ));
   }
 
   if (countMatchedPatterns(content, identity.roleLexicon) < 1) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI说正文未体现岗位视角');
+    throw createNormalizationError('MISSING_ROLE_LEXICON', 'AI说正文未体现岗位视角', Object.assign(
+      {},
+      validationContext,
+      {
+        validationStage: 'validate_ai_content_rules',
+      }
+    ));
   }
 
   if (
     countMatchedPatterns(content, AI_GENERIC_PLACE_INTRO_PATTERNS) >= 2
     && countMatchedPatterns(content, identity.roleLexicon) < 2
   ) {
-    throw new GenerateStoryError('NORMALIZATION_ERROR', 'AI说正文过于接近通用地点介绍');
+    throw createNormalizationError('GENERIC_PLACE_INTRO', 'AI说正文过于接近通用地点介绍', Object.assign(
+      {},
+      validationContext,
+      {
+        validationStage: 'validate_ai_content_rules',
+      }
+    ));
   }
 
 }
@@ -1606,11 +1798,21 @@ async function requestAndNormalizeStory(options) {
     timeoutMs: options.timeoutMs,
     strictJsonOnly: !!options.strictJsonOnly,
   });
-  const providerMessage = extractProviderMessage(providerResponse);
-  const normalizedStory = normalizeStoryPayload(providerMessage, options.input.type);
+  const providerMessageInfo = extractProviderMessageInfo(providerResponse);
+  const validationContext = {
+    requestId: trimString(options.input && options.input.requestId),
+    requestMode: trimString(options.input && options.input.type),
+    attempt: typeof options.attempt === 'number' ? options.attempt : 1,
+    providerFinishReason: providerMessageInfo.finishReason,
+  };
+  const normalizedStory = normalizeStoryPayload(
+    providerMessageInfo.content,
+    options.input.type,
+    validationContext
+  );
 
   if (options.input.type === 'AI说') {
-    validateAiGeneratedStory(normalizedStory, options.input, options.storyMeta);
+    validateAiGeneratedStory(normalizedStory, options.input, options.storyMeta, validationContext);
   }
 
   return normalizedStory;
@@ -1626,6 +1828,7 @@ async function generateNormalizedStoryWithRetry(options) {
       storyMeta: options.storyMeta,
       timeoutMs: options.timeoutMs,
       strictJsonOnly: false,
+      attempt: 1,
       skipQuotaConsumption: !!options.skipQuotaConsumption,
       requestFn: requestFn,
       lockToken: options.lockToken,
@@ -1641,6 +1844,7 @@ async function generateNormalizedStoryWithRetry(options) {
     console.warn('[generateStory] Story normalization failed, retrying once', {
       request: summarizeRequestForDebug(options.input),
       code: error.code,
+      diagnostics: getErrorDiagnostics(error),
     });
 
     try {
@@ -1650,6 +1854,7 @@ async function generateNormalizedStoryWithRetry(options) {
         storyMeta: options.storyMeta,
         timeoutMs: options.timeoutMs,
         strictJsonOnly: true,
+        attempt: 2,
         skipQuotaConsumption: !!options.skipQuotaConsumption,
         requestFn: requestFn,
         lockToken: options.lockToken,
@@ -1662,8 +1867,11 @@ async function generateNormalizedStoryWithRetry(options) {
         console.error('[generateStory] Story normalization failed after retry', {
           request: summarizeRequestForDebug(options.input),
           code: retryError.code,
+          diagnostics: getErrorDiagnostics(retryError),
         });
-        throw new GenerateStoryError(retryError.code, 'AI故事暂时生成失败，请稍后再试');
+        throw new GenerateStoryError(retryError.code, 'AI故事暂时生成失败，请稍后再试', {
+          diagnostics: getErrorDiagnostics(retryError),
+        });
       }
 
       throw retryError;
@@ -1731,10 +1939,11 @@ async function main(event) {
       durationMs: Date.now() - startedAt,
       phase: requestLockToken ? 'after_prepare' : 'before_prepare',
       request: summarizeRequestForDebug(event),
+      diagnostics: getErrorDiagnostics(error),
     });
 
     if (error instanceof GenerateStoryError && ALLOWED_ERROR_CODES[error.code]) {
-      return buildError(error.code, error.message);
+      return buildError(error.code, error.message, getErrorDiagnostics(error));
     }
 
     console.error('[generateStory] Unexpected error', {

@@ -971,6 +971,7 @@ Page({
         didPrepare: usagePrepared,
         didConsume: usageConsumed,
         didRelease: releaseSucceeded,
+        diagnostics: error && error.diagnostics ? error.diagnostics : null,
       });
       const message = getUserFacingAiErrorMessage(error);
 
@@ -1023,10 +1024,14 @@ Page({
       const message = result && result.error && result.error.message
         ? result.error.message
         : '故事服务暂时不可用，请稍后再试';
+      const diagnostics = result && result.error && result.error.details
+        ? result.error.details
+        : null;
       throw createAiServiceError(errorCode, message, {
         requestId: requestId || payload.requestId || '',
         phase: 'generate_story_result',
         durationMs: Date.now() - startedAt,
+        diagnostics: diagnostics,
       });
     }
 

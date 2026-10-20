@@ -10,9 +10,11 @@ const {
   buildSystemPrompt,
   buildUserPrompt,
   cloneStoryMeta,
+  extractJsonText,
   generateNormalizedStoryWithRetry,
   GenerateStoryError,
   LAST_GENERATION_MEMORY,
+  normalizeStoryPayload,
   validateAiGeneratedStory,
   validateEvent,
 } = generateStoryModule._private;
@@ -114,6 +116,27 @@ function createInput(type) {
     city: '深圳',
     type: type,
   };
+}
+
+function createValidationContext(overrides) {
+  return Object.assign({
+    requestId: 'mg-demo-123',
+    requestMode: 'AI说',
+    attempt: 1,
+    providerFinishReason: 'stop',
+  }, overrides || {});
+}
+
+function assertNormalizationError(error, expectedStableCode, expectedStage, extraChecks) {
+  assert.ok(error instanceof GenerateStoryError);
+  assert.strictEqual(error.code, 'NORMALIZATION_ERROR');
+  assert.ok(error.diagnostics);
+  assert.strictEqual(error.diagnostics.stableCode, expectedStableCode);
+  assert.strictEqual(error.diagnostics.validationStage, expectedStage);
+
+  if (typeof extraChecks === 'function') {
+    extraChecks(error.diagnostics);
+  }
 }
 
 async function testAiMetaAndPrompt() {
@@ -300,6 +323,7 @@ async function testNormalizationFailureStillThrowsStableError() {
         return {
           choices: [
             {
+              finish_reason: 'length',
               message: {
                 content: 'still not valid json',
               },
@@ -311,8 +335,11 @@ async function testNormalizationFailureStillThrowsStableError() {
 
     assert.fail('Expected NORMALIZATION_ERROR to be thrown');
   } catch (error) {
-    assert.ok(error instanceof GenerateStoryError);
-    assert.strictEqual(error.code, 'NORMALIZATION_ERROR');
+    assertNormalizationError(error, 'JSON_EXTRACTION_FAILED', 'extract_json_text', function checkDiagnostics(diagnostics) {
+      assert.strictEqual(diagnostics.requestMode, '民间传说');
+      assert.strictEqual(diagnostics.attempt, 2);
+      assert.strictEqual(diagnostics.providerFinishReason, 'length');
+    });
     assert.strictEqual(callCount, 2);
   }
 }
@@ -431,12 +458,223 @@ async function testGenericPlaceIntroGetsRejected() {
   assert.throws(function throwIfInvalid() {
     validateAiGeneratedStory({
       title: '《通用介绍》',
-      content: '南头古城位于深圳，是一座历史悠久、风景优美、游客众多的著名景点。',
+      content: '先说结论：我负责刷卡复核；据记录，南头古城位于深圳，是一座历史悠久、风景优美、游客众多的著名景点，因此这段描述更像旅游简介。',
       type: 'AI说',
-    }, createInput('AI说'), storyMeta);
+    }, createInput('AI说'), storyMeta, createValidationContext());
   }, function validateError(error) {
-    return error instanceof GenerateStoryError && error.code === 'NORMALIZATION_ERROR';
+    assertNormalizationError(error, 'GENERIC_PLACE_INTRO', 'validate_ai_content_rules', function checkDiagnostics(diagnostics) {
+      assert.strictEqual(diagnostics.hasTitle, true);
+      assert.strictEqual(diagnostics.hasContent, true);
+      assert.strictEqual(diagnostics.typeValue, 'AI说');
+    });
+    return true;
   });
+}
+
+async function testJsonExtractionFailureHasDiagnostics() {
+  try {
+    extractJsonText('not valid json', createValidationContext());
+    assert.fail('Expected JSON extraction failure');
+  } catch (error) {
+    assertNormalizationError(error, 'JSON_EXTRACTION_FAILED', 'extract_json_text', function checkDiagnostics(diagnostics) {
+      assert.strictEqual(diagnostics.requestId, 'mg-demo-123');
+      assert.strictEqual(diagnostics.attempt, 1);
+      assert.strictEqual(diagnostics.providerFinishReason, 'stop');
+      assert.strictEqual(diagnostics.hasTitle, false);
+      assert.strictEqual(diagnostics.hasContent, false);
+      assert.strictEqual(diagnostics.contentLength, 0);
+    });
+  }
+}
+
+async function testJsonParseFailureHasDiagnostics() {
+  try {
+    normalizeStoryPayload('{"title":"坏 JSON",}', 'AI说', createValidationContext());
+    assert.fail('Expected JSON parse failure');
+  } catch (error) {
+    assertNormalizationError(error, 'JSON_PARSE_FAILED', 'parse_json');
+  }
+}
+
+async function testMissingTitleHasDiagnostics() {
+  try {
+    normalizeStoryPayload(JSON.stringify({
+      content: '正文',
+      type: 'AI说',
+    }), 'AI说', createValidationContext());
+    assert.fail('Expected missing title failure');
+  } catch (error) {
+    assertNormalizationError(error, 'MISSING_TITLE', 'validate_story_fields', function checkDiagnostics(diagnostics) {
+      assert.strictEqual(diagnostics.hasTitle, false);
+      assert.strictEqual(diagnostics.hasContent, true);
+      assert.strictEqual(diagnostics.typeValue, 'AI说');
+    });
+  }
+}
+
+async function testMissingContentHasDiagnostics() {
+  try {
+    normalizeStoryPayload(JSON.stringify({
+      title: '《缺正文》',
+      type: 'AI说',
+    }), 'AI说', createValidationContext());
+    assert.fail('Expected missing content failure');
+  } catch (error) {
+    assertNormalizationError(error, 'MISSING_CONTENT', 'validate_story_fields', function checkDiagnostics(diagnostics) {
+      assert.strictEqual(diagnostics.hasTitle, true);
+      assert.strictEqual(diagnostics.hasContent, false);
+      assert.strictEqual(diagnostics.typeValue, 'AI说');
+    });
+  }
+}
+
+async function testMissingTypeHasDiagnostics() {
+  try {
+    normalizeStoryPayload(JSON.stringify({
+      title: '《缺类型》',
+      content: '正文',
+    }), '', createValidationContext({
+      requestMode: '',
+    }));
+    assert.fail('Expected missing type failure');
+  } catch (error) {
+    assertNormalizationError(error, 'MISSING_TYPE', 'validate_story_fields', function checkDiagnostics(diagnostics) {
+      assert.strictEqual(diagnostics.hasTitle, true);
+      assert.strictEqual(diagnostics.hasContent, true);
+      assert.strictEqual(diagnostics.typeValue, '');
+    });
+  }
+}
+
+async function testTypeMismatchHasDiagnostics() {
+  try {
+    normalizeStoryPayload(JSON.stringify({
+      title: '《类型错位》',
+      content: '正文',
+      type: '民间传说',
+    }), 'AI说', createValidationContext());
+    assert.fail('Expected type mismatch failure');
+  } catch (error) {
+    assertNormalizationError(error, 'TYPE_MISMATCH', 'validate_story_fields', function checkDiagnostics(diagnostics) {
+      assert.strictEqual(diagnostics.typeValue, '民间传说');
+    });
+  }
+}
+
+async function testMissingAiMetadataHasDiagnostics() {
+  const storyMeta = createManualAiMeta({
+    identityKey: 'access_control_system',
+    voiceStyleKey: 'warm_lively',
+    emotionalStateKey: 'excited_share',
+  });
+  storyMeta.role = '';
+
+  try {
+    validateAiGeneratedStory({
+      title: '《缺叙述设定》',
+      content: createVoiceStyleSampleContent(storyMeta, '南头古城'),
+      type: 'AI说',
+    }, createInput('AI说'), storyMeta, createValidationContext());
+    assert.fail('Expected missing AI metadata failure');
+  } catch (error) {
+    assertNormalizationError(error, 'MISSING_AI_METADATA', 'validate_ai_story_meta');
+  }
+}
+
+async function testMissingAiRulesHasDiagnostics() {
+  const storyMeta = createManualAiMeta({
+    identityKey: 'access_control_system',
+    voiceStyleKey: 'warm_lively',
+    emotionalStateKey: 'excited_share',
+  });
+  storyMeta.identityKey = 'missing-identity';
+
+  try {
+    validateAiGeneratedStory({
+      title: '《缺规则》',
+      content: createVoiceStyleSampleContent(storyMeta, '南头古城'),
+      type: 'AI说',
+    }, createInput('AI说'), storyMeta, createValidationContext());
+    assert.fail('Expected missing AI rules failure');
+  } catch (error) {
+    assertNormalizationError(error, 'MISSING_AI_RULES', 'validate_ai_story_rules');
+  }
+}
+
+async function testMissingNarratorHasDiagnostics() {
+  const storyMeta = createManualAiMeta({
+    identityKey: 'broadcast_system',
+    voiceStyleKey: 'rigid_serious',
+    emotionalStateKey: 'serious_warning',
+  });
+
+  try {
+    validateAiGeneratedStory({
+      title: '《缺叙述者》',
+      content: '先说结论：南头古城的秩序今天又松了；经核对，播报、提示和游客停留出现了重复变化，因此现场比表面上更乱。',
+      type: 'AI说',
+    }, createInput('AI说'), storyMeta, createValidationContext());
+    assert.fail('Expected missing narrator failure');
+  } catch (error) {
+    assertNormalizationError(error, 'MISSING_NARRATOR', 'validate_ai_content_rules');
+  }
+}
+
+async function testMissingVoiceFeatureHasDiagnostics() {
+  const storyMeta = createManualAiMeta({
+    identityKey: 'access_control_system',
+    voiceStyleKey: 'warm_lively',
+    emotionalStateKey: 'excited_share',
+  });
+
+  try {
+    validateAiGeneratedStory({
+      title: '《缺语气特征》',
+      content: '我负责刷卡、通行和闸机复核。南头古城的入口今天三次折返，访客登记也比平时更混乱，我把这些异常记下来了。',
+      type: 'AI说',
+    }, createInput('AI说'), storyMeta, createValidationContext());
+    assert.fail('Expected missing voice feature failure');
+  } catch (error) {
+    assertNormalizationError(error, 'MISSING_VOICE_FEATURE', 'validate_ai_content_rules');
+  }
+}
+
+async function testMissingRoleLexiconHasDiagnostics() {
+  const storyMeta = createManualAiMeta({
+    identityKey: 'museum_docent_model',
+    voiceStyleKey: 'warm_lively',
+    emotionalStateKey: 'excited_share',
+  });
+
+  try {
+    validateAiGeneratedStory({
+      title: '《缺岗位词汇》',
+      content: '你听我说，我今天在南头古城看见三个人在同一块石阶前来回停了三次！结果他们把普通散步走成了悬疑片，你要是路过也会多看两眼。',
+      type: 'AI说',
+    }, createInput('AI说'), storyMeta, createValidationContext());
+    assert.fail('Expected missing role lexicon failure');
+  } catch (error) {
+    assertNormalizationError(error, 'MISSING_ROLE_LEXICON', 'validate_ai_content_rules');
+  }
+}
+
+async function testTechnicalTermBlockedHasDiagnostics() {
+  const storyMeta = createManualAiMeta({
+    identityKey: 'access_control_system',
+    voiceStyleKey: 'warm_lively',
+    emotionalStateKey: 'excited_share',
+  });
+
+  try {
+    validateAiGeneratedStory({
+      title: '《技术提示词拦截》',
+      content: '你听我说，我这台访客闸机乙号今天在入口又看见三次刷卡折返！说真的，这段通行记录简直像有人把 prompt 写进了闸机流程。',
+      type: 'AI说',
+    }, createInput('AI说'), storyMeta, createValidationContext());
+    assert.fail('Expected technical term failure');
+  } catch (error) {
+    assertNormalizationError(error, 'TECHNICAL_TERM_BLOCKED', 'validate_ai_content_rules');
+  }
 }
 
 async function run() {
@@ -450,7 +688,19 @@ async function run() {
     ['Empty response keeps fallback', testEmptyResponseStillThrowsStableError],
     ['Validate event carries requestId', testValidateEventCarriesRequestId],
     ['Voice style samples pass validation', testVoiceStyleSamplesPassValidation],
+    ['JSON extraction failure has diagnostics', testJsonExtractionFailureHasDiagnostics],
+    ['JSON parse failure has diagnostics', testJsonParseFailureHasDiagnostics],
+    ['Missing title has diagnostics', testMissingTitleHasDiagnostics],
+    ['Missing content has diagnostics', testMissingContentHasDiagnostics],
+    ['Missing type has diagnostics', testMissingTypeHasDiagnostics],
+    ['Type mismatch has diagnostics', testTypeMismatchHasDiagnostics],
+    ['Missing AI metadata has diagnostics', testMissingAiMetadataHasDiagnostics],
+    ['Missing AI rules has diagnostics', testMissingAiRulesHasDiagnostics],
+    ['Missing narrator has diagnostics', testMissingNarratorHasDiagnostics],
+    ['Missing voice feature has diagnostics', testMissingVoiceFeatureHasDiagnostics],
+    ['Missing role lexicon has diagnostics', testMissingRoleLexiconHasDiagnostics],
     ['Generic place intro gets rejected', testGenericPlaceIntroGetsRejected],
+    ['Technical term gets rejected', testTechnicalTermBlockedHasDiagnostics],
   ];
 
   for (const [label, testFn] of tests) {
