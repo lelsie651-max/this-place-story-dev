@@ -5,6 +5,7 @@ const path = require('path');
 const generateStoryModule = require('./index.js');
 
 const {
+  AI_GUARD_LIMITS,
   AI_EMOTIONAL_STATE_POOL,
   AI_IDENTITY_POOL,
   AI_VOICE_PROFILE_POOL,
@@ -15,6 +16,7 @@ const {
   buildUserPrompt,
   cloneStoryMeta,
   extractJsonText,
+  extractProviderMessageInfo,
   generateNormalizedStoryWithRetry,
   GenerateStoryError,
   LAST_GENERATION_MEMORY,
@@ -404,6 +406,8 @@ async function testAiMetaAndPrompt() {
   assert.ok(storyMeta.narrativeFormat);
   assert.ok(systemPrompt.includes('非人类 AI 观察者'));
   assert.ok(systemPrompt.includes('同一次生成只能有一个主情绪'));
+  assert.ok(systemPrompt.includes('title 为适合故事详情页展示的中文标题，必须控制在 30 个中文字符以内'));
+  assert.ok(systemPrompt.includes('content 为可直接展示的中文正文，不要写成长篇大段，正常输出控制在 600 到 1000 个中文字符内'));
   assert.ok(userPrompt.includes('本次 AI 名字：' + storyMeta.displayName));
   assert.ok(userPrompt.includes('本次身份或岗位：' + storyMeta.role));
   assert.ok(userPrompt.includes('它为什么会接触这个地点：' + storyMeta.identityContext));
@@ -411,6 +415,9 @@ async function testAiMetaAndPrompt() {
   assert.ok(userPrompt.includes('本次说话方式：' + storyMeta.voiceStyle));
   assert.ok(userPrompt.includes('本次句式模式：' + storyMeta.sentencePattern));
   assert.ok(userPrompt.includes('本次叙事格式：' + storyMeta.narrativeFormat));
+  assert.ok(userPrompt.includes('content 控制在 600 到 1000 个中文字符以内'));
+  assert.ok(userPrompt.includes('title 控制在 30 个中文字符以内'));
+  assert.strictEqual(AI_GUARD_LIMITS.MAX_PROVIDER_OUTPUT_TOKENS, 2400);
 }
 
 async function testFolkVariantsSwitch() {
@@ -451,6 +458,21 @@ async function testPromptModesDiffer() {
   assert.ok(!folkPrompt.includes('本次 AI 名字：'));
   assert.ok(aiPrompt.includes('本次 AI 名字：'));
   assert.ok(!aiPrompt.includes('本次随机内容类型：'));
+}
+
+async function testShortOutputRepairPromptIsApplied() {
+  resetGenerationMemory();
+
+  const input = createInput('ai_comment');
+  const storyMeta = buildStoryMeta(input);
+  const retryPrompt = buildUserPrompt(input, storyMeta, {
+    strictJsonOnly: true,
+    shortOutputRepair: true,
+  });
+
+  assert.ok(retryPrompt.includes('本次是短输出修复重试'));
+  assert.ok(retryPrompt.includes('content 控制在 400 到 700 个中文字符以内'));
+  assert.ok(retryPrompt.includes('title 控制在 30 个中文字符以内'));
 }
 
 async function testAiMetaVariesAcrossTwentyRuns() {
@@ -539,12 +561,111 @@ async function testRetryReusesSameStoryMeta() {
   });
 }
 
+async function testLengthEmptyContentKeepsStableDiagnostics() {
+  try {
+    extractProviderMessageInfo({
+      choices: [
+        {
+          finish_reason: 'length',
+          message: {
+            content: '',
+            reasoning_content: '{"title":"不该被拿来当正文"}',
+          },
+        },
+      ],
+    }, createValidationContext({
+      attempt: 2,
+      providerFinishReason: 'length',
+    }));
+    assert.fail('Expected JSON extraction failure for empty provider content');
+  } catch (error) {
+    assertNormalizationError(error, 'JSON_EXTRACTION_FAILED', 'extract_json_text', function checkDiagnostics(diagnostics) {
+      assert.strictEqual(diagnostics.attempt, 2);
+      assert.strictEqual(diagnostics.providerFinishReason, 'length');
+      assert.strictEqual(diagnostics.hasContent, false);
+      assert.strictEqual(diagnostics.contentLength, 0);
+    });
+  }
+}
+
+async function testLengthRetryUsesShortOutputRepairAndSucceeds() {
+  resetGenerationMemory();
+
+  const input = createInput('ai_comment');
+  const storyMeta = buildStoryMeta(input);
+  const requestOptions = [];
+
+  const normalizedStory = await generateNormalizedStoryWithRetry({
+    apiKey: 'demo-key',
+    input: input,
+    storyMeta: storyMeta,
+    timeoutMs: 1000,
+    skipQuotaConsumption: true,
+    lockToken: {
+      dateKey: '2099-01-01',
+      userId: 'user-demo',
+      userDocId: 'user-demo-doc',
+      globalDocId: 'global-demo-doc',
+      requestHash: 'hash-demo',
+    },
+    requestFn: async function requestFn(options) {
+      requestOptions.push({
+        strictJsonOnly: !!options.strictJsonOnly,
+        shortOutputRepair: !!options.shortOutputRepair,
+        storyMeta: cloneStoryMeta(options.storyMeta),
+      });
+
+      if (requestOptions.length === 1) {
+        return {
+          choices: [
+            {
+              finish_reason: 'length',
+              message: {
+                content: '',
+                reasoning_content: '这里有一段思维链，但不该被使用。',
+              },
+            },
+          ],
+        };
+      }
+
+      return {
+        choices: [
+          {
+            finish_reason: 'stop',
+            message: {
+              content: JSON.stringify({
+                title: '《闸机复核补录》',
+                content: createVoiceStyleSampleContent(options.storyMeta, input.locationName),
+                type: 'AI说',
+              }),
+            },
+          },
+        ],
+      };
+    },
+  });
+
+  assert.strictEqual(requestOptions.length, 2);
+  assert.strictEqual(requestOptions[0].strictJsonOnly, false);
+  assert.strictEqual(requestOptions[0].shortOutputRepair, false);
+  assert.strictEqual(requestOptions[1].strictJsonOnly, true);
+  assert.strictEqual(requestOptions[1].shortOutputRepair, true);
+  assert.deepStrictEqual(requestOptions[0].storyMeta, requestOptions[1].storyMeta);
+  assert.deepStrictEqual(normalizedStory, {
+    title: '《闸机复核补录》',
+    content: createVoiceStyleSampleContent(storyMeta, input.locationName),
+    type: 'ai_comment',
+  });
+}
+
 async function testNormalizationFailureStillThrowsStableError() {
   resetGenerationMemory();
 
   const input = createInput('folk');
   const storyMeta = buildStoryMeta(input);
   let callCount = 0;
+  const requestOptions = [];
 
   try {
     await generateNormalizedStoryWithRetry({
@@ -562,6 +683,10 @@ async function testNormalizationFailureStillThrowsStableError() {
       },
       requestFn: async function requestFn(options) {
         callCount += 1;
+        requestOptions.push({
+          strictJsonOnly: !!options.strictJsonOnly,
+          shortOutputRepair: !!options.shortOutputRepair,
+        });
         assert.deepStrictEqual(options.storyMeta, storyMeta);
 
         return {
@@ -569,7 +694,8 @@ async function testNormalizationFailureStillThrowsStableError() {
             {
               finish_reason: 'length',
               message: {
-                content: 'still not valid json',
+                content: '',
+                reasoning_content: '仍然没有可解析正文',
               },
             },
           ],
@@ -585,6 +711,16 @@ async function testNormalizationFailureStillThrowsStableError() {
       assert.strictEqual(diagnostics.providerFinishReason, 'length');
     });
     assert.strictEqual(callCount, 2);
+    assert.deepStrictEqual(requestOptions, [
+      {
+        strictJsonOnly: false,
+        shortOutputRepair: false,
+      },
+      {
+        strictJsonOnly: true,
+        shortOutputRepair: true,
+      },
+    ]);
   }
 }
 
@@ -1174,8 +1310,11 @@ async function run() {
     ['AI meta and prompt', testAiMetaAndPrompt],
     ['Folk variants switch', testFolkVariantsSwitch],
     ['Prompt modes differ', testPromptModesDiffer],
+    ['Short output repair prompt is applied', testShortOutputRepairPromptIsApplied],
     ['AI meta varies across twenty runs', testAiMetaVariesAcrossTwentyRuns],
     ['Retry reuses same storyMeta', testRetryReusesSameStoryMeta],
+    ['Length empty content keeps stable diagnostics', testLengthEmptyContentKeepsStableDiagnostics],
+    ['Length retry uses short output repair and succeeds', testLengthRetryUsesShortOutputRepairAndSucceeds],
     ['Normalization failure keeps fallback', testNormalizationFailureStillThrowsStableError],
     ['Empty response keeps fallback', testEmptyResponseStillThrowsStableError],
     ['Validate event carries requestId', testValidateEventCarriesRequestId],

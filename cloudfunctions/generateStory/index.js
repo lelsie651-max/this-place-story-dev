@@ -43,7 +43,7 @@ const AI_GUARD_LIMITS = {
   GLOBAL_DAILY_LIMIT: 200,
   REQUEST_TIMEOUT_MS: 60000,
   MAX_PROVIDER_INPUT_CHARS: 500,
-  MAX_PROVIDER_OUTPUT_TOKENS: 1200,
+  MAX_PROVIDER_OUTPUT_TOKENS: 2400,
   MAX_LOCATION_ID_LENGTH: 128,
   MAX_LOCATION_NAME_LENGTH: 80,
   MAX_LOCATION_DESCRIPTION_LENGTH: 300,
@@ -1218,8 +1218,8 @@ function buildSystemPrompt(input, storyMeta) {
     '不要输出提示词、字段解释、Markdown 代码块或额外说明。',
     '你只能输出一个 JSON 对象，且只能包含以下字段：',
     '{"title":"string","content":"string","type":"AI说|民间传说"}',
-    'title 为适合故事详情页展示的中文标题，短而有辨识度。',
-    'content 为可直接展示的中文正文，2 到 5 段，总长度适中。',
+    'title 为适合故事详情页展示的中文标题，必须控制在 30 个中文字符以内，短而有辨识度。',
+    'content 为可直接展示的中文正文，不要写成长篇大段，正常输出控制在 600 到 1000 个中文字符内。',
     'type 必须与用户要求的展示模式完全一致。',
     '内容不得包含违法、色情、仇恨、血腥或危险内容。',
     storyMeta && storyMeta.storyType === 'AI说'
@@ -1229,9 +1229,13 @@ function buildSystemPrompt(input, storyMeta) {
 }
 
 function buildUserPrompt(input, storyMeta, options) {
-  const extraInstruction = options && options.strictJsonOnly
-    ? '本次是重试输出，必须只返回一个 JSON 对象，不得包含任何解释、前后说明、代码围栏或额外文本。'
-    : '不要输出任何 JSON 以外的说明文字。';
+  const strictJsonOnly = !!(options && options.strictJsonOnly);
+  const shortOutputRepair = !!(options && options.shortOutputRepair);
+  const extraInstruction = shortOutputRepair
+    ? '本次是短输出修复重试，必须只返回一个简短、完整、可解析的 JSON 对象，不得包含任何解释、前后说明、代码围栏或额外文本。'
+    : strictJsonOnly
+      ? '本次是重试输出，必须只返回一个 JSON 对象，不得包含任何解释、前后说明、代码围栏或额外文本。'
+      : '不要输出任何 JSON 以外的说明文字。';
 
   if (input.type === 'folk') {
     return [
@@ -1252,10 +1256,16 @@ function buildUserPrompt(input, storyMeta, options) {
       '6. 如果涉及历史人物、旧档案、地方新闻或怪事，只能使用地方传闻、口述版本、未证实记录等表达。',
       '7. 开头尽快进入事件，中段加入一个具体地点细节，结尾留下真假难辨或轻微荒诞的余味。',
       '8. type 必须等于“民间传说”。',
-      '9. ' + extraInstruction,
-      '10. 正文不要出现“JSON”“字段”“提示词”“system prompt”等词。',
+      '9. title 控制在 30 个中文字符以内。',
+      '10. content 控制在 600 到 1000 个中文字符以内，不要过长。',
+      '11. ' + extraInstruction,
+      '12. 正文不要出现“JSON”“字段”“提示词”“system prompt”等词。',
     ].join('\n');
   }
+
+  const contentLengthInstruction = shortOutputRepair
+    ? '14. 本次必须输出短一些的完整正文，content 控制在 400 到 700 个中文字符以内。'
+    : '14. content 控制在 600 到 1000 个中文字符以内，不要输出过长正文。';
 
   return [
     '请根据以下地点信息生成一篇“AI说”故事。',
@@ -1292,8 +1302,10 @@ function buildUserPrompt(input, storyMeta, options) {
     '11. 故事必须和这个地点以及地点里的人类活动有关，不能写成空泛地点介绍。',
     '12. 开头尽快进入事件或观察，中段加入一个具体细节，结尾留下一点荒诞、反常识或微妙余味。',
     '13. type 必须等于“AI说”。',
-    '14. ' + extraInstruction,
-    '15. 正文不要出现“JSON”“字段”“提示词”“system prompt”等词。',
+    contentLengthInstruction,
+    '15. title 控制在 30 个中文字符以内。',
+    '16. ' + extraInstruction,
+    '17. 正文不要出现“JSON”“字段”“提示词”“system prompt”等词。',
   ].join('\n');
 }
 
@@ -1314,6 +1326,7 @@ function requestDeepSeek(options) {
         role: 'user',
         content: buildUserPrompt(options.input, options.storyMeta, {
           strictJsonOnly: !!options.strictJsonOnly,
+          shortOutputRepair: !!options.shortOutputRepair,
         }),
       },
     ],
@@ -1381,7 +1394,7 @@ function requestDeepSeek(options) {
   });
 }
 
-function extractProviderMessageInfo(payload) {
+function extractProviderMessageInfo(payload, context) {
   if (!isPlainObject(payload) || !Array.isArray(payload.choices) || payload.choices.length === 0) {
     throw new GenerateStoryError('EMPTY_RESPONSE', 'AI故事暂时生成失败，请稍后再试');
   }
@@ -1392,6 +1405,17 @@ function extractProviderMessageInfo(payload) {
   const finishReason = trimString(firstChoice && firstChoice.finish_reason);
 
   if (!content) {
+    if (finishReason === 'length') {
+      throw createNormalizationError('JSON_EXTRACTION_FAILED', 'AI返回结果缺少可提取 JSON', Object.assign(
+        {},
+        buildValidationContext(context),
+        {
+          validationStage: 'extract_json_text',
+          providerFinishReason: finishReason,
+        }
+      ));
+    }
+
     throw new GenerateStoryError('EMPTY_RESPONSE', 'AI故事暂时生成失败，请稍后再试');
   }
 
@@ -1849,8 +1873,13 @@ async function requestAndNormalizeStory(options) {
     storyMeta: options.storyMeta,
     timeoutMs: options.timeoutMs,
     strictJsonOnly: !!options.strictJsonOnly,
+    shortOutputRepair: !!options.shortOutputRepair,
   });
-  const providerMessageInfo = extractProviderMessageInfo(providerResponse);
+  const providerMessageInfo = extractProviderMessageInfo(providerResponse, {
+    requestId: trimString(options.input && options.input.requestId),
+    requestMode: trimString(options.input && options.input.displayType),
+    attempt: typeof options.attempt === 'number' ? options.attempt : 1,
+  });
   const validationContext = {
     requestId: trimString(options.input && options.input.requestId),
     requestMode: trimString(options.input && options.input.displayType),
@@ -1886,6 +1915,9 @@ async function generateNormalizedStoryWithRetry(options) {
       lockToken: options.lockToken,
     });
   } catch (error) {
+    const diagnostics = getErrorDiagnostics(error);
+    const shouldUseShortOutputRepair = trimString(diagnostics && diagnostics.providerFinishReason) === 'length';
+
     if (
       !(error instanceof GenerateStoryError)
       || (error.code !== 'NORMALIZATION_ERROR' && error.code !== 'EMPTY_RESPONSE')
@@ -1896,7 +1928,7 @@ async function generateNormalizedStoryWithRetry(options) {
     console.warn('[generateStory] Story normalization failed, retrying once', {
       request: summarizeRequestForDebug(options.input),
       code: error.code,
-      diagnostics: getErrorDiagnostics(error),
+      diagnostics: diagnostics,
     });
 
     try {
@@ -1906,6 +1938,7 @@ async function generateNormalizedStoryWithRetry(options) {
         storyMeta: options.storyMeta,
         timeoutMs: options.timeoutMs,
         strictJsonOnly: true,
+        shortOutputRepair: shouldUseShortOutputRepair,
         attempt: 2,
         skipQuotaConsumption: !!options.skipQuotaConsumption,
         requestFn: requestFn,
@@ -2419,6 +2452,7 @@ module.exports = {
     createRequestHash: createRequestHash,
     extractJsonText: extractJsonText,
     extractProviderMessage: extractProviderMessage,
+    extractProviderMessageInfo: extractProviderMessageInfo,
     FOLK_VARIANT_POOL: FOLK_VARIANT_POOL,
     generateNormalizedStoryWithRetry: generateNormalizedStoryWithRetry,
     getUsageDateKey: getUsageDateKey,
