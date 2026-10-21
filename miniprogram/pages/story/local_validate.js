@@ -353,8 +353,9 @@ function testHomeSloganAndLayout() {
   const sloganMatches = indexWxml.match(/让地点拥有不同的声音/g) || [];
 
   assert.strictEqual(sloganMatches.length, 1);
-  assert.ok(indexWxss.indexOf('.floating-profile') !== -1);
-  assert.ok(indexWxss.indexOf('position: absolute;') !== -1);
+  assert.strictEqual(indexWxml.indexOf('floating-profile'), -1);
+  assert.strictEqual(indexWxss.indexOf('.floating-profile'), -1);
+  assert.ok(indexWxss.indexOf('padding-top: 72rpx;') !== -1);
   assert.ok(indexWxss.indexOf('.hero-slogan') !== -1);
 }
 

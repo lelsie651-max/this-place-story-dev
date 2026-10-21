@@ -7,6 +7,12 @@ const DEV_TEST_TOOL_ALLOWED_ENVS = {
   develop: true,
   trial: true,
 };
+const TAB_PAGE_ROUTES = {
+  '/pages/index/index': true,
+  '/pages/discovery/discovery': true,
+  '/pages/atlas/atlas': true,
+  '/pages/profile/profile': true,
+};
 
 function trimString(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -94,6 +100,10 @@ function getMiniProgramEnvVersion() {
 
 function isDevTestToolEnv(envVersion) {
   return !!DEV_TEST_TOOL_ALLOWED_ENVS[trimString(envVersion)];
+}
+
+function isTabPageRoute(route) {
+  return !!TAB_PAGE_ROUTES[trimString(route)];
 }
 
 Page({
@@ -462,9 +472,15 @@ Page({
     const route = event.currentTarget.dataset.route;
 
     if (route) {
-      wx.navigateTo({
-        url: route,
-      });
+      if (isTabPageRoute(route)) {
+        wx.switchTab({
+          url: route,
+        });
+      } else {
+        wx.navigateTo({
+          url: route,
+        });
+      }
       return;
     }
 

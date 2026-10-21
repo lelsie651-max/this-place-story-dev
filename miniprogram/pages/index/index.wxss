@@ -1,5 +1,4 @@
 .page {
-  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -13,39 +12,9 @@
   flex: 0 0 auto;
 }
 
-.floating-profile {
-  position: absolute;
-  left: 32rpx;
-  top: 12rpx;
-  z-index: 30;
-  width: 88rpx;
-  height: 88rpx;
-  background: transparent;
-}
-
-.floating-profile-hover {
-  opacity: 0.82;
-}
-
-.avatar-circle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 88rpx;
-  height: 88rpx;
-  box-sizing: border-box;
-  border: 1rpx solid rgba(140, 94, 52, 0.22);
-  border-radius: 24rpx;
-  background: linear-gradient(180deg, rgba(255, 248, 236, 0.98), rgba(233, 211, 176, 0.96));
-  color: #5b3922;
-  font-size: 32rpx;
-  font-weight: 600;
-  box-shadow: 0 16rpx 34rpx rgba(107, 69, 39, 0.16);
-}
-
 .hero {
   margin-bottom: 48rpx;
-  padding-top: 152rpx;
+  padding-top: 72rpx;
   text-align: center;
 }
 

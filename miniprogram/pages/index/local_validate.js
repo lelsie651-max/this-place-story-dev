@@ -5,6 +5,7 @@ const path = require('path');
 
 const pagePath = path.join(__dirname, 'index.js');
 const templatePath = path.join(__dirname, 'index.wxml');
+const appJsonPath = path.join(__dirname, '..', '..', 'app.json');
 
 function loadPage(options) {
   const originalLoad = Module._load;
@@ -185,13 +186,16 @@ function testPrimaryEntriesRemainUnchanged() {
     locationService: createLocationServiceStub(),
   });
   const page = createInstance(loaded.pageConfig, {
+    switchTab(options) {
+      page.lastSwitchTabUrl = options.url;
+    },
     navigateTo(options) {
       page.lastNavigateUrl = options.url;
     },
   });
 
   page.goToExplore();
-  assert.strictEqual(page.lastNavigateUrl, '/pages/discovery/discovery', '寻找传说入口不能改变');
+  assert.strictEqual(page.lastSwitchTabUrl, '/pages/discovery/discovery', '寻找传说入口应切换到推荐 tab');
 
   page.goToPublish();
   assert.strictEqual(page.lastNavigateUrl, '/pages/publish/publish', '分享传说入口不能改变');
@@ -211,6 +215,7 @@ function testTemplateHasRecommendationModule() {
   assert.ok(template.indexOf('编辑推荐') !== -1, '首页应显示编辑推荐标题');
   assert.ok(template.indexOf('swiper') !== -1, '推荐模块应使用横向滚动组件');
   assert.ok(template.indexOf('bindtap="goToRecommendation"') !== -1, '推荐卡片应绑定点击跳转');
+  assert.strictEqual(template.indexOf('floating-profile'), -1, '首页不应再包含头像入口节点');
   assert.ok(template.indexOf('display-multiple-items="1"') !== -1, '推荐 swiper 应保持单项视口');
   assert.strictEqual(template.indexOf('previous-margin='), -1, '推荐 swiper 不应设置 previous-margin 造成露出效果');
   assert.strictEqual(template.indexOf('next-margin='), -1, '推荐 swiper 不应设置 next-margin 造成露出效果');
@@ -231,6 +236,32 @@ function testSingleCardViewportStyles() {
     styleSource.indexOf('.recommendation-card {\n  display: flex;\n  align-items: stretch;\n  width: 100%;') !== -1,
     '推荐卡片应占满当前 swiper-item 的可视宽度'
   );
+  assert.strictEqual(styleSource.indexOf('.floating-profile'), -1, '首页样式不应再保留头像入口样式');
+}
+
+function testHomeTopLayoutAndTabBarConfig() {
+  const appJson = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
+  const styleSource = fs.readFileSync(path.join(__dirname, 'index.wxss'), 'utf8');
+  const source = fs.readFileSync(pagePath, 'utf8');
+  const tabBar = appJson.tabBar || {};
+  const tabList = Array.isArray(tabBar.list) ? tabBar.list : [];
+  const pagePaths = tabList.map(function getPath(item) {
+    return item.pagePath;
+  });
+
+  assert.ok(tabBar && typeof tabBar === 'object', 'app.json 应配置原生 tabBar');
+  assert.deepStrictEqual(
+    pagePaths,
+    [
+      'pages/index/index',
+      'pages/discovery/discovery',
+      'pages/atlas/atlas',
+      'pages/profile/profile',
+    ],
+    'tabBar 页面路径应为首页、推荐、足迹、我的'
+  );
+  assert.strictEqual(source.indexOf('goToProfile'), -1, '首页不应再绑定头像入口事件');
+  assert.ok(styleSource.indexOf('padding-top: 72rpx;') !== -1, '首页主视觉应上移以填补头像入口空白');
 }
 
 async function run() {
@@ -243,6 +274,7 @@ async function run() {
     ['Recommendation path has no billing or exploration calls', testRecommendationPathHasNoBillingOrExplorationCalls],
     ['Template contains recommendation module', testTemplateHasRecommendationModule],
     ['Recommendation uses single-card viewport styles', testSingleCardViewportStyles],
+    ['Home top layout and tab bar config are correct', testHomeTopLayoutAndTabBarConfig],
   ];
 
   for (const [label, testFn] of tests) {

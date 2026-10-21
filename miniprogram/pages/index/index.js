@@ -174,14 +174,8 @@ Page({
   },
 
   goToExplore() {
-    wx.navigateTo({
+    wx.switchTab({
       url: '/pages/discovery/discovery',
-    });
-  },
-
-  goToProfile() {
-    wx.navigateTo({
-      url: '/pages/profile/profile',
     });
   },
 

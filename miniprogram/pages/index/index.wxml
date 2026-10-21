@@ -1,8 +1,4 @@
 <view class="page">
-  <view class="floating-profile" bindtap="goToProfile" hover-class="floating-profile-hover">
-    <view class="avatar-circle">旅</view>
-  </view>
-
   <view class="home-main">
     <view class="hero">
       <view class="hero-title">此地有传说</view>

@@ -35,8 +35,8 @@ Page({
       return;
     }
 
-    wx.navigateTo({
-      url: '/pages/discovery/discovery?type=' + type,
+    wx.switchTab({
+      url: '/pages/discovery/discovery',
     });
   },
 });
