@@ -1,5 +1,5 @@
-export function renderLoginPage(container, props) {
-  container.innerHTML = `
+export function renderLoginPageMarkup(props) {
+  return `
     <main class="page page--centered">
       <section class="panel auth-panel">
         <div class="panel__header">
@@ -28,6 +28,10 @@ export function renderLoginPage(container, props) {
       </section>
     </main>
   `;
+}
+
+export function renderLoginPage(container, props) {
+  container.innerHTML = renderLoginPageMarkup(props);
 
   const formElement = container.querySelector('#login-form');
   const inputElement = container.querySelector('#admin-secret-input');

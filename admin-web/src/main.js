@@ -1,6 +1,7 @@
 import './styles/global.css';
 
 import { getStoryDetail, isAuthError, listStories, login, reviewStory } from './api/adminApi';
+import { getLoginErrorMessage, performAdminLogin } from './auth/loginFlow';
 import { clearSession, getSession, isSessionExpired, saveSession } from './auth/session';
 import { renderLoginPage } from './pages/LoginPage';
 import { renderStoryDetailPage } from './pages/StoryDetailPage';
@@ -154,15 +155,11 @@ async function handleLogin(secret) {
   renderApp();
 
   try {
-    const result = await login(secret);
-
-    saveSession({
-      token: result.token,
-      expiresAt: result.expiresAt,
-      reviewerId: result.reviewerId,
+    state.session = await performAdminLogin(secret, {
+      login: login,
+      saveSession: saveSession,
+      getSession: getSession,
     });
-
-    state.session = getSession();
     state.view = 'list';
     state.list.cursor = '';
     state.list.previousCursors = [];
@@ -171,7 +168,7 @@ async function handleLogin(secret) {
     await loadStoryList();
   } catch (error) {
     state.login.loading = false;
-    state.login.errorMessage = getErrorMessage(error, '管理员登录失败，请稍后再试。');
+    state.login.errorMessage = getLoginErrorMessage(error);
     renderApp();
   }
 }

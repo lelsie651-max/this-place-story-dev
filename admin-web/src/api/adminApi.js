@@ -1,6 +1,9 @@
 import cloudbase from '@cloudbase/js-sdk';
 
 const CLOUD_ENV_ID = 'cloud1-d8gpv2fu5feccd009';
+const ANONYMOUS_AUTH_REQUIRED_CODE = 'ANONYMOUS_AUTH_REQUIRED';
+const ANONYMOUS_AUTH_REQUIRED_MESSAGE = '请在 CloudBase 控制台开启匿名登录后重试。';
+const NETWORK_ERROR_CODE = 'NETWORK_ERROR';
 
 let appInstance = null;
 let authPromise = null;
@@ -22,6 +25,29 @@ function getAppInstance() {
   return appInstance;
 }
 
+function isAnonymousAuthNotEnabledError(error) {
+  const message = typeof error?.message === 'string' ? error.message : '';
+
+  return (
+    message.indexOf('signInAnonymously') !== -1
+    || message.indexOf('匿名登录') !== -1
+    || message.indexOf('登录方式未开启') !== -1
+    || message.indexOf('Anonymous auth') !== -1
+  );
+}
+
+function isNetworkError(error) {
+  const message = typeof error?.message === 'string' ? error.message : '';
+
+  return (
+    message.indexOf('Failed to fetch') !== -1
+    || message.indexOf('Network Error') !== -1
+    || message.indexOf('network error') !== -1
+    || message.indexOf('ERR_NETWORK') !== -1
+    || message.indexOf('网络') !== -1
+  );
+}
+
 async function ensureCloudReady() {
   if (!authPromise) {
     authPromise = (async function prepareAuth() {
@@ -34,14 +60,34 @@ async function ensureCloudReady() {
         : null;
 
       if (!loginState && auth.anonymousAuthProvider && typeof auth.anonymousAuthProvider === 'function') {
-        await auth.anonymousAuthProvider().signIn();
+        try {
+          await auth.anonymousAuthProvider().signIn();
+        } catch (error) {
+          if (isAnonymousAuthNotEnabledError(error)) {
+            throw createApiError(ANONYMOUS_AUTH_REQUIRED_CODE, ANONYMOUS_AUTH_REQUIRED_MESSAGE);
+          }
+
+          if (isNetworkError(error)) {
+            throw createApiError(NETWORK_ERROR_CODE, '登录请求失败，请检查云函数部署和网络。');
+          }
+
+          throw createApiError(
+            'CLOUD_AUTH_FAILED',
+            'CloudBase 鉴权初始化失败，请检查匿名登录配置后重试。'
+          );
+        }
       }
 
       return auth;
     }());
   }
 
-  return authPromise;
+  try {
+    return await authPromise;
+  } catch (error) {
+    authPromise = null;
+    throw error;
+  }
 }
 
 function unwrapCloudResult(result) {
@@ -53,6 +99,14 @@ function unwrapCloudResult(result) {
 }
 
 function mapCloudError(error, fallbackMessage) {
+  if (error && error.code === ANONYMOUS_AUTH_REQUIRED_CODE) {
+    return error;
+  }
+
+  if (error && error.code === NETWORK_ERROR_CODE) {
+    return error;
+  }
+
   const message = typeof error?.message === 'string' && error.message.trim()
     ? error.message.trim()
     : (fallbackMessage || '请求失败，请稍后再试。');
@@ -64,9 +118,8 @@ function mapCloudError(error, fallbackMessage) {
 }
 
 async function callAdminFunction(name, data, fallbackMessage) {
-  await ensureCloudReady();
-
   try {
+    await ensureCloudReady();
     const app = getAppInstance();
     const payload = unwrapCloudResult(await app.callFunction({
       name: name,
@@ -86,6 +139,10 @@ async function callAdminFunction(name, data, fallbackMessage) {
 
     return payload;
   } catch (error) {
+    if (isNetworkError(error)) {
+      throw createApiError(NETWORK_ERROR_CODE, '登录请求失败，请检查云函数部署和网络。');
+    }
+
     throw mapCloudError(error, fallbackMessage);
   }
 }
@@ -136,3 +193,13 @@ export async function reviewStory(session, payload) {
     reason: payload?.reason || '',
   }, '审核提交失败，请稍后再试。');
 }
+
+export const _private = {
+  ANONYMOUS_AUTH_REQUIRED_CODE,
+  ANONYMOUS_AUTH_REQUIRED_MESSAGE,
+  NETWORK_ERROR_CODE,
+  ensureCloudReady,
+  isAnonymousAuthNotEnabledError,
+  isNetworkError,
+  mapCloudError,
+};
