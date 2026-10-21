@@ -211,6 +211,26 @@ function testTemplateHasRecommendationModule() {
   assert.ok(template.indexOf('编辑推荐') !== -1, '首页应显示编辑推荐标题');
   assert.ok(template.indexOf('swiper') !== -1, '推荐模块应使用横向滚动组件');
   assert.ok(template.indexOf('bindtap="goToRecommendation"') !== -1, '推荐卡片应绑定点击跳转');
+  assert.ok(template.indexOf('display-multiple-items="1"') !== -1, '推荐 swiper 应保持单项视口');
+  assert.strictEqual(template.indexOf('previous-margin='), -1, '推荐 swiper 不应设置 previous-margin 造成露出效果');
+  assert.strictEqual(template.indexOf('next-margin='), -1, '推荐 swiper 不应设置 next-margin 造成露出效果');
+}
+
+function testSingleCardViewportStyles() {
+  const styleSource = fs.readFileSync(path.join(__dirname, 'index.wxss'), 'utf8');
+
+  assert.ok(
+    styleSource.indexOf('.recommendation-swiper-wrap {\n  overflow: hidden;') !== -1,
+    '推荐 swiper 外层应隐藏溢出，避免相邻卡片露出'
+  );
+  assert.ok(
+    styleSource.indexOf('.recommendation-slide {\n  display: flex;\n  justify-content: center;') !== -1,
+    'swiper-item 内层应使用 flex 居中'
+  );
+  assert.ok(
+    styleSource.indexOf('.recommendation-card {\n  display: flex;\n  align-items: stretch;\n  width: 100%;') !== -1,
+    '推荐卡片应占满当前 swiper-item 的可视宽度'
+  );
 }
 
 async function run() {
@@ -222,6 +242,7 @@ async function run() {
     ['Primary entries remain unchanged', testPrimaryEntriesRemainUnchanged],
     ['Recommendation path has no billing or exploration calls', testRecommendationPathHasNoBillingOrExplorationCalls],
     ['Template contains recommendation module', testTemplateHasRecommendationModule],
+    ['Recommendation uses single-card viewport styles', testSingleCardViewportStyles],
   ];
 
   for (const [label, testFn] of tests) {

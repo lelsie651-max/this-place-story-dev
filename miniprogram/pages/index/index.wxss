@@ -102,21 +102,27 @@
 }
 
 .recommendation-swiper-wrap {
-  margin-right: -8rpx;
+  overflow: hidden;
 }
 
 .recommendation-swiper {
+  width: 100%;
   height: 356rpx;
 }
 
 .recommendation-slide {
-  padding-right: 16rpx;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
   box-sizing: border-box;
 }
 
 .recommendation-card {
   display: flex;
   align-items: stretch;
+  width: 100%;
   height: 300rpx;
   box-sizing: border-box;
   overflow: hidden;

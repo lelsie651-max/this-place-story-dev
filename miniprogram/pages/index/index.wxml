@@ -41,8 +41,7 @@
           indicator-active-color="rgba(139, 94, 52, 0.56)"
           autoplay="{{false}}"
           circular="{{false}}"
-          previous-margin="0rpx"
-          next-margin="72rpx"
+          display-multiple-items="1"
           easing-function="easeOutCubic"
         >
           <swiper-item wx:for="{{recommendationCards}}" wx:key="storyId">
