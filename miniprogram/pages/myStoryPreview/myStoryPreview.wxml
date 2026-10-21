@@ -23,6 +23,11 @@
       <view class="panel-text">{{noticeMessage}}</view>
     </view>
 
+    <view
+      wx:if="{{story.status === 'rejected' && story.rejectionReason}}"
+      class="panel story-reason-banner"
+    >拒绝原因：{{story.rejectionReason}}</view>
+
     <view class="panel story-card">
       <view class="story-header">
         <view class="story-title">{{story.title}}</view>
@@ -31,9 +36,6 @@
       <view wx:if="{{story.locationName}}" class="story-location">{{story.locationName}}</view>
       <view wx:if="{{story.locationAddress}}" class="story-address">{{story.locationAddress}}</view>
       <view class="story-time">{{story.createdAtText}}</view>
-      <view wx:if="{{story.status === 'rejected'}}" class="story-reason">
-        拒绝原因：{{story.rejectionReason || '暂未提供具体原因'}}
-      </view>
       <view class="story-content">{{story.content}}</view>
     </view>
 

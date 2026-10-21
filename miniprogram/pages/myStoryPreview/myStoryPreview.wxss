@@ -8,6 +8,18 @@
   margin-bottom: 24rpx;
 }
 
+.story-reason-banner {
+  margin-bottom: 24rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 20rpx;
+  background: rgba(169, 90, 90, 0.08);
+  color: #8a4d4d;
+  font-size: 26rpx;
+  line-height: 1.7;
+  white-space: normal;
+  word-break: break-word;
+}
+
 .story-header {
   display: flex;
   align-items: center;
@@ -61,16 +73,6 @@
 
 .story-location {
   color: #8b5e34;
-}
-
-.story-reason {
-  margin-top: 20rpx;
-  padding: 16rpx 18rpx;
-  border-radius: 20rpx;
-  background: rgba(169, 90, 90, 0.08);
-  color: #8a4d4d;
-  font-size: 26rpx;
-  line-height: 1.7;
 }
 
 .story-content {

@@ -1,8 +1,10 @@
 const assert = require('assert');
 const Module = require('module');
 const path = require('path');
+const fs = require('fs');
 
 const pagePath = path.join(__dirname, 'myStoryPreview.js');
+const templatePath = path.join(__dirname, 'myStoryPreview.wxml');
 
 function loadPage(options) {
   const originalLoad = Module._load;
@@ -352,12 +354,31 @@ async function testDeleteFlowAndCancelGuard() {
   delete global.getCurrentPages;
 }
 
+function testRejectionReasonBannerPlacement() {
+  const template = fs.readFileSync(templatePath, 'utf8');
+  const bannerSnippet = 'class="panel story-reason-banner"';
+  const cardSnippet = 'class="panel story-card"';
+  const oldReasonSnippet = 'class="story-reason"';
+  const bannerIndex = template.indexOf(bannerSnippet);
+  const cardIndex = template.indexOf(cardSnippet);
+
+  assert.ok(bannerIndex !== -1, '顶部拒绝原因节点不存在');
+  assert.ok(cardIndex !== -1, '投稿详情卡片节点不存在');
+  assert.ok(bannerIndex < cardIndex, '拒绝原因节点应位于投稿详情卡片之前');
+  assert.strictEqual(template.indexOf(oldReasonSnippet), -1, '正文区域旧拒绝原因节点应已移除');
+  assert.ok(
+    template.indexOf("story.status === 'rejected' && story.rejectionReason") !== -1,
+    '拒绝原因展示条件应为 rejected 且存在 rejectionReason'
+  );
+}
+
 async function run() {
   const tests = [
     ['Preview loads own story and opens edit', testPreviewLoadAndDisplay],
     ['Preview handles missing storyId and hidden status', testMissingStoryIdAndStatusDisplay],
     ['Preview blocks other user stories safely', testForbiddenReadShowsSafeError],
     ['Preview delete flow and cancel guard', testDeleteFlowAndCancelGuard],
+    ['Rejection reason banner placement', testRejectionReasonBannerPlacement],
   ];
 
   for (const [label, testFn] of tests) {
