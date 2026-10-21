@@ -17,6 +17,72 @@
         <button class="action-button secondary" bindtap="goToPublish">分享传说</button>
       </view>
     </view>
+
+    <view class="recommendation-section panel">
+      <view class="section-label recommendation-label">编辑推荐</view>
+      <view class="recommendation-title">先听一段传说，再决定要不要出发</view>
+
+      <view wx:if="{{recommendationLoading}}" class="recommendation-loading">
+        <view class="recommendation-skeleton-card">
+          <view class="recommendation-skeleton-cover"></view>
+          <view class="recommendation-skeleton-content">
+            <view class="recommendation-skeleton-line recommendation-skeleton-line--short"></view>
+            <view class="recommendation-skeleton-line"></view>
+            <view class="recommendation-skeleton-line"></view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:elif="{{recommendationCards.length > 0}}" class="recommendation-swiper-wrap">
+        <swiper
+          class="recommendation-swiper"
+          indicator-dots="{{true}}"
+          indicator-color="rgba(139, 94, 52, 0.18)"
+          indicator-active-color="rgba(139, 94, 52, 0.56)"
+          autoplay="{{false}}"
+          circular="{{false}}"
+          previous-margin="0rpx"
+          next-margin="72rpx"
+          easing-function="easeOutCubic"
+        >
+          <swiper-item wx:for="{{recommendationCards}}" wx:key="storyId">
+            <view class="recommendation-slide">
+              <view
+                class="recommendation-card"
+                bindtap="goToRecommendation"
+                data-story-id="{{item.storyId}}"
+                hover-class="recommendation-card-hover"
+              >
+                <view class="recommendation-cover">
+                  <image
+                    wx:if="{{item.coverImage}}"
+                    class="recommendation-cover-image"
+                    src="{{item.coverImage}}"
+                    mode="aspectFill"
+                  />
+                  <view wx:else class="recommendation-cover-placeholder">
+                    <view class="recommendation-cover-emoji">📖</view>
+                    <view class="recommendation-cover-text">传说节选</view>
+                  </view>
+                </view>
+
+                <view class="recommendation-body">
+                  <view class="tag recommendation-card-label">{{item.label}}</view>
+                  <view class="recommendation-card-title">{{item.displayTitle}}</view>
+                  <view class="recommendation-card-location">{{item.locationName}}</view>
+                  <view class="recommendation-card-summary">{{item.displaySummary}}</view>
+                  <view class="recommendation-card-action">{{item.actionText}}</view>
+                </view>
+              </view>
+            </view>
+          </swiper-item>
+        </swiper>
+      </view>
+
+      <view wx:else class="recommendation-empty">
+        <view class="recommendation-empty-text">{{recommendationEmptyText}}</view>
+      </view>
+    </view>
   </view>
 
   <view class="company-footer">深圳市筠竹科技有限公司</view>
