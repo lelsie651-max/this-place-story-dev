@@ -1,6 +1,7 @@
 const storyService = require('../../services/storyService');
 
-const DEFAULT_TIME_TEXT = '投稿时间：待补充';
+const DEFAULT_CREATED_TIME_TEXT = '投稿时间：待补充';
+const DEFAULT_UPDATED_TIME_TEXT = '最近修改时间：待补充';
 
 function getUserFacingErrorMessage(error) {
   const code = error && error.code ? String(error.code) : '';
@@ -21,15 +22,24 @@ function getUserFacingErrorMessage(error) {
   return '投稿记录读取失败，请稍后再试。';
 }
 
-function formatStoryTimeText(createdAt) {
-  const formatted = storyService.formatStorySubmissionTime(createdAt);
-  return formatted ? '投稿时间：' + formatted : DEFAULT_TIME_TEXT;
+function formatStoryTimeText(story) {
+  const safeStory = story && typeof story === 'object' ? story : {};
+  const hasUpdatedAt = typeof safeStory.updatedAt !== 'undefined'
+    && safeStory.updatedAt !== null
+    && safeStory.updatedAt !== '';
+  const formatted = storyService.formatStorySubmissionTime(safeStory);
+
+  if (formatted) {
+    return (hasUpdatedAt ? '最近修改时间：' : '投稿时间：') + formatted;
+  }
+
+  return hasUpdatedAt ? DEFAULT_UPDATED_TIME_TEXT : DEFAULT_CREATED_TIME_TEXT;
 }
 
 function normalizeStoriesForDisplay(stories) {
   return (Array.isArray(stories) ? stories : []).map(function mapStory(story) {
     return Object.assign({}, story, {
-      createdAtText: formatStoryTimeText(story && story.createdAt),
+      createdAtText: formatStoryTimeText(story),
     });
   });
 }
@@ -91,7 +101,8 @@ Page({
 
 if (typeof module !== 'undefined') {
   module.exports._private = {
-    DEFAULT_TIME_TEXT: DEFAULT_TIME_TEXT,
+    DEFAULT_CREATED_TIME_TEXT: DEFAULT_CREATED_TIME_TEXT,
+    DEFAULT_UPDATED_TIME_TEXT: DEFAULT_UPDATED_TIME_TEXT,
     formatStoryTimeText: formatStoryTimeText,
     getUserFacingErrorMessage: getUserFacingErrorMessage,
     normalizeStoriesForDisplay: normalizeStoriesForDisplay,

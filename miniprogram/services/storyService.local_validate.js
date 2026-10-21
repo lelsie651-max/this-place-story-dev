@@ -29,7 +29,10 @@ async function testStatusAndTimeFormatting() {
   assert.strictEqual(storyService._private.normalizeMyStoryStatus('published'), '已通过');
   assert.strictEqual(storyService._private.normalizeMyStoryStatus('rejected'), '未通过');
   assert.strictEqual(storyService._private.normalizeMyStoryStatus('hidden'), '已隐藏');
+  assert.strictEqual(storyService._private.normalizeMyStoryStatus('deleted'), '已删除');
   assert.strictEqual(storyService._private.normalizeMyStoryStatus('unknown'), '审核中');
+  assert.strictEqual(storyService._private.canDeleteMyStory('rejected'), true);
+  assert.strictEqual(storyService._private.canDeleteMyStory('pending'), false);
 
   assert.strictEqual(
     storyService.formatStorySubmissionTime(new Date(2026, 9, 21, 4, 30, 0)),
@@ -47,6 +50,13 @@ async function testStatusAndTimeFormatting() {
   assert.strictEqual(
     storyService.formatStorySubmissionTime('2026-10-21 09:15:00'),
     '2026年10月21日 09:15'
+  );
+  assert.strictEqual(
+    storyService.formatStorySubmissionTime({
+      createdAt: new Date(2026, 9, 21, 10, 0, 0),
+      updatedAt: new Date(2026, 9, 21, 11, 0, 0),
+    }),
+    '2026年10月21日 11:00'
   );
 }
 
@@ -100,6 +110,17 @@ async function testGetMyStoryByIdAndUpdateTravelerStory() {
           return;
         }
 
+        if (options.name === 'deleteMyStory') {
+          options.success({
+            result: {
+              ok: true,
+              storyId: 'story-1',
+              deleted: true,
+            },
+          });
+          return;
+        }
+
         throw new Error('Unexpected function call');
       },
       database() {
@@ -119,8 +140,10 @@ async function testGetMyStoryByIdAndUpdateTravelerStory() {
     title: '新标题',
     content: '新正文',
   });
+  const deleteResult = await storyService.deleteMyStory('story-1');
   assert.strictEqual(updateResult.updated, true);
   assert.strictEqual(updateResult.status, 'pending');
+  assert.strictEqual(deleteResult.deleted, true);
   assert.deepStrictEqual(calls[0], {
     name: 'getMyStoryById',
     data: {
@@ -133,6 +156,12 @@ async function testGetMyStoryByIdAndUpdateTravelerStory() {
       storyId: 'story-1',
       title: '新标题',
       content: '新正文',
+    },
+  });
+  assert.deepStrictEqual(calls[2], {
+    name: 'deleteMyStory',
+    data: {
+      storyId: 'story-1',
     },
   });
 }

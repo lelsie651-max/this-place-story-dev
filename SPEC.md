@@ -342,11 +342,12 @@
 - “我的投稿”列表当前固定展示：
   - 标题
   - 地点名称
-  - 投稿时间
+  - 投稿时间 / 最近修改时间
   - 审核状态
 - 点击“我的投稿”卡片进入专用预览页，展示原投稿详情而不是公开故事详情页
-- 预览页只读取当前用户自己的投稿，`pending / published / rejected / hidden` 都允许本人查看
+- 预览页只读取当前用户自己的投稿，`pending / published / rejected / hidden` 都允许本人查看，`deleted` 不允许再读取
 - 预览页在 `pending / rejected` 时显示“编辑”按钮，`published / hidden` 不允许编辑
+- 预览页仅在 `rejected` 时显示“删除投稿”按钮，删除采用软删除
 - 编辑页不允许重新选择地点，只允许修改标题和正文
 - 编辑成功后更新原 `stories` 文档并重新回到 `pending`
 - 在 `develop / trial` 环境显示“开发测试工具”入口，具体操作需在页面内输入开发测试口令
@@ -586,6 +587,8 @@
 - `authorId`
 - `status`
 - `createdAt`
+- `updatedAt`
+- `deletedAt`
 
 ### 7.3 favorites
 
@@ -671,6 +674,10 @@
 - 当投稿 `status = rejected` 时：
   - 优先展示 `rejectionReason`
   - 未提供时显示“暂未提供具体原因”
+- “我的投稿”时间显示规则：
+  - 有 `updatedAt` 时显示“最近修改时间”
+  - 没有 `updatedAt` 时显示“投稿时间”
+  - 不允许用编辑时间覆盖 `createdAt`
 - 公共网友故事页只展示 `published`
 - 普通 `storyId` 详情链路只允许打开 `status = published` 的故事
 - 编辑投稿时：
@@ -679,6 +686,15 @@
   - 更新 `title / summary / content / status / updatedAt`
   - `status` 必须重置为 `pending`
   - 必须清除 `rejectionReason / reviewedAt / reviewerId / moderationNote` 等审核字段
+- 删除投稿时：
+  - 只允许 `rejected`
+  - 必须校验 `storyId + authorId(OPENID) + source=user + type=traveler`
+  - 不物理删除文档
+  - 软删除时更新：
+    - `status = deleted`
+    - `deletedAt`
+    - `updatedAt`
+  - `deleted` 投稿不再出现在“我的投稿”列表，也不能通过“我的投稿”详情接口再次读取
 - 现有首页“分享传说”新建投稿流程保持不变，仍然创建新文档并写入 `pending`
 
 ### 7.9 第一阶段网友投稿人工审核
@@ -706,7 +722,7 @@
 - 不覆盖用户原始标题和正文
 - 不新增审核日志集合
 - 不增加小程序管理员页面
-- `pending / rejected / hidden` 不进入公共网友故事页
+- `pending / rejected / hidden / deleted` 不进入公共网友故事页
 
 ---
 

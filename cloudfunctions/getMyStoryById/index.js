@@ -72,6 +72,10 @@ function getStatusLabel(status) {
     return '已隐藏';
   }
 
+  if (status === 'deleted') {
+    return '已删除';
+  }
+
   return '审核中';
 }
 
@@ -108,6 +112,10 @@ async function getStoryByAuthorWithActor(actor, storyId, openId) {
     const stories = result && Array.isArray(result.data) ? result.data : [];
 
     if (stories.length === 0) {
+      throw new GetMyStoryByIdError('STORY_NOT_FOUND', '当前投稿不存在或暂不可查看');
+    }
+
+    if (trimString(stories[0] && stories[0].status) === 'deleted') {
       throw new GetMyStoryByIdError('STORY_NOT_FOUND', '当前投稿不存在或暂不可查看');
     }
 

@@ -20,6 +20,7 @@ cloud.init({
 });
 
 const db = cloud.database ? cloud.database() : null;
+const _ = db && db.command ? db.command : null;
 const STORIES_COLLECTION = 'stories';
 const LOCATIONS_COLLECTION = 'locations';
 const ALLOWED_ERROR_CODES = {
@@ -70,6 +71,10 @@ function getStatusLabel(status) {
     return '已隐藏';
   }
 
+  if (status === 'deleted') {
+    return '已删除';
+  }
+
   return '审核中';
 }
 
@@ -78,19 +83,28 @@ async function listStoriesByAuthor(openId) {
     throw new GetMyStoriesError('INTERNAL_ERROR', '投稿记录服务暂时不可用');
   }
 
+  const query = {
+    authorId: openId,
+    type: 'traveler',
+    source: 'user',
+  };
+
+  if (_ && typeof _.neq === 'function') {
+    query.status = _.neq('deleted');
+  }
+
   try {
     const result = await db
       .collection(STORIES_COLLECTION)
-      .where({
-        authorId: openId,
-        type: 'traveler',
-        source: 'user',
-      })
+      .where(query)
       .orderBy('createdAt', 'desc')
       .limit(50)
       .get();
+    const stories = Array.isArray(result.data) ? result.data : [];
 
-    return result.data || [];
+    return stories.filter(function excludeDeleted(doc) {
+      return trimString(doc && doc.status) !== 'deleted';
+    });
   } catch (error) {
     throw new GetMyStoriesError('DATABASE_ERROR', '投稿记录读取失败，请稍后再试');
   }
@@ -136,6 +150,7 @@ function normalizeStory(doc, locationNameMap) {
     rejectionReason: trimString(doc && doc.rejectionReason),
     locationName: locationName,
     createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
   };
 }
 

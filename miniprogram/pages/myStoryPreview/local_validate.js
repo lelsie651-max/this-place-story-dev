@@ -81,6 +81,9 @@ async function testPreviewLoadAndDisplay() {
       canEditMyStory(status) {
         return status === 'pending' || status === 'rejected';
       },
+      canDeleteMyStory(status) {
+        return status === 'rejected';
+      },
       formatStorySubmissionTime() {
         return '2026年10月21日 12:30';
       },
@@ -98,6 +101,7 @@ async function testPreviewLoadAndDisplay() {
             address: '深圳市南山区南头古城',
           },
           createdAt: '2026-10-21T12:30:00.000Z',
+          updatedAt: '2026-10-21T13:30:00.000Z',
         };
       },
     },
@@ -124,9 +128,10 @@ async function testPreviewLoadAndDisplay() {
   await Promise.resolve();
 
   assert.strictEqual(page.data.story.title, '旧城夜话');
-  assert.strictEqual(page.data.story.createdAtText, '投稿时间：2026年10月21日 12:30');
+  assert.strictEqual(page.data.story.createdAtText, '最近修改时间：2026年10月21日 12:30');
   assert.strictEqual(page.data.story.locationAddress, '深圳市南山区南头古城');
   assert.strictEqual(page.data.story.canEdit, true);
+  assert.strictEqual(page.data.story.canDelete, true);
 
   page.openEditPage();
   assert.strictEqual(
@@ -154,6 +159,9 @@ async function testMissingStoryIdAndStatusDisplay() {
     },
     storyService: {
       canEditMyStory() {
+        return false;
+      },
+      canDeleteMyStory() {
         return false;
       },
       formatStorySubmissionTime() {
@@ -220,6 +228,9 @@ async function testForbiddenReadShowsSafeError() {
       canEditMyStory() {
         return false;
       },
+      canDeleteMyStory() {
+        return false;
+      },
       formatStorySubmissionTime() {
         return '';
       },
@@ -250,11 +261,103 @@ async function testForbiddenReadShowsSafeError() {
   assert.strictEqual(page.data.errorMessage, '当前投稿不存在或暂不可查看');
 }
 
+async function testDeleteFlowAndCancelGuard() {
+  let deleteCalls = 0;
+  const loaded = loadPage({
+    app: {
+      globalData: {},
+    },
+    wx: {
+      navigateTo() {},
+      showToast() {},
+      navigateBack() {},
+      redirectTo() {},
+      reLaunch() {},
+      showModal() {},
+    },
+    storyService: {
+      canEditMyStory(status) {
+        return status === 'rejected';
+      },
+      canDeleteMyStory(status) {
+        return status === 'rejected';
+      },
+      formatStorySubmissionTime() {
+        return '2026年10月21日 12:30';
+      },
+      async getMyStoryById() {
+        return {
+          id: 'story-1',
+          title: '旧城夜话',
+          content: '完整正文',
+          status: 'rejected',
+          statusLabel: '未通过',
+          rejectionReason: '地点信息不足',
+          locationName: '南头古城',
+          placeSnapshot: {},
+          createdAt: '2026-10-21T10:00:00.000Z',
+        };
+      },
+      async deleteMyStory() {
+        deleteCalls += 1;
+        return {
+          storyId: 'story-1',
+          deleted: true,
+        };
+      },
+    },
+  });
+  const modalResults = [
+    { confirm: false, cancel: true },
+    { confirm: true, cancel: false },
+  ];
+  const page = createInstance(loaded.pageConfig, {
+    app: loaded.app,
+    wx: {
+      navigateTo() {},
+      showModal(options) {
+        options.success(modalResults.shift());
+      },
+      showToast(options) {
+        page.lastToast = options.title;
+      },
+      navigateBack(options) {
+        page.lastNavigateBack = options.delta;
+      },
+      redirectTo() {
+        throw new Error('should not redirect');
+      },
+      reLaunch() {},
+    },
+  });
+
+  global.getCurrentPages = function getCurrentPages() {
+    return [{ route: 'pages/myStories/myStories' }, { route: 'pages/myStoryPreview/myStoryPreview' }];
+  };
+
+  page.onLoad({
+    storyId: encodeURIComponent('story-1'),
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+
+  await page.deleteStory();
+  assert.strictEqual(deleteCalls, 0);
+
+  await page.deleteStory();
+  assert.strictEqual(deleteCalls, 1);
+  assert.strictEqual(page.lastToast, '投稿已删除');
+  assert.strictEqual(page.lastNavigateBack, 1);
+
+  delete global.getCurrentPages;
+}
+
 async function run() {
   const tests = [
     ['Preview loads own story and opens edit', testPreviewLoadAndDisplay],
     ['Preview handles missing storyId and hidden status', testMissingStoryIdAndStatusDisplay],
     ['Preview blocks other user stories safely', testForbiddenReadShowsSafeError],
+    ['Preview delete flow and cancel guard', testDeleteFlowAndCancelGuard],
   ];
 
   for (const [label, testFn] of tests) {

@@ -74,6 +74,9 @@ async function testFormattingAndNavigation() {
       if (value === 'valid') {
         return '2026年10月21日 12:30';
       }
+      if (value && typeof value === 'object' && (value.createdAt === 'valid' || value.updatedAt === 'valid')) {
+        return '2026年10月21日 12:30';
+      }
       return '';
     },
     getMyStories: async function getMyStories() {
@@ -94,19 +97,35 @@ async function testFormattingAndNavigation() {
   });
 
   assert.strictEqual(
-    loaded.privateApi.formatStoryTimeText('valid'),
+    loaded.privateApi.formatStoryTimeText({
+      createdAt: 'valid',
+    }),
     '投稿时间：2026年10月21日 12:30'
   );
   assert.strictEqual(
-    loaded.privateApi.formatStoryTimeText('missing'),
+    loaded.privateApi.formatStoryTimeText({
+      createdAt: 'missing',
+    }),
     '投稿时间：待补充'
+  );
+  assert.strictEqual(
+    loaded.privateApi.formatStoryTimeText({
+      createdAt: 'valid',
+      updatedAt: 'valid',
+    }),
+    '最近修改时间：2026年10月21日 12:30'
   );
 
   const mappedStories = loaded.privateApi.normalizeStoriesForDisplay([{
     id: 'story-1',
     createdAt: 'valid',
+  }, {
+    id: 'story-2',
+    createdAt: 'valid',
+    updatedAt: 'valid',
   }]);
   assert.strictEqual(mappedStories[0].createdAtText, '投稿时间：2026年10月21日 12:30');
+  assert.strictEqual(mappedStories[1].createdAtText, '最近修改时间：2026年10月21日 12:30');
 
   const page = createInstance(loaded.pageConfig, {
     navigateTo(options) {

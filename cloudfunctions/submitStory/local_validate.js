@@ -65,6 +65,24 @@ function createActor() {
         },
         createdAt: 'created-at-3',
       },
+      'story-deleted': {
+        _id: 'story-deleted',
+        authorId: 'user-a',
+        source: 'user',
+        type: 'traveler',
+        language: 'zh-CN',
+        status: 'deleted',
+        title: '原标题',
+        summary: '原摘要',
+        content: '原正文',
+        locationId: 'loc-1',
+        isTemporary: false,
+        placeSnapshot: {
+          name: '南头古城',
+          address: '深圳市南山区南头古城',
+        },
+        createdAt: 'created-at-4',
+      },
     },
     locations: {
       'loc-1': {
@@ -216,6 +234,11 @@ async function testRejectNonAuthorAndNonEditableStatus() {
 
   assert.throws(function rejectPublished() {
     const story = actor.store.stories['story-published'];
+    submitStory._private.assertEditableTravelerStory(story, 'user-a');
+  }, /当前状态暂不支持编辑/);
+
+  assert.throws(function rejectDeleted() {
+    const story = actor.store.stories['story-deleted'];
     submitStory._private.assertEditableTravelerStory(story, 'user-a');
   }, /当前状态暂不支持编辑/);
 }

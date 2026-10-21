@@ -48,6 +48,12 @@
         class="action-button action-button--disabled"
         disabled="true"
       >当前状态不可编辑</button>
+      <button
+        wx:if="{{story.canDelete}}"
+        class="action-button action-button--danger"
+        bindtap="deleteStory"
+        disabled="{{deleting}}"
+      >{{deleting ? '删除中...' : '删除投稿'}}</button>
       <button class="action-button action-button--ghost" bindtap="goBack">返回</button>
     </view>
   </block>

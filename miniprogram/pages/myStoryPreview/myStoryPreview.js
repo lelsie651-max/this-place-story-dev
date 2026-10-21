@@ -1,7 +1,9 @@
 const storyService = require('../../services/storyService');
 
-const DEFAULT_TIME_TEXT = '投稿时间：待补充';
+const DEFAULT_CREATED_TIME_TEXT = '投稿时间：待补充';
+const DEFAULT_UPDATED_TIME_TEXT = '最近修改时间：待补充';
 const DEFAULT_EDIT_NOTICE = '修改已提交，审核通过后会展示。';
+const DEFAULT_DELETE_NOTICE = '投稿已删除';
 
 function trimString(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -40,6 +42,7 @@ function getUserFacingErrorMessage(error) {
   if (
     code === 'STORY_NOT_FOUND'
     || code === 'FORBIDDEN'
+    || code === 'STATUS_NOT_DELETABLE'
     || code === 'CONTENT_NOT_AVAILABLE'
   ) {
     return message || '当前投稿暂不可查看。';
@@ -48,9 +51,18 @@ function getUserFacingErrorMessage(error) {
   return message || '投稿详情读取失败，请稍后再试。';
 }
 
-function formatStoryTimeText(createdAt) {
-  const formatted = storyService.formatStorySubmissionTime(createdAt);
-  return formatted ? '投稿时间：' + formatted : DEFAULT_TIME_TEXT;
+function formatStoryTimeText(story) {
+  const safeStory = story && typeof story === 'object' ? story : {};
+  const hasUpdatedAt = typeof safeStory.updatedAt !== 'undefined'
+    && safeStory.updatedAt !== null
+    && safeStory.updatedAt !== '';
+  const formatted = storyService.formatStorySubmissionTime(safeStory);
+
+  if (formatted) {
+    return (hasUpdatedAt ? '最近修改时间：' : '投稿时间：') + formatted;
+  }
+
+  return hasUpdatedAt ? DEFAULT_UPDATED_TIME_TEXT : DEFAULT_CREATED_TIME_TEXT;
 }
 
 function getLocationAddress(story) {
@@ -61,9 +73,10 @@ function normalizeStoryForDisplay(story) {
   const safeStory = story && typeof story === 'object' ? story : {};
 
   return Object.assign({}, safeStory, {
-    createdAtText: formatStoryTimeText(safeStory.createdAt),
+    createdAtText: formatStoryTimeText(safeStory),
     locationAddress: getLocationAddress(safeStory),
     canEdit: storyService.canEditMyStory(safeStory.status),
+    canDelete: storyService.canDeleteMyStory(safeStory.status),
   });
 }
 
@@ -94,6 +107,17 @@ function redirectToMyStories() {
   });
 }
 
+function canNavigateBackToMyStories() {
+  const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+
+  if (!Array.isArray(pages) || pages.length < 2) {
+    return false;
+  }
+
+  const previousPage = pages[pages.length - 2];
+  return !!(previousPage && previousPage.route === 'pages/myStories/myStories');
+}
+
 Page({
   data: {
     storyId: '',
@@ -101,6 +125,7 @@ Page({
     errorMessage: '',
     noticeMessage: '',
     story: null,
+    deleting: false,
   },
 
   onLoad(options) {
@@ -142,6 +167,7 @@ Page({
     this.setData({
       loading: true,
       errorMessage: '',
+      deleting: false,
     });
 
     try {
@@ -179,6 +205,65 @@ Page({
     });
   },
 
+  async deleteStory() {
+    const story = this.data.story;
+    const storyId = trimString(story && story.id);
+
+    if (!story || !story.canDelete || !storyId || this.data.deleting) {
+      return;
+    }
+
+    const modalResult = await new Promise(function showDeleteConfirm(resolve) {
+      wx.showModal({
+        title: '删除投稿',
+        content: '删除后，这条投稿将从“我的投稿”中移除，确认删除吗？',
+        confirmText: '确认删除',
+        cancelText: '取消',
+        success: resolve,
+        fail() {
+          resolve({
+            confirm: false,
+            cancel: true,
+          });
+        },
+      });
+    });
+
+    if (!modalResult || !modalResult.confirm) {
+      return;
+    }
+
+    this.setData({
+      deleting: true,
+    });
+
+    try {
+      await storyService.deleteMyStory(storyId);
+      wx.showToast({
+        title: DEFAULT_DELETE_NOTICE,
+        icon: 'success',
+      });
+
+      if (canNavigateBackToMyStories()) {
+        wx.navigateBack({
+          delta: 1,
+        });
+        return;
+      }
+
+      await redirectToMyStories();
+    } catch (error) {
+      wx.showToast({
+        title: getUserFacingErrorMessage(error),
+        icon: 'none',
+      });
+    } finally {
+      this.setData({
+        deleting: false,
+      });
+    }
+  },
+
   async goBack() {
     if (getCurrentPages().length > 1) {
       wx.navigateBack({
@@ -200,7 +285,10 @@ Page({
 if (typeof module !== 'undefined') {
   module.exports._private = {
     DEFAULT_EDIT_NOTICE: DEFAULT_EDIT_NOTICE,
-    DEFAULT_TIME_TEXT: DEFAULT_TIME_TEXT,
+    DEFAULT_CREATED_TIME_TEXT: DEFAULT_CREATED_TIME_TEXT,
+    DEFAULT_UPDATED_TIME_TEXT: DEFAULT_UPDATED_TIME_TEXT,
+    DEFAULT_DELETE_NOTICE: DEFAULT_DELETE_NOTICE,
+    canNavigateBackToMyStories: canNavigateBackToMyStories,
     consumePendingNotice: consumePendingNotice,
     decodeQueryValue: decodeQueryValue,
     formatStoryTimeText: formatStoryTimeText,

@@ -33,6 +33,15 @@ function createActor() {
         content: '他人正文',
         status: 'pending',
       },
+      {
+        _id: 'story-3',
+        authorId: 'user-a',
+        source: 'user',
+        type: 'traveler',
+        title: '已删除投稿',
+        content: '删除正文',
+        status: 'deleted',
+      },
     ],
     locations: {
       'loc-1': {
@@ -114,11 +123,23 @@ async function testRejectOtherUsersStory() {
   );
 }
 
+async function testRejectDeletedStory() {
+  const actor = createActor();
+
+  await assert.rejects(
+    function rejectDeletedRead() {
+      return getMyStoryById._private.getStoryByAuthorWithActor(actor, 'story-3', 'user-a');
+    },
+    /当前投稿不存在或暂不可查看/
+  );
+}
+
 async function run() {
   const tests = [
     ['Validate storyId input', testValidateStoryId],
     ['Read own story only', testReadOwnStoryOnly],
     ['Reject other users story', testRejectOtherUsersStory],
+    ['Reject deleted story', testRejectDeletedStory],
   ];
 
   for (const [label, testFn] of tests) {

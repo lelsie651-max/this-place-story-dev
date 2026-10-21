@@ -21,6 +21,9 @@ const EDITABLE_MY_STORY_STATUSES = {
   pending: true,
   rejected: true,
 };
+const DELETABLE_MY_STORY_STATUSES = {
+  rejected: true,
+};
 
 function normalizeStorySource(doc) {
   if (!doc || typeof doc !== 'object') {
@@ -157,8 +160,24 @@ function normalizeDateInputToTimestamp(value) {
   return null;
 }
 
-function formatStorySubmissionTime(value) {
-  const timestamp = normalizeDateInputToTimestamp(value);
+function pickStorySubmissionTimeValue(valueOrStory) {
+  if (
+    valueOrStory
+    && typeof valueOrStory === 'object'
+    && (
+      Object.prototype.hasOwnProperty.call(valueOrStory, 'updatedAt')
+      || Object.prototype.hasOwnProperty.call(valueOrStory, 'createdAt')
+    )
+  ) {
+    const updatedAt = typeof valueOrStory.updatedAt === 'undefined' ? null : valueOrStory.updatedAt;
+    return updatedAt || valueOrStory.createdAt || null;
+  }
+
+  return valueOrStory;
+}
+
+function formatStorySubmissionTime(valueOrStory) {
+  const timestamp = normalizeDateInputToTimestamp(pickStorySubmissionTimeValue(valueOrStory));
 
   if (!Number.isFinite(timestamp)) {
     return '';
@@ -267,6 +286,10 @@ function normalizeStoryDetail(story) {
 
 function canEditMyStory(status) {
   return !!EDITABLE_MY_STORY_STATUSES[trimString(status)];
+}
+
+function canDeleteMyStory(status) {
+  return !!DELETABLE_MY_STORY_STATUSES[trimString(status)];
 }
 
 async function callCloudFunction(name, data, deployMessage, fallbackMessage) {
@@ -603,6 +626,10 @@ function normalizeMyStoryStatus(status) {
     return '已隐藏';
   }
 
+  if (status === 'deleted') {
+    return '已删除';
+  }
+
   return '审核中';
 }
 
@@ -704,8 +731,36 @@ async function updateTravelerStory(payload) {
   };
 }
 
+async function deleteMyStory(storyId) {
+  const normalizedStoryId = trimString(storyId);
+
+  if (!normalizedStoryId) {
+    throw createServiceError('INVALID_INPUT', '缺少有效的投稿标识。');
+  }
+
+  const functionResult = await callCloudFunction(
+    'deleteMyStory',
+    {
+      storyId: normalizedStoryId,
+    },
+    '删除服务尚未更新，请重新部署 deleteMyStory 云函数。',
+    '投稿删除失败，请稍后再试。'
+  );
+
+  if (!functionResult.storyId || functionResult.deleted !== true) {
+    throw createServiceError('INTERNAL_ERROR', '投稿删除失败，请稍后再试。');
+  }
+
+  return {
+    storyId: functionResult.storyId,
+    deleted: true,
+  };
+}
+
 module.exports = {
+  canDeleteMyStory,
   canEditMyStory,
+  deleteMyStory,
   formatStorySubmissionTime,
   getStoryById,
   getStoryByType,
@@ -723,12 +778,15 @@ module.exports = {
 
 module.exports._private = {
   CONTENT_MAX_LENGTH: CONTENT_MAX_LENGTH,
+  DELETABLE_MY_STORY_STATUSES: DELETABLE_MY_STORY_STATUSES,
   EDITABLE_MY_STORY_STATUSES: EDITABLE_MY_STORY_STATUSES,
   TITLE_MAX_LENGTH: TITLE_MAX_LENGTH,
   callCloudFunction: callCloudFunction,
+  canDeleteMyStory: canDeleteMyStory,
   canEditMyStory: canEditMyStory,
   formatStorySubmissionTime: formatStorySubmissionTime,
   normalizeDateInputToTimestamp: normalizeDateInputToTimestamp,
   normalizeMyStoryStatus: normalizeMyStoryStatus,
   normalizeStoryDetail: normalizeStoryDetail,
+  pickStorySubmissionTimeValue: pickStorySubmissionTimeValue,
 };
