@@ -32,6 +32,7 @@ App({
     pendingPublishLocation: null,
     pendingUserStoriesLocation: null,
     pendingUserStoriesSubmissionNotice: '',
+    pendingMyStoryPreviewNotice: null,
     devTestToolsUpdatedAt: 0,
   },
 

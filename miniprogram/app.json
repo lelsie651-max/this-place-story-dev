@@ -9,6 +9,8 @@
     "pages/profile/profile",
     "pages/devTestTools/devTestTools",
     "pages/myStories/myStories",
+    "pages/myStoryPreview/myStoryPreview",
+    "pages/myStoryEdit/myStoryEdit",
     "pages/publish/publish",
     "pages/publishResult/publishResult",
     "pages/atlas/atlas",

@@ -1,8 +1,4 @@
 <view class="page">
-  <view class="top-bar">
-    <button class="back-button" bindtap="goBack">返回</button>
-  </view>
-
   <view class="section-label">MY STORIES</view>
   <view class="page-title">我的投稿</view>
   <view class="page-subtitle">这里会显示你已提交的故事，以及当前审核状态。</view>
@@ -33,16 +29,15 @@
       wx:for="{{stories}}"
       wx:key="id"
       class="panel story-card"
+      bindtap="openStoryPreview"
+      data-story-id="{{item.id}}"
     >
       <view class="story-header">
         <view class="story-title">{{item.title}}</view>
         <view class="story-status status-{{item.status}}">{{item.statusLabel}}</view>
       </view>
       <view wx:if="{{item.locationName}}" class="story-location">{{item.locationName}}</view>
-      <view class="story-content">{{item.content}}</view>
-      <view wx:if="{{item.status === 'rejected'}}" class="story-reason">
-        拒绝原因：{{item.rejectionReason || '暂未提供具体原因'}}
-      </view>
+      <view class="story-time">{{item.createdAtText}}</view>
     </view>
   </block>
 </view>

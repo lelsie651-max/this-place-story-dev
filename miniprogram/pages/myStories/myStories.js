@@ -1,5 +1,7 @@
 const storyService = require('../../services/storyService');
 
+const DEFAULT_TIME_TEXT = '投稿时间：待补充';
+
 function getUserFacingErrorMessage(error) {
   const code = error && error.code ? String(error.code) : '';
   const message = error && error.message ? String(error.message) : '';
@@ -19,6 +21,19 @@ function getUserFacingErrorMessage(error) {
   return '投稿记录读取失败，请稍后再试。';
 }
 
+function formatStoryTimeText(createdAt) {
+  const formatted = storyService.formatStorySubmissionTime(createdAt);
+  return formatted ? '投稿时间：' + formatted : DEFAULT_TIME_TEXT;
+}
+
+function normalizeStoriesForDisplay(stories) {
+  return (Array.isArray(stories) ? stories : []).map(function mapStory(story) {
+    return Object.assign({}, story, {
+      createdAtText: formatStoryTimeText(story && story.createdAt),
+    });
+  });
+}
+
 Page({
   data: {
     loading: true,
@@ -30,19 +45,6 @@ Page({
     this.loadMyStories();
   },
 
-  goBack() {
-    if (getCurrentPages().length > 1) {
-      wx.navigateBack({
-        delta: 1,
-      });
-      return;
-    }
-
-    wx.switchTab({
-      url: '/pages/index/index',
-    });
-  },
-
   async loadMyStories() {
     this.setData({
       loading: true,
@@ -50,7 +52,7 @@ Page({
     });
 
     try {
-      const stories = await storyService.getMyStories();
+      const stories = normalizeStoriesForDisplay(await storyService.getMyStories());
 
       this.setData({
         loading: false,
@@ -67,4 +69,31 @@ Page({
       });
     }
   },
+
+  openStoryPreview(event) {
+    const storyId = event && event.currentTarget && event.currentTarget.dataset
+      ? String(event.currentTarget.dataset.storyId || '').trim()
+      : '';
+
+    if (!storyId) {
+      wx.showToast({
+        title: '当前投稿缺少有效标识',
+        icon: 'none',
+      });
+      return;
+    }
+
+    wx.navigateTo({
+      url: '/pages/myStoryPreview/myStoryPreview?storyId=' + encodeURIComponent(storyId),
+    });
+  },
 });
+
+if (typeof module !== 'undefined') {
+  module.exports._private = {
+    DEFAULT_TIME_TEXT: DEFAULT_TIME_TEXT,
+    formatStoryTimeText: formatStoryTimeText,
+    getUserFacingErrorMessage: getUserFacingErrorMessage,
+    normalizeStoriesForDisplay: normalizeStoriesForDisplay,
+  };
+}

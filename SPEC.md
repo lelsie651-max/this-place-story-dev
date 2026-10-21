@@ -339,6 +339,16 @@
 - 展示收藏数量
 - 提供图鉴、收藏、我的投稿等入口
 - “我的投稿”入口当前进入独立页面查看自己的投稿记录与审核状态
+- “我的投稿”列表当前固定展示：
+  - 标题
+  - 地点名称
+  - 投稿时间
+  - 审核状态
+- 点击“我的投稿”卡片进入专用预览页，展示原投稿详情而不是公开故事详情页
+- 预览页只读取当前用户自己的投稿，`pending / published / rejected / hidden` 都允许本人查看
+- 预览页在 `pending / rejected` 时显示“编辑”按钮，`published / hidden` 不允许编辑
+- 编辑页不允许重新选择地点，只允许修改标题和正文
+- 编辑成功后更新原 `stories` 文档并重新回到 `pending`
 - 在 `develop / trial` 环境显示“开发测试工具”入口，具体操作需在页面内输入开发测试口令
 - 当前支持展示：
   - `pending` -> 审核中
@@ -656,12 +666,20 @@
   - `isTemporary = true`
   - `placeSnapshot`
 - 个人中心“我的投稿”通过 `getMyStories` 云函数读取当前用户自己的投稿
+- “我的投稿”详情通过专用云函数 `getMyStoryById` 读取，必须按 `storyId + authorId(OPENID) + source=user` 约束
 - “我的投稿”展示 `pending / published / rejected / hidden`
 - 当投稿 `status = rejected` 时：
   - 优先展示 `rejectionReason`
   - 未提供时显示“暂未提供具体原因”
 - 公共网友故事页只展示 `published`
 - 普通 `storyId` 详情链路只允许打开 `status = published` 的故事
+- 编辑投稿时：
+  - 只允许 `pending / rejected`
+  - 必须保留原 `_id / createdAt / locationId / isTemporary / placeSnapshot / authorId / source / type / language`
+  - 更新 `title / summary / content / status / updatedAt`
+  - `status` 必须重置为 `pending`
+  - 必须清除 `rejectionReason / reviewedAt / reviewerId / moderationNote` 等审核字段
+- 现有首页“分享传说”新建投稿流程保持不变，仍然创建新文档并写入 `pending`
 
 ### 7.9 第一阶段网友投稿人工审核
 

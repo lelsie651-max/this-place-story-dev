@@ -1,0 +1,62 @@
+.field-card,
+.state-card {
+  background: linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(249, 240, 226, 0.94));
+}
+
+.field-label {
+  margin-bottom: 16rpx;
+  color: #8b5e34;
+  font-size: 28rpx;
+}
+
+.field-value {
+  margin-bottom: 12rpx;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #4c3424;
+  line-height: 1.5;
+}
+
+.field-address,
+.field-note {
+  color: #7a624c;
+  font-size: 24rpx;
+  line-height: 1.7;
+}
+
+.field-address {
+  font-size: 26rpx;
+}
+
+.text-input,
+.text-area {
+  width: 100%;
+  border-radius: 22rpx;
+  background: rgba(255, 247, 235, 0.92);
+  color: #4c3424;
+  box-sizing: border-box;
+}
+
+.text-input {
+  min-height: 92rpx;
+  padding: 0 24rpx;
+  line-height: 92rpx;
+}
+
+.text-area {
+  min-height: 320rpx;
+  padding: 24rpx;
+  line-height: 1.8;
+}
+
+.action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  margin-top: 28rpx;
+}
+
+.action-button--ghost {
+  background: rgba(255, 247, 235, 0.92);
+  color: #6b4527;
+}
