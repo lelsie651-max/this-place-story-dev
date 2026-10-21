@@ -30,14 +30,15 @@ const EDITABLE_STATUSES = {
   pending: true,
   rejected: true,
 };
-const REVIEW_FIELD_NAMES = [
+const REVIEW_FIELD_CLEAR_NAMES = [
   'rejectionReason',
   'reviewedAt',
   'reviewerId',
   'reviewerName',
   'reviewReason',
   'moderationNote',
-  'moderationStatus',
+  'moderationCheckedAt',
+  'moderationRiskLevel',
 ];
 const ALLOWED_ERROR_CODES = {
   INVALID_INPUT: true,
@@ -112,6 +113,16 @@ function buildSummary(content) {
   }
 
   return normalized.slice(0, SUMMARY_MAX_LENGTH) + '...';
+}
+
+function buildManualModerationFields() {
+  return {
+    moderationStatus: 'manual_only',
+    manualReviewRequired: true,
+    moderationProvider: null,
+    moderationResult: null,
+    moderationReason: null,
+  };
 }
 
 function validatePlaceSnapshot(placeSnapshot) {
@@ -238,7 +249,7 @@ async function createTravelerStoryWithActor(actor, input, openId) {
 
   try {
     const result = await actor.collection(STORIES_COLLECTION).add({
-      data: {
+      data: Object.assign({
         locationId: input.locationId,
         isTemporary: !!input.isTemporary,
         placeSnapshot: input.placeSnapshot,
@@ -251,7 +262,7 @@ async function createTravelerStoryWithActor(actor, input, openId) {
         language: 'zh-CN',
         authorId: openId,
         createdAt: actor.serverDate(),
-      },
+      }, buildManualModerationFields()),
     });
 
     return result && result._id ? result._id : '';
@@ -331,7 +342,7 @@ function buildReviewFieldClearData(command) {
     throw new SubmitStoryError('INTERNAL_ERROR', '投稿服务暂时不可用');
   }
 
-  return REVIEW_FIELD_NAMES.reduce(function assignField(result, fieldName) {
+  return REVIEW_FIELD_CLEAR_NAMES.reduce(function assignField(result, fieldName) {
     result[fieldName] = command.remove();
     return result;
   }, {});
@@ -352,7 +363,7 @@ async function updateTravelerStoryWithActor(actor, command, storyId, input) {
         content: input.content,
         status: 'pending',
         updatedAt: actor.serverDate(),
-      }, reviewFieldClearData),
+      }, buildManualModerationFields(), reviewFieldClearData),
     });
   } catch (error) {
     const message = error && error.message ? String(error.message) : '';
@@ -414,8 +425,9 @@ exports.main = async function main(event) {
 
 module.exports._private = {
   EDITABLE_STATUSES: EDITABLE_STATUSES,
-  REVIEW_FIELD_NAMES: REVIEW_FIELD_NAMES,
+  REVIEW_FIELD_CLEAR_NAMES: REVIEW_FIELD_CLEAR_NAMES,
   buildSummary: buildSummary,
+  buildManualModerationFields: buildManualModerationFields,
   validateCreateEvent: validateCreateEvent,
   validateEditEvent: validateEditEvent,
   createTravelerStoryWithActor: createTravelerStoryWithActor,

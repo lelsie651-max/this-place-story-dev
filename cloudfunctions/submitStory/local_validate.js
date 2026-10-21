@@ -195,6 +195,11 @@ async function testCreateStillAddsNewStory() {
   assert.strictEqual(actor.store.stories[storyId].status, 'pending');
   assert.strictEqual(actor.store.stories[storyId].authorId, 'user-a');
   assert.strictEqual(actor.store.stories[storyId].createdAt, 'server-date-1');
+  assert.strictEqual(actor.store.stories[storyId].moderationStatus, 'manual_only');
+  assert.strictEqual(actor.store.stories[storyId].manualReviewRequired, true);
+  assert.strictEqual(actor.store.stories[storyId].moderationProvider, null);
+  assert.strictEqual(actor.store.stories[storyId].moderationResult, null);
+  assert.strictEqual(actor.store.stories[storyId].moderationReason, null);
 }
 
 async function testEditUpdatesOriginalDocAndKeepsIdentity() {
@@ -218,6 +223,11 @@ async function testEditUpdatesOriginalDocAndKeepsIdentity() {
   assert.strictEqual(updated.summary, '修改后的正文');
   assert.strictEqual(updated.locationId, 'loc-1');
   assert.strictEqual(updated.authorId, 'user-a');
+  assert.strictEqual(updated.moderationStatus, 'manual_only');
+  assert.strictEqual(updated.manualReviewRequired, true);
+  assert.strictEqual(updated.moderationProvider, null);
+  assert.strictEqual(updated.moderationResult, null);
+  assert.strictEqual(updated.moderationReason, null);
   assert.strictEqual(typeof updated.rejectionReason, 'undefined');
   assert.strictEqual(typeof updated.reviewedAt, 'undefined');
   assert.strictEqual(typeof updated.reviewerId, 'undefined');
@@ -273,8 +283,15 @@ async function testValidationRulesStaySafe() {
         return 'REMOVE';
       },
     })).sort(),
-    submitStory._private.REVIEW_FIELD_NAMES.slice().sort()
+    submitStory._private.REVIEW_FIELD_CLEAR_NAMES.slice().sort()
   );
+  assert.deepStrictEqual(submitStory._private.buildManualModerationFields(), {
+    moderationStatus: 'manual_only',
+    manualReviewRequired: true,
+    moderationProvider: null,
+    moderationResult: null,
+    moderationReason: null,
+  });
 }
 
 async function run() {

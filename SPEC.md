@@ -663,6 +663,11 @@
   - `source = user`
   - `status = pending`
   - `authorId = wx.cloud.getWXContext().OPENID`
+  - `moderationStatus = manual_only`
+  - `manualReviewRequired = true`
+  - `moderationProvider = null`
+  - `moderationResult = null`
+  - `moderationReason = null`
 - 正式地点投稿必须使用真实 `locations._id`
 - 临时地点投稿必须使用：
   - `locationId = null`
@@ -685,6 +690,12 @@
   - 必须保留原 `_id / createdAt / locationId / isTemporary / placeSnapshot / authorId / source / type / language`
   - 更新 `title / summary / content / status / updatedAt`
   - `status` 必须重置为 `pending`
+  - 必须恢复人工审核默认字段：
+    - `moderationStatus = manual_only`
+    - `manualReviewRequired = true`
+    - `moderationProvider = null`
+    - `moderationResult = null`
+    - `moderationReason = null`
   - 必须清除 `rejectionReason / reviewedAt / reviewerId / moderationNote` 等审核字段
 - 删除投稿时：
   - 只允许 `rejected`
@@ -697,9 +708,14 @@
   - `deleted` 投稿不再出现在“我的投稿”列表，也不能通过“我的投稿”详情接口再次读取
 - 现有首页“分享传说”新建投稿流程保持不变，仍然创建新文档并写入 `pending`
 
-### 7.9 第一阶段网友投稿人工审核
+### 7.9 网友投稿人工审核
 
-第一阶段不开发管理员小程序页面，当前冻结为 CloudBase 控制台手动审核：
+当前已实现两种人工审核方式：
+
+1. CloudBase 控制台手动审核
+2. 独立网页审核后台（第一版）
+
+CloudBase 控制台手动审核仍可继续使用：
 
 1. 打开 CloudBase 数据库中的 `stories` 集合
 2. 按以下条件筛选待审投稿：
@@ -723,6 +739,35 @@
 - 不新增审核日志集合
 - 不增加小程序管理员页面
 - `pending / rejected / hidden / deleted` 不进入公共网友故事页
+
+### 7.10 独立网页审核后台（第一版）
+
+当前仓库已新增 `admin-web/` 独立网页工程，使用 `Vite + 原生 JavaScript` 实现第一版人工审核后台。
+
+当前后台相关云函数包括：
+
+- `adminLogin`
+- `adminListStories`
+- `adminGetStoryById`
+- `adminReviewStory`
+
+当前后台约束如下：
+
+- 管理员密码只从云函数环境变量 `ADMIN_LOGIN_SECRET` 读取
+- 网页前端不得直接读写 `stories` 集合
+- 网页前端只通过云函数访问后台能力
+- 管理员会话令牌由云函数签名生成，前端只保存在 `sessionStorage`
+- `pending -> published`
+- `pending -> rejected`
+- `published -> hidden`
+- `rejected / hidden` 当前只读查看
+- `deleted` 默认不出现在后台普通列表
+- 第一版不实现恢复发布
+- 第一版不新增 `admin_users`
+- 第一版不新增审核日志集合
+- 当前机器审核仍未启用，只兼容显示：
+  - `moderationStatus = manual_only`
+  - `manualReviewRequired = true/false`
 
 ---
 
