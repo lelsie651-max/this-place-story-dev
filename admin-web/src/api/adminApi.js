@@ -2,7 +2,7 @@ import cloudbase from '@cloudbase/js-sdk';
 
 const CLOUD_ENV_ID = 'cloud1-d8gpv2fu5feccd009';
 const ANONYMOUS_AUTH_REQUIRED_CODE = 'ANONYMOUS_AUTH_REQUIRED';
-const ANONYMOUS_AUTH_REQUIRED_MESSAGE = '请在 CloudBase 控制台开启匿名登录后重试。';
+const ANONYMOUS_AUTH_REQUIRED_MESSAGE = 'CloudBase 匿名登录未成功';
 const NETWORK_ERROR_CODE = 'NETWORK_ERROR';
 
 let appInstance = null;
@@ -68,7 +68,7 @@ async function ensureCloudReady() {
           }
 
           if (isNetworkError(error)) {
-            throw createApiError(NETWORK_ERROR_CODE, '登录请求失败，请检查云函数部署和网络。');
+            throw createApiError(NETWORK_ERROR_CODE, '登录请求失败，请检查云函数部署');
           }
 
           throw createApiError(
@@ -140,7 +140,7 @@ async function callAdminFunction(name, data, fallbackMessage) {
     return payload;
   } catch (error) {
     if (isNetworkError(error)) {
-      throw createApiError(NETWORK_ERROR_CODE, '登录请求失败，请检查云函数部署和网络。');
+      throw createApiError(NETWORK_ERROR_CODE, '登录请求失败，请检查云函数部署');
     }
 
     throw mapCloudError(error, fallbackMessage);

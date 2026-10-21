@@ -37,18 +37,29 @@ const state = {
   },
 };
 
-function resetSession() {
+function clearActiveSession() {
   clearSession();
   state.session = null;
   state.view = 'login';
-  state.login.loading = false;
-  state.login.errorMessage = '';
   state.detail = {
     loading: false,
     errorMessage: '',
     storyId: '',
     story: null,
   };
+}
+
+function resetSession() {
+  clearActiveSession();
+  state.login.loading = false;
+  state.login.errorMessage = '';
+  state.list.loading = false;
+  state.list.errorMessage = '';
+  state.list.stories = [];
+  state.list.cursor = '';
+  state.list.previousCursors = [];
+  state.list.nextCursor = '';
+  state.list.hasMore = false;
 }
 
 function getErrorMessage(error, fallbackMessage) {
@@ -71,7 +82,7 @@ function renderApp() {
   }
 
   if (!state.session || isSessionExpired(state.session)) {
-    resetSession();
+    clearActiveSession();
     renderLoginPage(appElement, {
       loading: state.login.loading,
       errorMessage: state.login.errorMessage,
@@ -150,6 +161,10 @@ function resetAndRender() {
 }
 
 async function handleLogin(secret) {
+  if (state.login.loading) {
+    return;
+  }
+
   state.login.loading = true;
   state.login.errorMessage = '';
   renderApp();
@@ -163,6 +178,8 @@ async function handleLogin(secret) {
     state.view = 'list';
     state.list.cursor = '';
     state.list.previousCursors = [];
+    state.list.nextCursor = '';
+    state.list.hasMore = false;
     state.login.loading = false;
     renderApp();
     await loadStoryList();

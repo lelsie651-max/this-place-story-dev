@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 
-import { getLoginErrorMessage, normalizeAdminSession, performAdminLogin } from './src/auth/loginFlow.js';
+import { getLoginErrorMessage, normalizeAdminSession, performAdminLogin, validateAdminSecretInput } from './src/auth/loginFlow.js';
 import { clearSession, getSession, saveSession } from './src/auth/session.js';
 import { renderLoginPageMarkup } from './src/pages/LoginPage.js';
 
@@ -40,22 +40,36 @@ function testAnonymousLoginErrorShowsVisibleMessage() {
     errorMessage: errorMessage,
   });
 
-  assert.strictEqual(errorMessage, '请在 CloudBase 控制台开启匿名登录后重试。');
-  assert.ok(markup.includes('请在 CloudBase 控制台开启匿名登录后重试。'));
+  assert.strictEqual(errorMessage, 'CloudBase 匿名登录未成功');
+  assert.ok(markup.includes('CloudBase 匿名登录未成功'));
 }
 
 function testAdminLoginErrorShowsVisibleMessage() {
   const errorMessage = getLoginErrorMessage({
     code: 'FORBIDDEN',
-    message: '管理员密码错误。',
+    message: '管理员密码错误',
   });
   const markup = renderLoginPageMarkup({
     loading: false,
     errorMessage: errorMessage,
   });
 
-  assert.strictEqual(errorMessage, '管理员密码错误。');
-  assert.ok(markup.includes('管理员密码错误。'));
+  assert.strictEqual(errorMessage, '管理员密码错误');
+  assert.ok(markup.includes('管理员密码错误'));
+}
+
+function testEmptyPasswordShowsVisibleMessage() {
+  const errorMessage = getLoginErrorMessage({
+    code: 'INVALID_INPUT',
+    message: '请输入管理员密码',
+  });
+  const markup = renderLoginPageMarkup({
+    loading: false,
+    errorMessage: errorMessage,
+  });
+
+  assert.strictEqual(errorMessage, '请输入管理员密码');
+  assert.ok(markup.includes('请输入管理员密码'));
 }
 
 async function testCorrectPasswordSavesToken() {
@@ -85,7 +99,7 @@ async function testWrongPasswordDoesNotSaveToken() {
   await assert.rejects(async function rejectWrongPassword() {
     await performAdminLogin('secret', {
       async login() {
-        const error = new Error('管理员密码错误。');
+        const error = new Error('管理员密码错误');
         error.code = 'FORBIDDEN';
         throw error;
       },
@@ -96,6 +110,12 @@ async function testWrongPasswordDoesNotSaveToken() {
 
   assert.strictEqual(getSession(), null);
   clearWindow();
+}
+
+function testValidateAdminSecretRejectsEmptyValue() {
+  assert.throws(function rejectEmptyValue() {
+    validateAdminSecretInput('   ');
+  }, /请输入管理员密码/);
 }
 
 function testNormalizeAdminSessionRejectsInvalidPayload() {
@@ -112,8 +132,10 @@ async function run() {
   const tests = [
     ['Anonymous login error shows visible message', testAnonymousLoginErrorShowsVisibleMessage],
     ['Admin login error shows visible message', testAdminLoginErrorShowsVisibleMessage],
+    ['Empty password shows visible message', testEmptyPasswordShowsVisibleMessage],
     ['Correct password saves token', testCorrectPasswordSavesToken],
     ['Wrong password does not save token', testWrongPasswordDoesNotSaveToken],
+    ['Validate admin secret rejects empty value', testValidateAdminSecretRejectsEmptyValue],
     ['Normalize admin session rejects invalid payload', testNormalizeAdminSessionRejectsInvalidPayload],
   ];
 
