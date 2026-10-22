@@ -1,7 +1,7 @@
 .profile-header {
-  margin-bottom: 36rpx;
-  padding-top: 44rpx;
-  padding-bottom: 36rpx;
+  margin-bottom: 32rpx;
+  padding-top: 46rpx;
+  padding-bottom: 38rpx;
   text-align: center;
   background: linear-gradient(180deg, rgba(255, 248, 236, 0.98), rgba(244, 228, 199, 0.92));
 }
@@ -12,7 +12,7 @@
   justify-content: center;
   width: 132rpx;
   height: 132rpx;
-  margin: 0 auto 20rpx;
+  margin: 0 auto 22rpx;
   border-radius: 50%;
   background: linear-gradient(180deg, #9b6937, #6b4527);
   color: #fffaf2;
@@ -22,14 +22,17 @@
 }
 
 .profile-name {
-  margin-bottom: 12rpx;
+  margin-bottom: 10rpx;
   font-size: 40rpx;
   font-weight: 600;
   color: #4c3424;
 }
 
 .profile-subtitle {
+  max-width: 480rpx;
+  margin: 0 auto;
   color: #7a624c;
+  line-height: 1.7;
 }
 
 .asset-panel {
@@ -49,12 +52,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 20rpx;
 }
 
 .asset-item-left {
   display: flex;
   align-items: center;
   gap: 18rpx;
+  min-width: 0;
+  flex: 1;
 }
 
 .asset-icon {
@@ -73,16 +79,18 @@
   font-size: 34rpx;
   font-weight: 600;
   color: #4c3424;
+  line-height: 1.4;
 }
 
 .asset-note {
-  max-width: 360rpx;
+  max-width: 100%;
   color: #7a624c;
   font-size: 24rpx;
   line-height: 1.6;
 }
 
 .asset-value {
+  flex-shrink: 0;
   text-align: center;
 }
 
@@ -143,11 +151,19 @@
 
 .reward-button {
   width: 100%;
+  min-height: 88rpx;
+  padding: 0 28rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999rpx;
+  border: none;
   background: linear-gradient(180deg, #b67833, #8b5e34);
   color: #fffaf2;
   font-size: 28rpx;
-  line-height: 2.8;
+  line-height: 1.5;
+  box-shadow: 0 12rpx 26rpx rgba(107, 69, 39, 0.14);
 }
 
 .reward-button::after {
@@ -168,46 +184,73 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 28rpx;
-  padding-bottom: 28rpx;
+  min-height: 132rpx;
+  padding-top: 26rpx;
+  padding-bottom: 26rpx;
+  box-sizing: border-box;
 }
 
 .menu-item-left {
   display: flex;
   align-items: center;
   gap: 20rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-item-left > view:last-child {
+  flex: 1;
+  min-width: 0;
 }
 
 .menu-icon {
-  width: 64rpx;
-  text-align: center;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 22rpx;
+  background: rgba(140, 94, 52, 0.12);
   font-size: 34rpx;
 }
 
 .menu-label {
   font-size: 32rpx;
   color: #4c3424;
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .menu-subtext {
   margin-top: 6rpx;
   color: #8a725c;
   font-size: 22rpx;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .menu-item-right {
   display: flex;
   align-items: center;
   gap: 16rpx;
+  flex-shrink: 0;
+  margin-left: 20rpx;
 }
 
 .menu-count {
-  min-width: 44rpx;
-  padding: 6rpx 12rpx;
+  min-width: 48rpx;
+  padding: 8rpx 14rpx;
   border-radius: 999rpx;
   background: rgba(140, 94, 52, 0.12);
   color: #8b5e34;
   font-size: 22rpx;
+  font-weight: 600;
+  line-height: 1.2;
   text-align: center;
 }
 
@@ -221,8 +264,10 @@
   align-items: center;
   justify-content: space-between;
   margin-top: 28rpx;
-  padding-top: 28rpx;
-  padding-bottom: 28rpx;
+  min-height: 132rpx;
+  padding-top: 26rpx;
+  padding-bottom: 26rpx;
+  box-sizing: border-box;
   background: linear-gradient(180deg, rgba(255, 248, 236, 0.98), rgba(245, 231, 208, 0.96));
 }
 

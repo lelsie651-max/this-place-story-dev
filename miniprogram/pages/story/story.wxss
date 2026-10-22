@@ -1,23 +1,26 @@
 .story-title {
-  margin-top: 18rpx;
-  margin-bottom: 10rpx;
+  margin-top: 16rpx;
+  margin-bottom: 12rpx;
 }
 
 .location-text {
-  margin-bottom: 28rpx;
+  margin-bottom: 30rpx;
 }
 
 .story-card {
+  padding-top: 36rpx;
+  padding-bottom: 38rpx;
   background: linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(249, 240, 226, 0.94));
 }
 
 .story-content {
   color: #4c3424;
-  line-height: 1.9;
+  font-size: 30rpx;
+  line-height: 2;
 }
 
 .story-paragraph {
-  margin-bottom: 24rpx;
+  margin-bottom: 26rpx;
   white-space: pre-line;
 }
 
@@ -26,6 +29,8 @@
 }
 
 .story-meta {
+  padding-top: 30rpx;
+  padding-bottom: 30rpx;
   background: rgba(255, 247, 235, 0.88);
 }
 
@@ -35,31 +40,36 @@
 
 .meta-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 20rpx;
   padding: 8rpx 0;
 }
 
 .meta-label {
   color: #8a725c;
   font-size: 26rpx;
+  line-height: 1.6;
 }
 
 .meta-value {
+  flex: 1;
   color: #6b4527;
   font-size: 28rpx;
+  line-height: 1.6;
+  text-align: right;
 }
 
 .story-forum-card {
-  padding: 34rpx 30rpx;
+  padding: 38rpx 32rpx;
   background: linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(248, 239, 226, 0.95));
 }
 
 .forum-header {
   display: flex;
   align-items: flex-start;
-  gap: 20rpx;
-  margin-bottom: 26rpx;
+  gap: 22rpx;
+  margin-bottom: 28rpx;
 }
 
 .forum-avatar {
@@ -114,23 +124,23 @@
 }
 
 .forum-title {
-  margin-bottom: 14rpx;
+  margin-bottom: 16rpx;
   color: #412a1f;
-  font-size: 46rpx;
+  font-size: 48rpx;
   font-weight: 600;
   line-height: 1.35;
   word-break: break-word;
 }
 
 .forum-location {
-  margin-bottom: 24rpx;
+  margin-bottom: 26rpx;
   color: #6f5740;
-  font-size: 26rpx;
+  font-size: 28rpx;
   line-height: 1.6;
 }
 
 .forum-content {
-  margin-bottom: 28rpx;
+  margin-bottom: 30rpx;
 }
 
 .forum-footer {

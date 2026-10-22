@@ -6,11 +6,13 @@
 
 .story-card {
   position: relative;
+  padding-top: 36rpx;
+  padding-bottom: 34rpx;
 }
 
 .story-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 20rpx;
 }
@@ -21,12 +23,15 @@
   font-size: 34rpx;
   font-weight: 600;
   line-height: 1.5;
+  word-break: break-word;
 }
 
 .story-status {
-  padding: 8rpx 18rpx;
+  flex-shrink: 0;
+  padding: 8rpx 16rpx;
   border-radius: 999rpx;
   font-size: 24rpx;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
@@ -51,14 +56,20 @@
 }
 
 .story-location {
-  margin-top: 14rpx;
+  margin-top: 16rpx;
   color: #8b5e34;
   font-size: 26rpx;
+  line-height: 1.6;
 }
 
 .story-time {
-  margin-top: 18rpx;
+  margin-top: 20rpx;
   color: #7a624c;
   font-size: 24rpx;
   line-height: 1.7;
+}
+
+.empty-card,
+.error-card {
+  text-align: center;
 }
