@@ -33,6 +33,16 @@ import {
 
 const projectRoot = getProjectRoot();
 
+function getWorkspaceLayout(width) {
+  if (width >= 1600) {
+    return { mode: 'desktop-wide', left: 240, right: 340, centerMin: 520 };
+  }
+  if (width >= 1200) {
+    return { mode: 'desktop', left: 210, right: 300, centerMin: 460 };
+  }
+  return { mode: 'compact-drawer', left: 0, right: 0, centerMin: width - 24 };
+}
+
 function buildSampleDraft() {
   let draft = createEmptyDraft();
   draft = upsertOverride(draft, 'index', 'index-page-title', 'color', '#123456');
@@ -136,6 +146,24 @@ async function main() {
   assert.equal(fitMetrics.bottomBarHeight, fitMetrics.tabBarHeight + fitMetrics.safeAreaBottom, '底部占用高度必须等于 tabBarHeight + safeAreaBottom');
   assert.equal(calculateFitScale(600, 1200, fitMetrics) <= 1, true, 'fitScale 不应超过 1');
 
+  [
+    [1920, 1080],
+    [1440, 900],
+    [1366, 768],
+    [1280, 720]
+  ].forEach(([viewportWidth, viewportHeight]) => {
+    const layout = getWorkspaceLayout(viewportWidth);
+    if (layout.mode === 'compact-drawer') {
+      assert.equal(layout.left + layout.right, 0, `${viewportWidth} 宽度下左右面板应进入抽屉模式`);
+      return;
+    }
+
+    const availableCenterWidth = viewportWidth - 32 - 32 - layout.left - layout.right;
+    assert.equal(availableCenterWidth >= layout.centerMin, true, `${viewportWidth} 宽度下中间画布最小宽度不足`);
+    const fitScale = calculateFitScale(availableCenterWidth - 44, viewportHeight - 180, getDeviceMetrics('iphone-xr'));
+    assert.equal(fitScale > 0.35, true, `${viewportWidth} × ${viewportHeight} 下 fitScale 应保持可用`);
+  });
+
   const initialState = createEditorState();
   const scaledState = selectScale(initialState, '0.75');
   const deviceSwitchedState = selectDevice(scaledState, 'huawei-mate-80');
@@ -179,7 +207,9 @@ async function main() {
   assert.ok(beforeMainJs.includes('fontAssetId') && beforeMainJs.includes('font-preview'), '字体文件预览能力必须存在');
   assert.ok(beforeMainJs.includes('图片格式不支持') && beforeMainJs.includes('图片过大'), '图片失败原因必须在页面内提示');
   assert.ok(beforeMainJs.includes('字体格式不支持') && beforeMainJs.includes('字体文件过大'), '字体失败原因必须在页面内提示');
-  assert.ok(beforeMainJs.includes('data-device-id'), '设备选择按钮应使用设备 ID');
+  assert.ok(beforeMainJs.includes('data-toolbar-select="device"'), '设备选择应使用紧凑下拉控件');
+  assert.ok(beforeMainJs.includes('data-toolbar-select="scale"'), '缩放选择应使用紧凑下拉控件');
+  assert.ok(beforeMainJs.includes('toggle-sidebar') && beforeMainJs.includes('toggle-inspector'), '窄屏下必须支持左右面板切换');
   assert.ok(beforeMainJs.includes('safe-area 未测量'), 'safe-area 未测量状态必须出现在界面文案中');
   assert.ok(beforeMainJs.includes('phone-scroll') && beforeStyles.includes('overflow-y: auto'), 'phone-scroll 内部滚动必须有效');
   assert.ok(beforeStyles.includes('position: sticky') && beforeStyles.includes('.phone-tabbar'), 'tabBar 必须固定在屏幕底部');
@@ -187,6 +217,11 @@ async function main() {
   assert.equal(beforeStyles.includes('background: linear-gradient(180deg, #231d18, #302720);'), true, '黑色外框应只保留在手机外框层');
   assert.ok(beforeStyles.includes('.mini-button-image-layer'), '按钮图片模式必须有独立视觉层');
   assert.ok(beforeStyles.includes('.asset-preview') && beforeStyles.includes('.font-preview'), '素材预览和字体预览样式必须存在');
+  assert.ok(beforeStyles.includes('width: 100%;') && beforeStyles.includes('min-width: 0;'), '编辑器主容器必须支持 100% 宽度和 min-width: 0');
+  assert.ok(beforeStyles.includes('grid-template-columns: minmax(200px, 240px) minmax(460px, 1fr) minmax(280px, 340px);'), '主工作区必须使用响应式三栏布局');
+  assert.ok(beforeStyles.includes('@media (max-width: 1199px)') && beforeStyles.includes('transform: translateX(calc(-100% - 18px));'), '1200 以下必须切换为抽屉面板');
+  assert.ok(beforeStyles.includes('flex-wrap: wrap;') && beforeStyles.includes('.toolbar-select'), '顶部工具栏必须允许换行并使用紧凑选择器');
+  assert.ok(beforeStyles.includes('.workspace-scrim') && beforeStyles.includes('.editor-workspace.is-sidebar-open .editor-sidebar'), '抽屉打开时必须有遮罩和状态类');
 
   const sandboxRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'design-editor-validate-'));
   await fs.cp(path.join(projectRoot, 'design'), path.join(sandboxRoot, 'design'), { recursive: true });

@@ -100,7 +100,9 @@ const uiState = {
   lastRenderedPageId: state.selectedPageId,
   latestMeasurement: null,
   notice: DEFAULT_NOTICE,
-  measurementFrame: null
+  measurementFrame: null,
+  sidebarOpen: true,
+  inspectorOpen: true
 };
 
 window.addEventListener('beforeunload', (event) => {
@@ -243,6 +245,19 @@ function setState(nextState) {
   state = syncSelectedComponent(nextState, nextState.selectedPageId);
   persistEditorState();
   render();
+}
+
+function isCompactWorkspace() {
+  return window.innerWidth <= 1199;
+}
+
+function getWorkspaceClassName() {
+  return [
+    'editor-workspace',
+    isCompactWorkspace() ? 'is-compact' : '',
+    uiState.sidebarOpen ? 'is-sidebar-open' : '',
+    uiState.inspectorOpen ? 'is-inspector-open' : ''
+  ].filter(Boolean).join(' ');
 }
 
 function getComponent(designId = state.selectedComponentId) {
@@ -1731,6 +1746,13 @@ function applyPreviewScale() {
   if (fitLabel) {
     fitLabel.textContent = `适合窗口 ${Math.round(uiState.fitScale * 100)}%`;
   }
+  const scaleSelect = app.querySelector('[data-toolbar-select="scale"]');
+  if (scaleSelect) {
+    const fitOption = scaleSelect.querySelector('option[value="fit"]');
+    if (fitOption) {
+      fitOption.textContent = `适合窗口 ${Math.round(uiState.fitScale * 100)}%`;
+    }
+  }
 }
 
 function bindCanvasResizeObserver() {
@@ -1752,6 +1774,11 @@ function bindCanvasResizeObserver() {
 
 function render() {
   captureUiState();
+  const compactWorkspace = isCompactWorkspace();
+  if (!compactWorkspace) {
+    uiState.sidebarOpen = true;
+    uiState.inspectorOpen = true;
+  }
   app.innerHTML = `
     <div class="editor-app">
       <header class="editor-toolbar">
@@ -1760,35 +1787,55 @@ function render() {
           <p>固定工作台布局，手机预览按真实设备宽高渲染，未点击“应用到小程序”前不会改动 miniprogram。</p>
         </div>
         <div class="editor-toolbar-controls">
-          <div class="toolbar-group">
-            <span class="toolbar-label">设备</span>
-            ${DEVICE_PRESETS.map((device) => `
-              <button type="button" class="toolbar-button ${device.id === state.selectedDeviceId ? 'is-active' : ''}" data-device-id="${device.id}">
-                ${device.name}<span class="toolbar-device-meta">${device.width}×${device.height}</span>
-              </button>
-            `).join('')}
+          <div class="toolbar-cluster toolbar-cluster--meta">
+            ${compactWorkspace ? `
+              <div class="toolbar-group">
+                <span class="toolbar-label">面板</span>
+                <button type="button" class="toolbar-button ${uiState.sidebarOpen ? 'is-active' : ''}" data-action="toggle-sidebar">页面栏</button>
+                <button type="button" class="toolbar-button ${uiState.inspectorOpen ? 'is-active' : ''}" data-action="toggle-inspector">属性栏</button>
+              </div>
+            ` : ''}
+            <div class="toolbar-group toolbar-group--select">
+              <label class="toolbar-field">
+                <span class="toolbar-label">设备</span>
+                <select class="toolbar-select" data-toolbar-select="device">
+                  ${DEVICE_PRESETS.map((device) => `
+                    <option value="${device.id}" ${device.id === state.selectedDeviceId ? 'selected' : ''}>
+                      ${device.name} (${device.width}×${device.height})
+                    </option>
+                  `).join('')}
+                </select>
+              </label>
+            </div>
+            <div class="toolbar-group toolbar-group--select">
+              <label class="toolbar-field">
+                <span class="toolbar-label">缩放</span>
+                <select class="toolbar-select" data-toolbar-select="scale">
+                  ${SCALE_OPTIONS.map((item) => `
+                    <option value="${item.value}" ${String(state.selectedScale) === item.value ? 'selected' : ''}>
+                      ${item.value === 'fit' ? `适合窗口 ${Math.round((uiState.fitScale || 1) * 100)}%` : item.label}
+                    </option>
+                  `).join('')}
+                </select>
+              </label>
+            </div>
           </div>
-          <div class="toolbar-group">
-            <span class="toolbar-label">缩放</span>
-            ${SCALE_OPTIONS.map((item) => `
-              <button type="button" class="toolbar-button ${String(state.selectedScale) === item.value ? 'is-active' : ''}" data-scale-value="${item.value}">
-                <span ${item.value === 'fit' ? 'data-fit-label' : ''}>${item.label}</span>
-              </button>
-            `).join('')}
-          </div>
-          <div class="toolbar-group">
+          <div class="toolbar-cluster toolbar-cluster--actions">
+            <div class="toolbar-group toolbar-group--actions">
+              <button type="button" class="toolbar-button" data-action="undo">撤销</button>
+              <button type="button" class="toolbar-button" data-action="redo">重做</button>
+              <button type="button" class="toolbar-button toolbar-button--primary" data-action="export">导出设计</button>
+              <button type="button" class="toolbar-button toolbar-button--primary-secondary" data-action="apply-preview">应用到小程序</button>
+            </div>
             <span class="status-pill ${hasUnsavedChanges(state) ? 'is-dirty' : ''}">
               ${hasUnsavedChanges(state) ? '有未保存修改' : '已与最近导出/应用同步'}
             </span>
-            <button type="button" class="toolbar-button" data-action="undo">撤销</button>
-            <button type="button" class="toolbar-button" data-action="redo">重做</button>
-            <button type="button" class="toolbar-button toolbar-button--primary" data-action="export">导出设计</button>
-            <button type="button" class="toolbar-button" data-action="apply-preview">应用到小程序</button>
           </div>
         </div>
       </header>
 
-      <main class="editor-workspace">
+      <main class="${getWorkspaceClassName()}">
+        ${compactWorkspace && (uiState.sidebarOpen || uiState.inspectorOpen) ? '<button type="button" class="workspace-scrim" data-action="close-drawers" aria-label="关闭面板"></button>' : ''}
         <aside class="editor-sidebar">${renderSidebar()}</aside>
         <section class="editor-canvas">${renderCanvas()}</section>
         <aside class="editor-inspector">${renderInspector()}</aside>
@@ -2111,6 +2158,19 @@ app.addEventListener('click', async (event) => {
     case 'redo':
       setState(redo(state));
       return;
+    case 'toggle-sidebar':
+      uiState.sidebarOpen = !uiState.sidebarOpen;
+      render();
+      return;
+    case 'toggle-inspector':
+      uiState.inspectorOpen = !uiState.inspectorOpen;
+      render();
+      return;
+    case 'close-drawers':
+      uiState.sidebarOpen = false;
+      uiState.inspectorOpen = false;
+      render();
+      return;
     case 'restore-component':
       setState(restoreComponent(state, state.selectedPageId, state.selectedComponentId));
       return;
@@ -2163,10 +2223,29 @@ app.addEventListener('input', (event) => {
       target.value
     ));
   }
+
+  if (target.matches('[data-toolbar-select="device"]')) {
+    setState(selectDevice(state, target.value));
+    return;
+  }
+
+  if (target.matches('[data-toolbar-select="scale"]')) {
+    setState(selectScale(state, target.value));
+  }
 });
 
 app.addEventListener('change', (event) => {
   const target = event.target;
+  if (target.matches('[data-toolbar-select="device"]')) {
+    setState(selectDevice(state, target.value));
+    return;
+  }
+
+  if (target.matches('[data-toolbar-select="scale"]')) {
+    setState(selectScale(state, target.value));
+    return;
+  }
+
   if (target.matches('[data-property]') && target.tagName === 'SELECT') {
     setState(applyOverride(
       state,
