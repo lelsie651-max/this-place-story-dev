@@ -70,6 +70,10 @@ export function convertRpxToPx(value, viewportWidth) {
   return (Number(value) / 750) * viewportWidth;
 }
 
+export function convertPxToRpx(value, viewportWidth) {
+  return (Number(value) * 750) / viewportWidth;
+}
+
 export function replaceRpxWithPx(value, viewportWidth) {
   if (value === undefined || value === null || value === '') {
     return '';
@@ -217,7 +221,29 @@ export const PAGE_SAMPLE_DATA = {
   }
 };
 
+const BACKGROUND_ASSET_DEFAULTS = {
+  backgroundImage: '',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',
+  backgroundOverlayColor: ''
+};
+
+const BUTTON_IMAGE_DEFAULTS = {
+  buttonVisualMode: 'css',
+  buttonImageSrc: '',
+  buttonImageFit: 'cover',
+  buttonImagePosition: 'center',
+  buttonKeepText: 'true',
+  buttonImageFill: 'true',
+  buttonImageRadius: '999rpx'
+};
+
 export const COMPONENT_DEFAULTS = {
+  'index-page-surface': {
+    background: 'radial-gradient(circle at top, rgba(255, 248, 236, 0.98), rgba(239, 228, 210, 0.98) 48%, rgba(226, 207, 179, 0.98))',
+    ...BACKGROUND_ASSET_DEFAULTS
+  },
   'index-page-title': {
     text: '此地有传说',
     fontSize: '72rpx',
@@ -253,7 +279,8 @@ export const COMPONENT_DEFAULTS = {
     margin: '0',
     boxShadow: '0 14rpx 30rpx rgba(107, 69, 39, 0.2)',
     borderColor: 'transparent',
-    borderWidth: '0'
+    borderWidth: '0',
+    ...BUTTON_IMAGE_DEFAULTS
   },
   'index-recommendation-section': {
     cardBackground: 'rgba(255, 250, 242, 0.92)',
@@ -261,7 +288,8 @@ export const COMPONENT_DEFAULTS = {
     margin: '32rpx 0 0',
     borderRadius: '28rpx',
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
-    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)'
+    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'index-recommendation-swiper': {
     height: '312rpx',
@@ -292,13 +320,18 @@ export const COMPONENT_DEFAULTS = {
     textAlign: 'left',
     margin: '0 0 12rpx'
   },
+  'profile-page-surface': {
+    background: 'radial-gradient(circle at top, rgba(255, 248, 236, 0.98), rgba(239, 228, 210, 0.98) 48%, rgba(226, 207, 179, 0.98))',
+    ...BACKGROUND_ASSET_DEFAULTS
+  },
   'profile-assets-card': {
     cardBackground: 'linear-gradient(180deg, rgba(255, 249, 238, 0.98), rgba(246, 232, 208, 0.96))',
     padding: '32rpx',
     margin: '0 0 32rpx',
     borderRadius: '28rpx',
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
-    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)'
+    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'profile-favorites-entry': {
     text: '我的收藏',
@@ -309,7 +342,8 @@ export const COMPONENT_DEFAULTS = {
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
     cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
     fontSize: '32rpx',
-    color: '#4c3424'
+    color: '#4c3424',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'profile-submissions-entry': {
     text: '我的投稿',
@@ -320,7 +354,8 @@ export const COMPONENT_DEFAULTS = {
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
     cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
     fontSize: '32rpx',
-    color: '#4c3424'
+    color: '#4c3424',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'profile-language-entry': {
     text: '语言设置',
@@ -331,7 +366,8 @@ export const COMPONENT_DEFAULTS = {
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
     cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
     fontSize: '32rpx',
-    color: '#4c3424'
+    color: '#4c3424',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'profile-settings-entry': {
     text: '设置',
@@ -342,7 +378,12 @@ export const COMPONENT_DEFAULTS = {
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
     cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
     fontSize: '32rpx',
-    color: '#4c3424'
+    color: '#4c3424',
+    ...BACKGROUND_ASSET_DEFAULTS
+  },
+  'atlas-page-surface': {
+    background: 'radial-gradient(circle at top, rgba(255, 248, 236, 0.98), rgba(239, 228, 210, 0.98) 48%, rgba(226, 207, 179, 0.98))',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'atlas-page-title': {
     text: '足迹',
@@ -361,7 +402,8 @@ export const COMPONENT_DEFAULTS = {
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
     cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
     fontSize: '36rpx',
-    color: '#4c3424'
+    color: '#4c3424',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'atlas-empty-state': {
     text: '你还没有留下新的足迹。',
@@ -374,7 +416,12 @@ export const COMPONENT_DEFAULTS = {
     margin: '0',
     borderRadius: '28rpx',
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
-    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)'
+    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
+    ...BACKGROUND_ASSET_DEFAULTS
+  },
+  'discovery-page-surface': {
+    background: 'radial-gradient(circle at top, rgba(255, 248, 236, 0.98), rgba(239, 228, 210, 0.98) 48%, rgba(226, 207, 179, 0.98))',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'discovery-page-title': {
     text: '寻找传说',
@@ -398,7 +445,8 @@ export const COMPONENT_DEFAULTS = {
     margin: '0 0 28rpx',
     boxShadow: '0 12rpx 28rpx rgba(107, 69, 39, 0.08)',
     borderColor: 'rgba(140, 94, 52, 0.22)',
-    borderWidth: '1rpx'
+    borderWidth: '1rpx',
+    ...BUTTON_IMAGE_DEFAULTS
   },
   'discovery-empty-state': {
     text: '推荐地点正在整理中',
@@ -411,7 +459,8 @@ export const COMPONENT_DEFAULTS = {
     margin: '0',
     borderRadius: '28rpx',
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
-    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)'
+    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'discovery-location-card': {
     text: '南头古城',
@@ -420,7 +469,12 @@ export const COMPONENT_DEFAULTS = {
     margin: '0 0 28rpx',
     borderRadius: '28rpx',
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
-    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)'
+    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
+    ...BACKGROUND_ASSET_DEFAULTS
+  },
+  'location-page-surface': {
+    background: 'radial-gradient(circle at top, rgba(255, 248, 236, 0.98), rgba(239, 228, 210, 0.98) 48%, rgba(226, 207, 179, 0.98))',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'location-page-title': {
     text: '地点详情',
@@ -437,7 +491,12 @@ export const COMPONENT_DEFAULTS = {
     margin: '0 0 28rpx',
     borderRadius: '28rpx',
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
-    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)'
+    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
+    ...BACKGROUND_ASSET_DEFAULTS
+  },
+  'story-page-surface': {
+    background: 'radial-gradient(circle at top, rgba(255, 248, 236, 0.98), rgba(239, 228, 210, 0.98) 48%, rgba(226, 207, 179, 0.98))',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'location-story-option': {
     text: '民间传说',
@@ -483,7 +542,9 @@ export const COMPONENT_DEFAULTS = {
     textAlign: 'left',
     background: 'transparent',
     padding: '0',
-    margin: '0'
+    margin: '0',
+    fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+    fontAssetId: ''
   },
   'story-favorite-button': {
     text: '收藏',
@@ -498,7 +559,8 @@ export const COMPONENT_DEFAULTS = {
     margin: '0',
     boxShadow: '0 14rpx 30rpx rgba(107, 69, 39, 0.2)',
     borderColor: 'transparent',
-    borderWidth: '0'
+    borderWidth: '0',
+    ...BUTTON_IMAGE_DEFAULTS
   },
   'story-back-button': {
     text: '返回',
@@ -512,7 +574,12 @@ export const COMPONENT_DEFAULTS = {
     padding: '0 32rpx',
     margin: '0',
     borderColor: 'rgba(140, 94, 52, 0.22)',
-    borderWidth: '1rpx'
+    borderWidth: '1rpx',
+    ...BUTTON_IMAGE_DEFAULTS
+  },
+  'publish-page-surface': {
+    background: 'radial-gradient(circle at top, rgba(255, 248, 236, 0.98), rgba(239, 228, 210, 0.98) 48%, rgba(226, 207, 179, 0.98))',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'publish-page-title': {
     text: '投稿',
@@ -531,7 +598,8 @@ export const COMPONENT_DEFAULTS = {
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
     cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
     fontSize: '38rpx',
-    color: '#4c3424'
+    color: '#4c3424',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'publish-title-input': {
     text: PAGE_SAMPLE_DATA.publish.title,
@@ -572,7 +640,12 @@ export const COMPONENT_DEFAULTS = {
     buttonHeight: '96rpx',
     padding: '0 32rpx',
     margin: '0',
-    boxShadow: '0 14rpx 30rpx rgba(107, 69, 39, 0.2)'
+    boxShadow: '0 14rpx 30rpx rgba(107, 69, 39, 0.2)',
+    ...BUTTON_IMAGE_DEFAULTS
+  },
+  'my-stories-page-surface': {
+    background: 'radial-gradient(circle at top, rgba(255, 248, 236, 0.98), rgba(239, 228, 210, 0.98) 48%, rgba(226, 207, 179, 0.98))',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'my-stories-page-title': {
     text: '我的投稿',
@@ -589,7 +662,8 @@ export const COMPONENT_DEFAULTS = {
     margin: '0 0 28rpx',
     borderRadius: '28rpx',
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
-    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)'
+    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'my-stories-empty-state': {
     text: '你还没有投稿记录。',
@@ -602,7 +676,12 @@ export const COMPONENT_DEFAULTS = {
     margin: '0',
     borderRadius: '28rpx',
     cardBorderColor: 'rgba(140, 94, 52, 0.12)',
-    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)'
+    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
+    ...BACKGROUND_ASSET_DEFAULTS
+  },
+  'my-story-preview-page-surface': {
+    background: 'radial-gradient(circle at top, rgba(255, 248, 236, 0.98), rgba(239, 228, 210, 0.98) 48%, rgba(226, 207, 179, 0.98))',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'my-story-preview-title': {
     text: '投稿预览',
@@ -633,7 +712,8 @@ export const COMPONENT_DEFAULTS = {
     cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
     fontSize: '30rpx',
     color: '#4c3424',
-    lineHeight: '1.9'
+    lineHeight: '1.9',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'my-story-preview-edit-button': {
     text: '编辑',
@@ -646,7 +726,8 @@ export const COMPONENT_DEFAULTS = {
     buttonHeight: '96rpx',
     padding: '0 32rpx',
     margin: '0',
-    boxShadow: '0 14rpx 30rpx rgba(107, 69, 39, 0.2)'
+    boxShadow: '0 14rpx 30rpx rgba(107, 69, 39, 0.2)',
+    ...BUTTON_IMAGE_DEFAULTS
   },
   'my-story-preview-delete-button': {
     text: '删除投稿',
@@ -660,7 +741,12 @@ export const COMPONENT_DEFAULTS = {
     padding: '0 32rpx',
     margin: '0',
     borderColor: 'rgba(169, 90, 90, 0.16)',
-    borderWidth: '1rpx'
+    borderWidth: '1rpx',
+    ...BUTTON_IMAGE_DEFAULTS
+  },
+  'my-story-edit-page-surface': {
+    background: 'radial-gradient(circle at top, rgba(255, 248, 236, 0.98), rgba(239, 228, 210, 0.98) 48%, rgba(226, 207, 179, 0.98))',
+    ...BACKGROUND_ASSET_DEFAULTS
   },
   'my-story-edit-title-input': {
     text: PAGE_SAMPLE_DATA.myStoryEdit.title,
@@ -699,7 +785,8 @@ export const COMPONENT_DEFAULTS = {
     buttonHeight: '96rpx',
     padding: '0 32rpx',
     margin: '0',
-    boxShadow: '0 14rpx 30rpx rgba(107, 69, 39, 0.2)'
+    boxShadow: '0 14rpx 30rpx rgba(107, 69, 39, 0.2)',
+    ...BUTTON_IMAGE_DEFAULTS
   },
   'my-story-edit-cancel-button': {
     text: '返回',
@@ -713,7 +800,8 @@ export const COMPONENT_DEFAULTS = {
     padding: '0 32rpx',
     margin: '0',
     borderColor: 'rgba(140, 94, 52, 0.22)',
-    borderWidth: '1rpx'
+    borderWidth: '1rpx',
+    ...BUTTON_IMAGE_DEFAULTS
   }
 };
 

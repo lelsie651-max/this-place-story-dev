@@ -1,6 +1,7 @@
 import {
   cloneDraft,
   createEmptyDraft,
+  removeOverride,
   removeComponentOverrides,
   removePageOverrides,
   resetDraft,
@@ -60,6 +61,10 @@ export function applyOverride(state, pageId, designId, propertyKey, value) {
 export function applyAsset(state, assetId, assetInfo) {
   const nextDraft = upsertAsset(state.draft, assetId, assetInfo);
   return pushHistory(state, nextDraft);
+}
+
+export function clearOverride(state, pageId, designId, propertyKey) {
+  return pushHistory(state, removeOverride(state.draft, pageId, designId, propertyKey));
 }
 
 export function restoreComponent(state, pageId, designId) {

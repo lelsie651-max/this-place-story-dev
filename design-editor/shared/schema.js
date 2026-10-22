@@ -13,6 +13,7 @@ export const PAGE_META = [
 
 export const PAGE_COMPONENT_ORDER = {
   index: [
+    'index-page-surface',
     'index-page-title',
     'index-page-subtitle',
     'index-primary-button',
@@ -21,6 +22,7 @@ export const PAGE_COMPONENT_ORDER = {
     'index-recommendation-card'
   ],
   profile: [
+    'profile-page-surface',
     'profile-page-title',
     'profile-assets-card',
     'profile-favorites-entry',
@@ -28,20 +30,23 @@ export const PAGE_COMPONENT_ORDER = {
     'profile-language-entry',
     'profile-settings-entry'
   ],
-  atlas: ['atlas-page-title', 'atlas-empty-state', 'atlas-exploration-card'],
+  atlas: ['atlas-page-surface', 'atlas-page-title', 'atlas-empty-state', 'atlas-exploration-card'],
   discovery: [
+    'discovery-page-surface',
     'discovery-page-title',
     'discovery-location-picker',
     'discovery-empty-state',
     'discovery-location-card'
   ],
   location: [
+    'location-page-surface',
     'location-page-title',
     'location-intro-card',
     'location-story-option',
     'location-loading-overlay'
   ],
   story: [
+    'story-page-surface',
     'story-page-title',
     'story-summary',
     'story-content',
@@ -49,14 +54,16 @@ export const PAGE_COMPONENT_ORDER = {
     'story-back-button'
   ],
   publish: [
+    'publish-page-surface',
     'publish-page-title',
     'publish-location-selector',
     'publish-title-input',
     'publish-content-input',
     'publish-submit-button'
   ],
-  myStories: ['my-stories-page-title', 'my-story-card', 'my-stories-empty-state'],
+  myStories: ['my-stories-page-surface', 'my-stories-page-title', 'my-story-card', 'my-stories-empty-state'],
   myStoryPreview: [
+    'my-story-preview-page-surface',
     'my-story-preview-title',
     'my-story-preview-rejection',
     'my-story-preview-content',
@@ -64,6 +71,7 @@ export const PAGE_COMPONENT_ORDER = {
     'my-story-preview-delete-button'
   ],
   myStoryEdit: [
+    'my-story-edit-page-surface',
     'my-story-edit-title-input',
     'my-story-edit-content-input',
     'my-story-edit-submit-button',
@@ -72,47 +80,57 @@ export const PAGE_COMPONENT_ORDER = {
 };
 
 export const COMPONENT_LABELS = {
+  'index-page-surface': '首页页面背景',
   'index-page-title': '首页主标题',
   'index-page-subtitle': '首页宣传语',
   'index-primary-button': '首页主按钮',
   'index-recommendation-section': '编辑推荐区',
   'index-recommendation-swiper': '编辑推荐轮播',
   'index-recommendation-card': '编辑推荐卡片',
+  'profile-page-surface': '个人中心页面背景',
   'profile-page-title': '个人中心标题',
   'profile-assets-card': '资产卡',
   'profile-favorites-entry': '我的收藏入口',
   'profile-submissions-entry': '我的投稿入口',
   'profile-language-entry': '语言设置入口',
   'profile-settings-entry': '设置入口',
+  'atlas-page-surface': '足迹页面背景',
   'atlas-page-title': '足迹标题',
   'atlas-exploration-card': '足迹卡片',
   'atlas-empty-state': '足迹空状态',
+  'discovery-page-surface': '寻找传说页面背景',
   'discovery-page-title': '寻找传说标题',
   'discovery-location-picker': '地点选择按钮',
   'discovery-location-card': '推荐地点卡片',
   'discovery-empty-state': '地点空状态',
+  'location-page-surface': '地点详情页面背景',
   'location-page-title': '地点页标题',
   'location-intro-card': '地点介绍卡',
   'location-story-option': '故事类型卡',
   'location-loading-overlay': '地点加载遮罩',
+  'story-page-surface': '故事页面背景',
   'story-page-title': '故事标题',
   'story-summary': '故事摘要/地点',
   'story-content': '故事正文',
   'story-favorite-button': '收藏按钮',
   'story-back-button': '返回按钮',
+  'publish-page-surface': '投稿页面背景',
   'publish-page-title': '投稿页标题',
   'publish-location-selector': '投稿地点卡',
   'publish-title-input': '投稿标题输入',
   'publish-content-input': '投稿正文输入',
   'publish-submit-button': '投稿提交按钮',
+  'my-stories-page-surface': '我的投稿页面背景',
   'my-stories-page-title': '我的投稿标题',
   'my-story-card': '投稿列表卡',
   'my-stories-empty-state': '投稿空状态',
+  'my-story-preview-page-surface': '投稿预览页面背景',
   'my-story-preview-title': '投稿预览标题',
   'my-story-preview-rejection': '拒绝原因提示',
   'my-story-preview-content': '投稿预览内容卡',
   'my-story-preview-edit-button': '投稿预览编辑按钮',
   'my-story-preview-delete-button': '投稿预览删除按钮',
+  'my-story-edit-page-surface': '重新编辑页面背景',
   'my-story-edit-title-input': '编辑标题输入',
   'my-story-edit-content-input': '编辑正文输入',
   'my-story-edit-submit-button': '编辑确认按钮',
@@ -128,10 +146,13 @@ export const PROPERTY_LIBRARY = {
   letterSpacing: { label: '字间距', group: '文字', input: 'text', css: 'letter-spacing', status: 'safe' },
   textAlign: { label: '对齐方式', group: '文字', input: 'select', css: 'text-align', status: 'safe', options: ['left', 'center', 'right'] },
   fontFamily: { label: '字体栈', group: '文字', input: 'text', css: 'font-family', status: 'preview' },
+  fontAssetId: { label: '字体文件', group: '文字', input: 'asset', status: 'preview' },
   background: { label: '背景颜色/渐变', group: '背景', input: 'text', css: 'background', status: 'safe' },
   backgroundImage: { label: '背景图片', group: '背景', input: 'asset', css: 'background-image', status: 'preview' },
   backgroundSize: { label: '背景图显示方式', group: '背景', input: 'text', css: 'background-size', status: 'preview' },
   backgroundPosition: { label: '背景图位置', group: '背景', input: 'text', css: 'background-position', status: 'preview' },
+  backgroundRepeat: { label: '背景图重复', group: '背景', input: 'select', css: 'background-repeat', status: 'preview', options: ['no-repeat', 'repeat', 'repeat-x', 'repeat-y'] },
+  backgroundOverlayColor: { label: '背景叠色', group: '背景', input: 'color-text', status: 'preview' },
   width: { label: '宽度', group: '尺寸和间距', input: 'text', css: 'width', status: 'preview' },
   height: { label: '高度', group: '尺寸和间距', input: 'text', css: 'height', status: 'preview' },
   margin: { label: 'margin', group: '尺寸和间距', input: 'text', css: 'margin', status: 'safe' },
@@ -144,6 +165,13 @@ export const PROPERTY_LIBRARY = {
   buttonTextColor: { label: '按钮文字', group: '按钮和卡片', input: 'color-text', css: 'color', status: 'safe' },
   buttonRadius: { label: '按钮圆角', group: '按钮和卡片', input: 'text', css: 'border-radius', status: 'safe' },
   buttonHeight: { label: '按钮高度', group: '按钮和卡片', input: 'text', css: 'min-height', status: 'safe' },
+  buttonVisualMode: { label: '按钮模式', group: '按钮和卡片', input: 'select', status: 'preview', options: ['css', 'image'] },
+  buttonImageSrc: { label: '按钮图片', group: '按钮和卡片', input: 'asset', status: 'preview' },
+  buttonImageFit: { label: '按钮图片显示方式', group: '按钮和卡片', input: 'select', status: 'preview', options: ['cover', 'contain', 'fill'] },
+  buttonImagePosition: { label: '按钮图片位置', group: '按钮和卡片', input: 'text', status: 'preview' },
+  buttonKeepText: { label: '保留按钮文字', group: '按钮和卡片', input: 'select', status: 'preview', options: ['true', 'false'] },
+  buttonImageFill: { label: '按钮图片铺满', group: '按钮和卡片', input: 'select', status: 'preview', options: ['true', 'false'] },
+  buttonImageRadius: { label: '按钮图片圆角', group: '按钮和卡片', input: 'text', status: 'preview' },
   cardBackground: { label: '卡片背景', group: '按钮和卡片', input: 'text', css: 'background', status: 'safe' },
   cardBorderColor: { label: '卡片边框', group: '按钮和卡片', input: 'color-text', css: 'border-color', status: 'safe' },
   cardShadow: { label: '卡片阴影', group: '按钮和卡片', input: 'text', css: 'box-shadow', status: 'safe' },
@@ -174,46 +202,57 @@ export const UNSUPPORTED_ITEMS = [
 ];
 
 export const ROLE_PROPERTY_MAP = {
+  'page-surface': ['background', 'backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat', 'backgroundOverlayColor'],
   'page-title': ['text', 'fontSize', 'color', 'fontWeight', 'lineHeight', 'letterSpacing', 'textAlign', 'fontFamily', 'margin'],
   'page-subtitle': ['text', 'fontSize', 'color', 'fontWeight', 'lineHeight', 'letterSpacing', 'textAlign', 'fontFamily', 'margin'],
-  'primary-button': ['text', 'fontSize', 'buttonTextColor', 'fontWeight', 'lineHeight', 'textAlign', 'buttonBackground', 'buttonRadius', 'buttonHeight', 'padding', 'margin', 'boxShadow', 'borderColor', 'borderWidth'],
-  'secondary-button': ['text', 'fontSize', 'buttonTextColor', 'fontWeight', 'lineHeight', 'textAlign', 'buttonBackground', 'buttonRadius', 'buttonHeight', 'padding', 'margin', 'borderColor', 'borderWidth'],
-  'danger-button': ['text', 'fontSize', 'buttonTextColor', 'fontWeight', 'lineHeight', 'buttonBackground', 'buttonRadius', 'buttonHeight', 'padding', 'borderColor', 'borderWidth'],
-  card: ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'backgroundImage', 'backgroundSize', 'backgroundPosition'],
-  section: ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'backgroundImage', 'backgroundSize', 'backgroundPosition'],
+  'primary-button': ['text', 'fontSize', 'buttonTextColor', 'fontWeight', 'lineHeight', 'textAlign', 'buttonBackground', 'buttonRadius', 'buttonHeight', 'padding', 'margin', 'boxShadow', 'borderColor', 'borderWidth', 'buttonVisualMode', 'buttonImageSrc', 'buttonImageFit', 'buttonImagePosition', 'buttonKeepText', 'buttonImageFill', 'buttonImageRadius'],
+  'secondary-button': ['text', 'fontSize', 'buttonTextColor', 'fontWeight', 'lineHeight', 'textAlign', 'buttonBackground', 'buttonRadius', 'buttonHeight', 'padding', 'margin', 'borderColor', 'borderWidth', 'buttonVisualMode', 'buttonImageSrc', 'buttonImageFit', 'buttonImagePosition', 'buttonKeepText', 'buttonImageFill', 'buttonImageRadius'],
+  'danger-button': ['text', 'fontSize', 'buttonTextColor', 'fontWeight', 'lineHeight', 'buttonBackground', 'buttonRadius', 'buttonHeight', 'padding', 'borderColor', 'borderWidth', 'buttonVisualMode', 'buttonImageSrc', 'buttonImageFit', 'buttonImagePosition', 'buttonKeepText', 'buttonImageFill', 'buttonImageRadius'],
+  card: ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat', 'backgroundOverlayColor'],
+  section: ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat', 'backgroundOverlayColor'],
   swiper: ['height', 'margin', 'bannerRatio'],
   'asset-card': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow'],
-  'list-card': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'backgroundImage'],
-  'empty-state': ['text', 'fontSize', 'color', 'lineHeight', 'textAlign', 'cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow'],
-  'location-picker-button': ['text', 'fontSize', 'buttonTextColor', 'fontWeight', 'lineHeight', 'buttonBackground', 'buttonRadius', 'buttonHeight', 'padding', 'margin', 'boxShadow', 'borderColor', 'borderWidth'],
-  'intro-card': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'backgroundImage'],
+  'list-card': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat', 'backgroundOverlayColor'],
+  'empty-state': ['text', 'fontSize', 'color', 'lineHeight', 'textAlign', 'cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat', 'backgroundOverlayColor'],
+  'location-picker-button': ['text', 'fontSize', 'buttonTextColor', 'fontWeight', 'lineHeight', 'buttonBackground', 'buttonRadius', 'buttonHeight', 'padding', 'margin', 'boxShadow', 'borderColor', 'borderWidth', 'buttonVisualMode', 'buttonImageSrc', 'buttonImageFit', 'buttonImagePosition', 'buttonKeepText', 'buttonImageFill', 'buttonImageRadius'],
+  'intro-card': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat', 'backgroundOverlayColor'],
   'option-card': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'fontSize', 'color'],
   overlay: ['background', 'cardBackground', 'borderRadius', 'boxShadow', 'color', 'fontSize', 'lineHeight'],
   'story-summary': ['text', 'fontSize', 'color', 'lineHeight', 'letterSpacing', 'textAlign', 'margin'],
-  'story-content': ['text', 'fontSize', 'color', 'lineHeight', 'letterSpacing', 'textAlign', 'background', 'padding', 'margin'],
-  'location-selector': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'text', 'fontSize', 'color'],
+  'story-content': ['text', 'fontSize', 'color', 'lineHeight', 'letterSpacing', 'textAlign', 'background', 'padding', 'margin', 'fontFamily', 'fontAssetId'],
+  'location-selector': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'text', 'fontSize', 'color', 'backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat', 'backgroundOverlayColor'],
   'text-input': ['text', 'fontSize', 'color', 'lineHeight', 'fontFamily', 'background', 'padding', 'height', 'borderRadius', 'borderColor', 'borderWidth', 'boxShadow'],
   textarea: ['text', 'fontSize', 'color', 'lineHeight', 'fontFamily', 'background', 'padding', 'height', 'borderRadius', 'borderColor', 'borderWidth', 'boxShadow'],
-  'content-card': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'fontSize', 'color', 'lineHeight'],
+  'content-card': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'fontSize', 'color', 'lineHeight', 'backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat', 'backgroundOverlayColor'],
   'status-banner': ['text', 'fontSize', 'color', 'lineHeight', 'background', 'padding', 'margin', 'borderRadius', 'borderColor', 'borderWidth'],
-  'menu-entry': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'text', 'fontSize', 'color'],
-  'intro-block': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow'],
-  'content-block': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow']
+  'menu-entry': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'text', 'fontSize', 'color', 'backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat', 'backgroundOverlayColor'],
+  'intro-block': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat', 'backgroundOverlayColor'],
+  'content-block': ['cardBackground', 'padding', 'margin', 'borderRadius', 'cardBorderColor', 'cardShadow', 'backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat', 'backgroundOverlayColor']
 };
 
 export const MANUAL_COMPONENT_OPTIONS = {
+  'index-page-surface': { role: 'page-surface', selector: '.page', page: 'index', safeApplySelector: '.page' },
   'index-recommendation-card': {
     assetSlots: ['imageSrc', 'objectFit', 'imageWidth', 'imageHeight', 'imageRadius', 'bannerRatio'],
     safeApplySelector: '.recommendation-card'
   },
+  'profile-page-surface': { role: 'page-surface', selector: '.page', page: 'profile', safeApplySelector: '.page' },
   'profile-favorites-entry': { safeApplySelector: null },
   'profile-submissions-entry': { safeApplySelector: null },
   'profile-language-entry': { safeApplySelector: null },
   'profile-settings-entry': { safeApplySelector: null },
+  'atlas-page-surface': { role: 'page-surface', selector: '.page', page: 'atlas', safeApplySelector: '.page' },
+  'discovery-page-surface': { role: 'page-surface', selector: '.page', page: 'discovery', safeApplySelector: '.page' },
   'discovery-location-picker': { safeApplySelector: '.choose-location-button' },
+  'location-page-surface': { role: 'page-surface', selector: '.page', page: 'location', safeApplySelector: '.page' },
+  'story-page-surface': { role: 'page-surface', selector: '.page', page: 'story', safeApplySelector: '.page' },
+  'publish-page-surface': { role: 'page-surface', selector: '.page', page: 'publish', safeApplySelector: '.page' },
   'publish-location-selector': { safeApplySelector: '.field-card' },
   'publish-title-input': { safeApplySelector: '.text-input' },
   'publish-content-input': { safeApplySelector: '.text-area' },
+  'my-stories-page-surface': { role: 'page-surface', selector: '.page', page: 'myStories', safeApplySelector: '.page' },
+  'my-story-preview-page-surface': { role: 'page-surface', selector: '.page', page: 'myStoryPreview', safeApplySelector: '.page' },
+  'my-story-edit-page-surface': { role: 'page-surface', selector: '.page', page: 'myStoryEdit', safeApplySelector: '.page' },
   'my-story-edit-title-input': { safeApplySelector: '.text-input' },
   'my-story-edit-content-input': { safeApplySelector: '.text-area' },
   'story-page-title': { safeApplySelector: '.story-title, .forum-title' },
@@ -269,7 +308,17 @@ export function normalizeRegistryComponent(component) {
 }
 
 export function buildComponentCatalog(registry) {
-  const components = registry.components.map(normalizeRegistryComponent);
+  const extraComponents = Object.entries(MANUAL_COMPONENT_OPTIONS)
+    .filter(([, config]) => config.role === 'page-surface')
+    .map(([designId, config]) => ({
+      page: config.page,
+      pageName: getPageName(config.page),
+      designId,
+      selector: config.selector,
+      role: config.role,
+      editableProperties: ROLE_PROPERTY_MAP[config.role] || []
+    }));
+  const components = [...registry.components, ...extraComponents].map(normalizeRegistryComponent);
   const byId = Object.fromEntries(components.map((item) => [item.designId, item]));
   const byPage = PAGE_META.reduce((acc, page) => {
     acc[page.id] = (PAGE_COMPONENT_ORDER[page.id] || [])
@@ -335,6 +384,30 @@ export function upsertOverride(draft, pageId, designId, propertyKey, value) {
     modifiedAt: now
   };
   next.modifiedAt = now;
+  return next;
+}
+
+export function removeOverride(draft, pageId, designId, propertyKey) {
+  const next = cloneDraft(draft);
+  if (next.overrides?.[pageId]?.[designId]) {
+    delete next.overrides[pageId][designId][propertyKey];
+    if (Object.keys(next.overrides[pageId][designId]).length === 0) {
+      delete next.overrides[pageId][designId];
+    }
+    if (next.overrides[pageId] && Object.keys(next.overrides[pageId]).length === 0) {
+      delete next.overrides[pageId];
+    }
+  }
+  if (next.metadata?.[pageId]?.[designId]) {
+    delete next.metadata[pageId][designId][propertyKey];
+    if (Object.keys(next.metadata[pageId][designId]).length === 0) {
+      delete next.metadata[pageId][designId];
+    }
+    if (next.metadata[pageId] && Object.keys(next.metadata[pageId]).length === 0) {
+      delete next.metadata[pageId];
+    }
+  }
+  next.modifiedAt = new Date().toISOString();
   return next;
 }
 
