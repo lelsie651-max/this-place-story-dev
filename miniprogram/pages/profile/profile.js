@@ -9,8 +9,8 @@ const DEV_TEST_TOOL_ALLOWED_ENVS = {
 };
 const TAB_PAGE_ROUTES = {
   '/pages/index/index': true,
-  '/pages/discovery/discovery': true,
   '/pages/atlas/atlas': true,
+  '/pages/publish/publish': true,
   '/pages/profile/profile': true,
 };
 

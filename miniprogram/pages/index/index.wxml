@@ -10,7 +10,6 @@
       <view class="entry-icon">🔍</view>
       <view class="actions">
         <button class="action-button" bindtap="goToExplore">寻找传说</button>
-        <button class="action-button secondary" bindtap="goToPublish">分享传说</button>
       </view>
     </view>
 

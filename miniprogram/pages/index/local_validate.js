@@ -186,19 +186,13 @@ function testPrimaryEntriesRemainUnchanged() {
     locationService: createLocationServiceStub(),
   });
   const page = createInstance(loaded.pageConfig, {
-    switchTab(options) {
-      page.lastSwitchTabUrl = options.url;
-    },
     navigateTo(options) {
       page.lastNavigateUrl = options.url;
     },
   });
 
   page.goToExplore();
-  assert.strictEqual(page.lastSwitchTabUrl, '/pages/discovery/discovery', '寻找传说入口应切换到推荐 tab');
-
-  page.goToPublish();
-  assert.strictEqual(page.lastNavigateUrl, '/pages/publish/publish', '分享传说入口不能改变');
+  assert.strictEqual(page.lastNavigateUrl, '/pages/discovery/discovery', '寻找传说入口应进入地点选择页');
 }
 
 function testRecommendationPathHasNoBillingOrExplorationCalls() {
@@ -215,6 +209,8 @@ function testTemplateHasRecommendationModule() {
   assert.ok(template.indexOf('编辑推荐') !== -1, '首页应显示编辑推荐标题');
   assert.ok(template.indexOf('swiper') !== -1, '推荐模块应使用横向滚动组件');
   assert.ok(template.indexOf('bindtap="goToRecommendation"') !== -1, '推荐卡片应绑定点击跳转');
+  assert.ok(template.indexOf('寻找传说') !== -1, '首页应保留寻找传说入口');
+  assert.strictEqual(template.indexOf('分享传说'), -1, '首页不应再显示分享传说按钮');
   assert.strictEqual(template.indexOf('floating-profile'), -1, '首页不应再包含头像入口节点');
   assert.ok(template.indexOf('display-multiple-items="1"') !== -1, '推荐 swiper 应保持单项视口');
   assert.strictEqual(template.indexOf('previous-margin='), -1, '推荐 swiper 不应设置 previous-margin 造成露出效果');
@@ -248,19 +244,30 @@ function testHomeTopLayoutAndTabBarConfig() {
   const pagePaths = tabList.map(function getPath(item) {
     return item.pagePath;
   });
+  const tabTexts = tabList.map(function getText(item) {
+    return item.text;
+  });
 
   assert.ok(tabBar && typeof tabBar === 'object', 'app.json 应配置原生 tabBar');
   assert.deepStrictEqual(
     pagePaths,
     [
       'pages/index/index',
-      'pages/discovery/discovery',
       'pages/atlas/atlas',
+      'pages/publish/publish',
       'pages/profile/profile',
     ],
-    'tabBar 页面路径应为首页、推荐、足迹、我的'
+    'tabBar 页面路径应为首页、足迹、投稿、我的'
   );
+  assert.deepStrictEqual(
+    tabTexts,
+    ['首页', '足迹', '投稿', '我的'],
+    'tabBar 文案顺序应为首页、足迹、投稿、我的'
+  );
+  assert.strictEqual(pagePaths.indexOf('pages/discovery/discovery'), -1, 'discovery 不应出现在 tabBar 中');
+  assert.ok(pagePaths.indexOf('pages/publish/publish') !== -1, 'publish 应出现在 tabBar 中');
   assert.strictEqual(source.indexOf('goToProfile'), -1, '首页不应再绑定头像入口事件');
+  assert.strictEqual(source.indexOf('goToPublish'), -1, '首页不应再保留分享传说事件');
   assert.ok(styleSource.indexOf('padding-top: 72rpx;') !== -1, '首页主视觉应上移以填补头像入口空白');
 }
 

@@ -27,19 +27,19 @@
     "color": "#6f5740",
     "selectedColor": "#8b5e34",
     "backgroundColor": "#f6efe2",
-    "borderStyle": "white",
+    "borderStyle": "black",
     "list": [
       {
         "pagePath": "pages/index/index",
         "text": "首页"
       },
       {
-        "pagePath": "pages/discovery/discovery",
-        "text": "推荐"
-      },
-      {
         "pagePath": "pages/atlas/atlas",
         "text": "足迹"
+      },
+      {
+        "pagePath": "pages/publish/publish",
+        "text": "投稿"
       },
       {
         "pagePath": "pages/profile/profile",

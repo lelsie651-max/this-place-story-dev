@@ -161,11 +161,12 @@ Page({
           longitude: locationContext.longitude,
           poiid: '',
         },
+        entrySource: 'userStories',
       };
     }
 
-    wx.navigateTo({
-      url: '/pages/publish/publish?source=userStories',
+    wx.switchTab({
+      url: '/pages/publish/publish',
     });
   },
 

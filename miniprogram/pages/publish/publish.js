@@ -112,6 +112,14 @@ Page({
   },
 
   onLoad(options) {
+    this.consumePendingPublishLocation(options);
+  },
+
+  onShow() {
+    this.consumePendingPublishLocation();
+  },
+
+  consumePendingPublishLocation(options) {
     const app = getApp();
     const pendingLocation = app && app.globalData ? app.globalData.pendingPublishLocation : null;
 
@@ -136,16 +144,18 @@ Page({
           longitude: pendingLocation.longitude,
           poiid: '',
         },
-        sourceFromLocation: !!(options && options.source),
-        entrySource: options && options.source ? options.source : 'direct',
+        sourceFromLocation: trimString(pendingLocation.entrySource || pendingLocation.source) === 'userStories',
+        entrySource: trimString(pendingLocation.entrySource || pendingLocation.source) || 'direct',
       });
       return;
     }
 
-    this.setData({
-      sourceFromLocation: options && options.source === 'location',
-      entrySource: options && options.source ? options.source : 'direct',
-    });
+    if (options) {
+      this.setData({
+        sourceFromLocation: options.source === 'location',
+        entrySource: options && options.source ? options.source : 'direct',
+      });
+    }
   },
 
   onTitleInput(event) {

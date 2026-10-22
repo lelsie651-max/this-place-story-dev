@@ -35,7 +35,7 @@ Page({
       return;
     }
 
-    wx.switchTab({
+    wx.navigateTo({
       url: '/pages/discovery/discovery',
     });
   },

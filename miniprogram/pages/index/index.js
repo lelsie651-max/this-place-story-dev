@@ -174,14 +174,8 @@ Page({
   },
 
   goToExplore() {
-    wx.switchTab({
-      url: '/pages/discovery/discovery',
-    });
-  },
-
-  goToPublish() {
     wx.navigateTo({
-      url: '/pages/publish/publish',
+      url: '/pages/discovery/discovery',
     });
   },
 

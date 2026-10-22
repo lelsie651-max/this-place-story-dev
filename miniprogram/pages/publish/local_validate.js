@@ -301,6 +301,66 @@ async function testSubmittingGuardStillExists() {
   assert.strictEqual(submitCalls, 0);
 }
 
+async function testTabEntryCanConsumePendingLocationOnShow() {
+  const appInstance = {
+    globalData: {
+      pendingPublishLocation: {
+        locationId: 'loc-002',
+        locationName: '西湖断桥',
+        address: '杭州市西湖区断桥',
+        latitude: 30.25,
+        longitude: 120.14,
+        isTemporary: false,
+        placeSnapshot: {
+          name: '西湖断桥',
+          address: '杭州市西湖区断桥',
+          latitude: 30.25,
+          longitude: 120.14,
+          poiid: 'poi-2',
+        },
+        entrySource: 'userStories',
+      },
+    },
+  };
+  const loaded = loadPublishPage({
+    app: appInstance,
+  });
+  const page = createPageInstance(loaded.pageConfig, loaded);
+
+  page.onLoad();
+  page.setData({
+    storyTitle: '已经写好的标题',
+    storyContent: '已经写好的正文',
+  });
+
+  appInstance.globalData.pendingPublishLocation = {
+    locationId: 'loc-003',
+    locationName: '南头古城',
+    address: '深圳市南山区南头古城',
+    latitude: 22.54,
+    longitude: 113.93,
+    isTemporary: false,
+    placeSnapshot: {
+      name: '南头古城',
+      address: '深圳市南山区南头古城',
+      latitude: 22.54,
+      longitude: 113.93,
+      poiid: 'poi-3',
+    },
+    entrySource: 'userStories',
+  };
+
+  page.onShow();
+
+  assert.strictEqual(page.data.locationId, 'loc-003');
+  assert.strictEqual(page.data.locationName, '南头古城');
+  assert.strictEqual(page.data.entrySource, 'userStories');
+  assert.strictEqual(page.data.sourceFromLocation, true);
+  assert.strictEqual(page.data.storyTitle, '已经写好的标题');
+  assert.strictEqual(page.data.storyContent, '已经写好的正文');
+  assert.strictEqual(appInstance.globalData.pendingPublishLocation, null);
+}
+
 async function run() {
   const tests = [
     ['Publish WXML cleanup', testPublishWxmlCleanup],
@@ -308,6 +368,7 @@ async function run() {
     ['Success submission redirects without toast', testSuccessSubmissionRedirectsWithoutToast],
     ['Failure submission redirects with safe reason', testFailureSubmissionRedirectsWithSafeReason],
     ['Submitting guard still exists', testSubmittingGuardStillExists],
+    ['Tab entry can consume pending location on show', testTabEntryCanConsumePendingLocationOnShow],
   ];
 
   for (const [label, testFn] of tests) {
