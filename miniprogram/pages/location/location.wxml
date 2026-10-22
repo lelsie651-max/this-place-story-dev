@@ -2,7 +2,7 @@
   <view class="location-page-header">
     <view class="location-page-header-spacer"></view>
     <view class="location-page-header-copy">
-      <view class="hero-title">地点详情</view>
+      <view class="hero-title" data-design-id="location-page-title">地点详情</view>
       <view class="section-label hero-english">LOCATION VIEW</view>
     </view>
     <view class="location-magnifying-badge">
@@ -29,7 +29,7 @@
   </block>
 
   <block wx:else>
-    <view class="location-hero panel">
+    <view class="location-hero panel" data-design-id="location-intro-card">
       <view class="tag">{{locationDetail.transientPlace ? '微信地图选点' : '已选地点'}}</view>
       <view class="page-title location-title">{{locationDetail.name}}</view>
       <view class="page-subtitle location-address">{{locationDetail.address || locationDetail.cityText}}</view>
@@ -42,6 +42,7 @@
         wx:for="{{storyModes}}"
         wx:key="key"
         class="story-item mode-item {{!item.enabled ? 'disabled' : ''}}"
+        data-design-id="location-story-option"
         data-type="{{item.key}}"
         data-enabled="{{item.enabled}}"
         data-label="{{item.title}}"
@@ -57,7 +58,7 @@
     </view>
   </block>
 
-  <view wx:if="{{requesting}}" class="search-mask">
+  <view wx:if="{{requesting}}" class="search-mask" data-design-id="location-loading-overlay">
     <view class="search-panel">
       <view class="search-glow"></view>
       <view class="magnifier">

@@ -1,6 +1,6 @@
 <view class="page">
   <view class="section-label">ATLAS</view>
-  <view class="page-title">我的传说图鉴</view>
+  <view class="page-title" data-design-id="atlas-page-title">我的传说图鉴</view>
   <view class="page-subtitle">
     这里会逐步整理你探索过的地点与故事记录。
   </view>
@@ -20,7 +20,7 @@
     <view class="atlas-status-text">{{errorMessage}}</view>
   </view>
 
-  <view wx:elif="{{empty}}" class="panel atlas-status-card">
+  <view wx:elif="{{empty}}" class="panel atlas-status-card" data-design-id="atlas-empty-state">
     <view class="atlas-status-title">还没有探索足迹</view>
     <view class="atlas-status-text">去寻找一段传说吧</view>
   </view>
@@ -30,6 +30,7 @@
       wx:for="{{atlasItems}}"
       wx:key="id"
       class="atlas-card panel"
+      data-design-id="atlas-exploration-card"
       bindtap="handleAtlasItemTap"
       data-location-id="{{item.locationId}}"
     >

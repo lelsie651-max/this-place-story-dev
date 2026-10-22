@@ -6,12 +6,12 @@
     <view class="profile-subtitle">在每个地点留下自己的故事线索。</view>
   </view>
 
-  <view class="page-title">个人中心</view>
+  <view class="page-title" data-design-id="profile-page-title">个人中心</view>
   <view class="page-subtitle">
     在这里查看你的收藏、投稿和当前可用资源。
   </view>
 
-  <view class="asset-panel panel">
+  <view class="asset-panel panel" data-design-id="profile-assets-card">
     <view class="asset-label">用户资产</view>
     <view class="asset-item">
       <view class="asset-item-left">
@@ -55,6 +55,7 @@
       wx:for="{{menuItems}}"
       wx:key="key"
       class="menu-item panel"
+      data-design-id="{{item.key === 'favorites' ? 'profile-favorites-entry' : item.key === 'stories' ? 'profile-submissions-entry' : item.key === 'language' ? 'profile-language-entry' : item.key === 'settings' ? 'profile-settings-entry' : ''}}"
       data-route="{{item.route}}"
       bindtap="handleMenuTap"
     >

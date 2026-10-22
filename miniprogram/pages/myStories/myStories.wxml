@@ -1,6 +1,6 @@
 <view class="page">
   <view class="section-label">MY STORIES</view>
-  <view class="page-title">我的投稿</view>
+  <view class="page-title" data-design-id="my-stories-page-title">我的投稿</view>
   <view class="page-subtitle">这里会显示你已提交的故事，以及当前审核状态。</view>
 
   <block wx:if="{{loading}}">
@@ -18,7 +18,7 @@
   </block>
 
   <block wx:elif="{{stories.length === 0}}">
-    <view class="panel empty-card">
+    <view class="panel empty-card" data-design-id="my-stories-empty-state">
       <view class="panel-title">你还没有分享过故事哦</view>
       <view class="panel-text">从首页或地点页进入分享页后，就能把自己的地点故事提交进审核队列。</view>
     </view>
@@ -29,6 +29,7 @@
       wx:for="{{stories}}"
       wx:key="id"
       class="panel story-card"
+      data-design-id="my-story-card"
       bindtap="openStoryPreview"
       data-story-id="{{item.id}}"
     >

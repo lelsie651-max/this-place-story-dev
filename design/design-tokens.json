@@ -1,0 +1,670 @@
+{
+  "generatedFrom": [
+    "SPEC.md",
+    "docs/ui-layout-audit.md",
+    "docs/ui-layout-inventory.json",
+    "miniprogram/app.json",
+    "miniprogram/app.wxss",
+    "miniprogram/pages/index/index.wxss",
+    "miniprogram/pages/profile/profile.wxss",
+    "miniprogram/pages/atlas/atlas.wxss",
+    "miniprogram/pages/discovery/discovery.wxss",
+    "miniprogram/pages/location/location.wxss",
+    "miniprogram/pages/story/story.wxss",
+    "miniprogram/pages/publish/publish.wxss",
+    "miniprogram/pages/myStories/myStories.wxss",
+    "miniprogram/pages/myStoryPreview/myStoryPreview.wxss",
+    "miniprogram/pages/myStoryEdit/myStoryEdit.wxss"
+  ],
+  "notes": [
+    "All values are copied from current source styles or app.json.",
+    "Where the same semantic role currently uses multiple real values, all observed values are recorded instead of forcing a new unified token.",
+    "Native tabBar height is not declared in source; runtime measurement is still required if the future editor needs an exact pixel height."
+  ],
+  "colors": {
+    "pageBackground": {
+      "values": [
+        {
+          "value": "#efe4d2",
+          "source": "miniprogram/app.wxss:page"
+        },
+        {
+          "value": "radial-gradient(circle at top, rgba(255, 248, 236, 0.92), rgba(239, 228, 210, 0.92) 48%, rgba(226, 207, 179, 0.96))",
+          "source": "miniprogram/app.wxss:.page, miniprogram/pages/index/index.wxss:.page"
+        },
+        {
+          "value": "linear-gradient(180deg, rgba(255, 248, 236, 0.98), rgba(244, 228, 199, 0.92))",
+          "source": "miniprogram/pages/profile/profile.wxss:.profile-header, miniprogram/pages/atlas/atlas.wxss:.summary-card, miniprogram/pages/profile/profile.wxss:.dev-tools-panel"
+        },
+        {
+          "value": "linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(249, 240, 226, 0.94))",
+          "source": "miniprogram/pages/story/story.wxss:.story-card, miniprogram/pages/myStories/myStories.wxss:.story-card, miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.story-card, miniprogram/pages/myStoryEdit/myStoryEdit.wxss:.field-card"
+        }
+      ],
+      "notes": "The shared page surface is warm beige, but several cards and headers already use their own lighter gradients."
+    },
+    "panelBackground": {
+      "values": [
+        {
+          "value": "rgba(255, 250, 242, 0.92)",
+          "source": "miniprogram/app.wxss:.panel"
+        },
+        {
+          "value": "linear-gradient(180deg, rgba(255, 249, 238, 0.98), rgba(246, 232, 208, 0.96))",
+          "source": "miniprogram/pages/profile/profile.wxss:.asset-panel"
+        },
+        {
+          "value": "linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(248, 238, 220, 0.98))",
+          "source": "miniprogram/pages/index/index.wxss:.recommendation-card"
+        }
+      ],
+      "notes": "Panels are mostly based on the shared translucent card, with a few gradient variants for emphasis."
+    },
+    "cardBackground": {
+      "values": [
+        {
+          "value": "rgba(255, 247, 235, 0.92)",
+          "source": "miniprogram/pages/publish/publish.wxss:.text-input, miniprogram/pages/myStoryEdit/myStoryEdit.wxss:.text-input, miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.action-button--ghost"
+        },
+        {
+          "value": "rgba(255, 247, 235, 0.88)",
+          "source": "miniprogram/pages/story/story.wxss:.story-meta"
+        },
+        {
+          "value": "rgba(255, 248, 236, 0.96)",
+          "source": "miniprogram/pages/index/index.wxss:.recommendation-skeleton-card"
+        }
+      ],
+      "notes": "Input and meta surfaces use a slightly denser beige fill than the shared panel."
+    },
+    "primary": {
+      "values": [
+        {
+          "value": "#8b5e34",
+          "source": "miniprogram/app.wxss:.section-label, .tag"
+        },
+        {
+          "value": "linear-gradient(135deg, #9b6937, #6b4527)",
+          "source": "miniprogram/app.wxss:.action-button"
+        },
+        {
+          "value": "linear-gradient(180deg, #b67833, #8b5e34)",
+          "source": "miniprogram/pages/profile/profile.wxss:.reward-button"
+        }
+      ],
+      "notes": "The design language uses both solid accent text and brown gradients."
+    },
+    "primaryText": {
+      "values": [
+        {
+          "value": "#3d2b1f",
+          "source": "miniprogram/app.wxss:page"
+        },
+        {
+          "value": "#412a1f",
+          "source": "miniprogram/pages/index/index.wxss:.hero-title, miniprogram/pages/discovery/discovery.wxss:.hero-title, miniprogram/pages/location/location.wxss:.hero-title, miniprogram/pages/story/story.wxss:.forum-title"
+        },
+        {
+          "value": "#4c3424",
+          "source": "miniprogram/app.wxss:.panel-title, miniprogram/pages/publish/publish.wxss:.field-value, miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.story-content"
+        }
+      ],
+      "notes": "Headline/body browns vary slightly by page."
+    },
+    "secondaryText": {
+      "values": [
+        {
+          "value": "#6f5740",
+          "source": "miniprogram/app.wxss:.page-subtitle, .panel-text"
+        },
+        {
+          "value": "#6b4527",
+          "source": "miniprogram/app.wxss:.action-button.secondary, miniprogram/pages/location/location.wxss:.location-magnifying-count"
+        },
+        {
+          "value": "#7a624c",
+          "source": "miniprogram/pages/profile/profile.wxss:.profile-subtitle, miniprogram/pages/myStories/myStories.wxss:.story-time"
+        }
+      ],
+      "notes": "Secondary copy remains warm brown, but pages use several neighboring shades."
+    },
+    "mutedText": {
+      "values": [
+        {
+          "value": "#8a725c",
+          "source": "miniprogram/app.wxss:.page-note, .muted, miniprogram/pages/story/story.wxss:.forum-compliance-text"
+        },
+        {
+          "value": "#8b5e34",
+          "source": "miniprogram/pages/publish/publish.wxss:.field-label, miniprogram/pages/discovery/discovery.wxss:.mode-entry"
+        },
+        {
+          "value": "rgba(139, 94, 52, 0.58)",
+          "source": "miniprogram/pages/index/index.wxss:.hero-english, miniprogram/pages/discovery/discovery.wxss:.hero-english, miniprogram/pages/location/location.wxss:.hero-english"
+        }
+      ],
+      "notes": "The smallest text uses both solid muted browns and semi-transparent accent text."
+    },
+    "border": {
+      "values": [
+        {
+          "value": "1rpx solid rgba(140, 94, 52, 0.12)",
+          "source": "miniprogram/app.wxss:.panel, miniprogram/pages/index/index.wxss:.recommendation-card"
+        },
+        {
+          "value": "1rpx solid rgba(140, 94, 52, 0.22)",
+          "source": "miniprogram/app.wxss:.action-button.secondary"
+        },
+        {
+          "value": "1rpx dashed rgba(140, 94, 52, 0.36)",
+          "source": "miniprogram/app.wxss:.action-button.ghost"
+        }
+      ],
+      "notes": "Border styles already vary between standard panels, secondary buttons and ghost buttons."
+    },
+    "success": {
+      "values": [
+        {
+          "value": "#497355",
+          "source": "miniprogram/pages/myStories/myStories.wxss:.status-published, miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.status-published"
+        },
+        {
+          "value": "rgba(95, 148, 108, 0.16)",
+          "source": "miniprogram/pages/myStories/myStories.wxss:.status-published, miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.status-published"
+        }
+      ]
+    },
+    "warning": {
+      "values": [
+        {
+          "value": "#8b5e34",
+          "source": "miniprogram/pages/myStories/myStories.wxss:.status-pending, miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.status-pending"
+        },
+        {
+          "value": "rgba(201, 146, 89, 0.16)",
+          "source": "miniprogram/pages/myStories/myStories.wxss:.status-pending, miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.status-pending"
+        }
+      ]
+    },
+    "error": {
+      "values": [
+        {
+          "value": "#8a4d4d",
+          "source": "miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.story-reason-banner, .status-rejected, .action-button--danger"
+        },
+        {
+          "value": "rgba(169, 90, 90, 0.08)",
+          "source": "miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.story-reason-banner"
+        },
+        {
+          "value": "rgba(169, 90, 90, 0.14)",
+          "source": "miniprogram/pages/myStories/myStories.wxss:.status-rejected, miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.status-rejected"
+        }
+      ]
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "values": [
+        {
+          "value": "\"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+          "source": "miniprogram/app.wxss:page"
+        }
+      ],
+      "notes": "No @font-face or custom font files are currently referenced."
+    },
+    "pageTitle": {
+      "values": [
+        {
+          "fontSize": "56rpx",
+          "fontWeight": "600",
+          "lineHeight": "1.25",
+          "source": "miniprogram/app.wxss:.page-title"
+        },
+        {
+          "fontSize": "72rpx",
+          "fontWeight": "600",
+          "lineHeight": "1.2",
+          "source": "miniprogram/pages/index/index.wxss:.hero-title, miniprogram/pages/discovery/discovery.wxss:.hero-title, miniprogram/pages/location/location.wxss:.hero-title"
+        },
+        {
+          "fontSize": "46rpx",
+          "fontWeight": "600",
+          "lineHeight": "1.35",
+          "source": "miniprogram/pages/story/story.wxss:.forum-title"
+        }
+      ],
+      "notes": "Current pages use both the shared title size and a larger hero title variant."
+    },
+    "sectionTitle": {
+      "values": [
+        {
+          "fontSize": "36rpx",
+          "fontWeight": "600",
+          "lineHeight": "normal",
+          "source": "miniprogram/app.wxss:.panel-title, miniprogram/pages/atlas/atlas.wxss:.summary-number"
+        },
+        {
+          "fontSize": "38rpx",
+          "fontWeight": "600",
+          "lineHeight": "normal",
+          "source": "miniprogram/pages/publish/publish.wxss:.field-value"
+        },
+        {
+          "fontSize": "34rpx",
+          "fontWeight": "600",
+          "lineHeight": "1.5",
+          "source": "miniprogram/pages/myStories/myStories.wxss:.story-title, miniprogram/pages/story/story.wxss:.forum-display-name"
+        }
+      ],
+      "notes": "Section-heading scale is close but not yet fully normalized."
+    },
+    "body": {
+      "values": [
+        {
+          "fontSize": "32rpx",
+          "fontWeight": "400",
+          "lineHeight": "normal",
+          "source": "miniprogram/app.wxss:page"
+        },
+        {
+          "fontSize": "30rpx",
+          "fontWeight": "400",
+          "lineHeight": "1.9",
+          "source": "miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.story-content"
+        },
+        {
+          "fontSize": "28rpx",
+          "fontWeight": "400",
+          "lineHeight": "1.8",
+          "source": "miniprogram/pages/location/location.wxss:.story-summary, miniprogram/pages/publish/publish.wxss:.field-label"
+        }
+      ],
+      "notes": "Readable long-form content uses 30rpx on preview pages; shared body copy remains 32rpx."
+    },
+    "caption": {
+      "values": [
+        {
+          "fontSize": "24rpx",
+          "fontWeight": "400",
+          "lineHeight": "1.6",
+          "source": "miniprogram/app.wxss:.tag, miniprogram/pages/story/story.wxss:.forum-identity-description"
+        },
+        {
+          "fontSize": "22rpx",
+          "fontWeight": "400",
+          "lineHeight": "1.6",
+          "source": "miniprogram/pages/index/index.wxss:.company-footer, miniprogram/pages/profile/profile.wxss:.menu-subtext"
+        },
+        {
+          "fontSize": "20rpx",
+          "fontWeight": "400",
+          "lineHeight": "1.2",
+          "source": "miniprogram/pages/index/index.wxss:.hero-english, miniprogram/pages/profile/profile.wxss:.dev-tools-badge"
+        }
+      ],
+      "notes": "Captions range from 20rpx to 24rpx depending on whether they are labels, badges or footer copy."
+    },
+    "button": {
+      "values": [
+        {
+          "fontSize": "32rpx",
+          "fontWeight": "600",
+          "lineHeight": "96rpx",
+          "source": "miniprogram/app.wxss:.action-button"
+        },
+        {
+          "fontSize": "28rpx",
+          "fontWeight": "400",
+          "lineHeight": "84rpx",
+          "source": "miniprogram/pages/discovery/discovery.wxss:.choose-location-button"
+        },
+        {
+          "fontSize": "28rpx",
+          "fontWeight": "400",
+          "lineHeight": "2.8",
+          "source": "miniprogram/pages/profile/profile.wxss:.reward-button"
+        }
+      ],
+      "notes": "Primary action buttons and page-specific utility buttons are not yet aligned to one exact size."
+    }
+  },
+  "spacing": {
+    "pageHorizontal": {
+      "values": [
+        {
+          "value": "32rpx",
+          "source": "miniprogram/app.wxss:.page padding-left/padding-right, miniprogram/pages/index/index.wxss:.recommendation-section"
+        }
+      ]
+    },
+    "sectionGap": {
+      "values": [
+        {
+          "value": "28rpx",
+          "source": "miniprogram/app.wxss:.panel margin-bottom, miniprogram/pages/discovery/discovery.wxss:.location-entry"
+        },
+        {
+          "value": "36rpx",
+          "source": "miniprogram/app.wxss:.page-subtitle margin-bottom, miniprogram/pages/profile/profile.wxss:.asset-panel margin-bottom"
+        },
+        {
+          "value": "48rpx",
+          "source": "miniprogram/pages/index/index.wxss:.hero margin-bottom, miniprogram/pages/location/location.wxss:.search-mask padding"
+        }
+      ],
+      "notes": "Section spacing is mostly 28rpx or 36rpx, with hero and overlay zones using larger gaps."
+    },
+    "cardPadding": {
+      "values": [
+        {
+          "value": "32rpx",
+          "source": "miniprogram/app.wxss:.panel"
+        },
+        {
+          "value": "40rpx 32rpx 36rpx",
+          "source": "miniprogram/pages/index/index.wxss:.recommendation-section"
+        },
+        {
+          "value": "28rpx 28rpx 24rpx",
+          "source": "miniprogram/pages/index/index.wxss:.recommendation-body"
+        },
+        {
+          "value": "34rpx 30rpx",
+          "source": "miniprogram/pages/story/story.wxss:.story-forum-card"
+        }
+      ],
+      "notes": "Cards share a base 32rpx padding, but feature modules already have local padding variants."
+    },
+    "buttonGap": {
+      "values": [
+        {
+          "value": "22rpx",
+          "source": "miniprogram/app.wxss:.actions"
+        },
+        {
+          "value": "20rpx",
+          "source": "miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.action-group"
+        }
+      ]
+    },
+    "listGap": {
+      "values": [
+        {
+          "value": "28rpx",
+          "source": "miniprogram/app.wxss:.panel margin-bottom"
+        },
+        {
+          "value": "24rpx",
+          "source": "miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.story-reason-banner margin-bottom, .notice-card margin-bottom"
+        },
+        {
+          "value": "16rpx",
+          "source": "miniprogram/pages/myStories/myStories.wxss:.story-location/.story-time margin-top, miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.story-location/.story-time margin-top"
+        }
+      ],
+      "notes": "List/card spacing is consistent within modules, but different modules use 16rpx, 24rpx or 28rpx."
+    },
+    "bottomSafeArea": {
+      "values": [
+        {
+          "value": "56rpx",
+          "source": "miniprogram/app.wxss:.page padding-bottom"
+        },
+        {
+          "value": "calc(56rpx + env(safe-area-inset-bottom))",
+          "source": "miniprogram/pages/index/index.wxss:.page padding-bottom"
+        }
+      ],
+      "notes": "Only the homepage currently bakes native safe-area inset into its bottom padding."
+    }
+  },
+  "radius": {
+    "small": {
+      "values": [
+        {
+          "value": "20rpx",
+          "source": "miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.story-reason-banner"
+        },
+        {
+          "value": "22rpx",
+          "source": "miniprogram/pages/publish/publish.wxss:.text-input, miniprogram/pages/myStoryEdit/myStoryEdit.wxss:.text-input, miniprogram/pages/profile/profile.wxss:.asset-icon"
+        },
+        {
+          "value": "24rpx",
+          "source": "miniprogram/pages/index/index.wxss:.recommendation-skeleton-card"
+        }
+      ],
+      "notes": "Small radius already spans 20-24rpx depending on component family."
+    },
+    "medium": {
+      "values": [
+        {
+          "value": "28rpx",
+          "source": "miniprogram/app.wxss:.panel, miniprogram/pages/index/index.wxss:.recommendation-card"
+        },
+        {
+          "value": "32rpx",
+          "source": "miniprogram/pages/location/location.wxss:.search-panel"
+        }
+      ]
+    },
+    "large": {
+      "values": [
+        {
+          "value": "50%",
+          "source": "miniprogram/pages/profile/profile.wxss:.profile-avatar, miniprogram/pages/story/story.wxss:.forum-avatar"
+        }
+      ],
+      "notes": "Current large circular elements use 50% rather than a fixed rpx radius."
+    },
+    "pill": {
+      "values": [
+        {
+          "value": "999rpx",
+          "source": "miniprogram/app.wxss:.tag, .action-button, miniprogram/pages/profile/profile.wxss:.reward-button, miniprogram/pages/discovery/discovery.wxss:.choose-location-button"
+        }
+      ]
+    }
+  },
+  "shadow": {
+    "card": {
+      "values": [
+        {
+          "value": "0 16rpx 40rpx rgba(108, 74, 45, 0.08)",
+          "source": "miniprogram/app.wxss:.panel"
+        },
+        {
+          "value": "0 20rpx 36rpx rgba(107, 69, 39, 0.12)",
+          "source": "miniprogram/pages/index/index.wxss:.recommendation-card"
+        },
+        {
+          "value": "0 24rpx 60rpx rgba(73, 46, 23, 0.18)",
+          "source": "miniprogram/pages/location/location.wxss:.search-panel"
+        }
+      ]
+    },
+    "button": {
+      "values": [
+        {
+          "value": "0 14rpx 30rpx rgba(107, 69, 39, 0.2)",
+          "source": "miniprogram/app.wxss:.action-button"
+        },
+        {
+          "value": "0 12rpx 28rpx rgba(107, 69, 39, 0.08)",
+          "source": "miniprogram/pages/discovery/discovery.wxss:.choose-location-button"
+        },
+        {
+          "value": "0 16rpx 36rpx rgba(107, 69, 39, 0.18)",
+          "source": "miniprogram/pages/profile/profile.wxss:.profile-avatar"
+        }
+      ]
+    },
+    "floating": {
+      "values": [
+        {
+          "value": "0 10rpx 24rpx rgba(107, 69, 39, 0.08)",
+          "source": "miniprogram/pages/location/location.wxss:.location-magnifying-badge"
+        },
+        {
+          "value": "0 12rpx 24rpx rgba(107, 69, 39, 0.14)",
+          "source": "miniprogram/pages/story/story.wxss:.forum-avatar"
+        }
+      ]
+    }
+  },
+  "components": {
+    "primaryButton": {
+      "height": {
+        "values": [
+          {
+            "value": "96rpx",
+            "source": "miniprogram/app.wxss:.action-button min-height/line-height"
+          }
+        ]
+      },
+      "backgroundColor": {
+        "values": [
+          {
+            "value": "linear-gradient(135deg, #9b6937, #6b4527)",
+            "source": "miniprogram/app.wxss:.action-button"
+          }
+        ]
+      },
+      "borderRadius": {
+        "values": [
+          {
+            "value": "999rpx",
+            "source": "miniprogram/app.wxss:.action-button"
+          }
+        ]
+      },
+      "padding": {
+        "values": [
+          {
+            "value": "none declared; vertical rhythm comes from min-height + line-height",
+            "source": "miniprogram/app.wxss:.action-button"
+          }
+        ]
+      }
+    },
+    "secondaryButton": {
+      "height": {
+        "values": [
+          {
+            "value": "96rpx",
+            "source": "miniprogram/app.wxss:.action-button.secondary"
+          },
+          {
+            "value": "84rpx",
+            "source": "miniprogram/pages/discovery/discovery.wxss:.choose-location-button line-height"
+          }
+        ]
+      },
+      "backgroundColor": {
+        "values": [
+          {
+            "value": "rgba(255, 247, 235, 0.95)",
+            "source": "miniprogram/app.wxss:.action-button.secondary"
+          },
+          {
+            "value": "rgba(255, 247, 235, 0.72)",
+            "source": "miniprogram/app.wxss:.action-button.ghost"
+          },
+          {
+            "value": "linear-gradient(180deg, rgba(255, 249, 241, 0.98), rgba(246, 234, 214, 0.96))",
+            "source": "miniprogram/pages/discovery/discovery.wxss:.choose-location-button"
+          }
+        ]
+      },
+      "borderRadius": {
+        "values": [
+          {
+            "value": "999rpx",
+            "source": "miniprogram/app.wxss:.action-button.secondary, .action-button.ghost, miniprogram/pages/discovery/discovery.wxss:.choose-location-button"
+          }
+        ]
+      },
+      "padding": {
+        "values": [
+          {
+            "value": "0 20rpx",
+            "source": "miniprogram/pages/location/location.wxss:.location-magnifying-badge"
+          },
+          {
+            "value": "none declared; button layout is mostly driven by line-height",
+            "source": "miniprogram/app.wxss:.action-button.secondary"
+          }
+        ]
+      }
+    },
+    "card": {
+      "backgroundColor": {
+        "values": [
+          {
+            "value": "rgba(255, 250, 242, 0.92)",
+            "source": "miniprogram/app.wxss:.panel"
+          },
+          {
+            "value": "linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(249, 240, 226, 0.94))",
+            "source": "miniprogram/pages/story/story.wxss:.story-card, miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.story-card"
+          }
+        ]
+      },
+      "borderRadius": {
+        "values": [
+          {
+            "value": "28rpx",
+            "source": "miniprogram/app.wxss:.panel"
+          },
+          {
+            "value": "20rpx",
+            "source": "miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.story-reason-banner"
+          }
+        ]
+      },
+      "padding": {
+        "values": [
+          {
+            "value": "32rpx",
+            "source": "miniprogram/app.wxss:.panel"
+          },
+          {
+            "value": "34rpx 30rpx",
+            "source": "miniprogram/pages/story/story.wxss:.story-forum-card"
+          }
+        ]
+      }
+    },
+    "tabBar": {
+      "height": {
+        "values": [],
+        "notes": "Current project uses native tabBar; source code does not declare a height."
+      },
+      "backgroundColor": {
+        "values": [
+          {
+            "value": "#f6efe2",
+            "source": "miniprogram/app.json:tabBar.backgroundColor"
+          }
+        ]
+      },
+      "selectedColor": {
+        "values": [
+          {
+            "value": "#8b5e34",
+            "source": "miniprogram/app.json:tabBar.selectedColor"
+          }
+        ]
+      },
+      "unselectedColor": {
+        "values": [
+          {
+            "value": "#6f5740",
+            "source": "miniprogram/app.json:tabBar.color"
+          }
+        ]
+      }
+    }
+  }
+}

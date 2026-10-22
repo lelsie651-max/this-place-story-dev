@@ -20,10 +20,10 @@
           </view>
         </view>
 
-        <view class="forum-title">{{currentStory.title}}</view>
-        <view class="forum-location">📍 {{currentStory.location}}</view>
+        <view class="forum-title" data-design-id="story-page-title">{{currentStory.title}}</view>
+        <view class="forum-location" data-design-id="story-summary">📍 {{currentStory.location}}</view>
 
-        <view class="story-content forum-content">
+        <view class="story-content forum-content" data-design-id="story-content">
           <view wx:for="{{contentParagraphs}}" wx:key="index" class="story-paragraph">
             {{item}}
           </view>
@@ -39,12 +39,12 @@
 
     <block wx:else>
       <view class="tag">{{currentStory.typeLabel}}</view>
-      <view class="page-title story-title">{{currentStory.title}}</view>
-      <view class="page-subtitle location-text">📍 {{currentStory.location}}</view>
+      <view class="page-title story-title" data-design-id="story-page-title">{{currentStory.title}}</view>
+      <view class="page-subtitle location-text" data-design-id="story-summary">📍 {{currentStory.location}}</view>
 
       <view class="story-card panel">
         <view class="panel-title">故事正文</view>
-        <view class="story-content">
+        <view class="story-content" data-design-id="story-content">
           <view wx:for="{{contentParagraphs}}" wx:key="index" class="story-paragraph">
             {{item}}
           </view>
@@ -68,10 +68,10 @@
     </block>
 
     <view class="actions">
-      <button wx:if="{{currentStory.collectible}}" class="action-button" bindtap="handleCollect" loading="{{favoriteSubmitting}}">
+      <button wx:if="{{currentStory.collectible}}" class="action-button" bindtap="handleCollect" loading="{{favoriteSubmitting}}" data-design-id="story-favorite-button">
         {{isFavorited ? '💛 已收藏' : '❤️ 收藏'}}
       </button>
-      <button class="action-button secondary" bindtap="backToHome">返回</button>
+      <button class="action-button secondary" bindtap="backToHome" data-design-id="story-back-button">返回</button>
     </view>
 
     <view wx:if="{{currentStory.note}}" class="page-note">{{currentStory.note}}</view>
@@ -81,7 +81,7 @@
     <view class="panel-title">故事暂时不可用</view>
     <view class="panel-text">{{errorMessage}}</view>
     <view class="actions">
-      <button class="action-button secondary" bindtap="backToHome">返回</button>
+      <button class="action-button secondary" bindtap="backToHome" data-design-id="story-back-button">返回</button>
     </view>
   </view>
 </view>

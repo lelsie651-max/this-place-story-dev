@@ -1,11 +1,11 @@
 <view class="page">
   <view class="hero">
-    <view class="hero-title">选择地点</view>
+    <view class="hero-title" data-design-id="discovery-page-title">选择地点</view>
     <view class="section-label hero-english">LOCATION DISCOVERY</view>
   </view>
 
   <view class="location-entry panel">
-    <button class="choose-location-button" bindtap="handleChooseLocation" loading="{{chooseLocationLoading}}">
+    <button class="choose-location-button" bindtap="handleChooseLocation" loading="{{chooseLocationLoading}}" data-design-id="discovery-search-input">
       选择你的位置
     </button>
   </view>
@@ -27,7 +27,7 @@
   </block>
 
   <block wx:elif="{{emptyState}}">
-    <view class="mode-card panel empty-card">
+    <view class="mode-card panel empty-card" data-design-id="discovery-empty-state">
       <view class="panel-title">暂时没有新的线索</view>
       <view class="panel-text">{{emptyMessage}}</view>
     </view>
@@ -38,6 +38,7 @@
       wx:for="{{filteredLocations}}"
       wx:key="id"
       class="mode-card panel"
+      data-design-id="discovery-location-card"
       data-location-id="{{item.id}}"
       bindtap="goToLocation"
     >

@@ -1,0 +1,162 @@
+{
+  "summary": {
+    "localImageDirectory": {
+      "value": "missing",
+      "checkedPaths": ["miniprogram/images", "miniprogram/assets"],
+      "notes": "No dedicated local image or asset directory exists in the current mini program source tree."
+    },
+    "bannerMode": {
+      "value": "gradient-placeholder",
+      "notes": "The homepage recommendation module currently uses a gradient cover area plus an emoji/text placeholder when coverImage is empty."
+    },
+    "backgroundMode": {
+      "value": "color-and-gradient",
+      "notes": "Current page and card backgrounds are CSS colors and gradients, not image files."
+    },
+    "fontMode": {
+      "value": "system-font-stack",
+      "notes": "The project currently relies on PingFang SC / Hiragino Sans GB / Microsoft YaHei / sans-serif."
+    },
+    "remoteImages": {
+      "value": "dynamic-optional",
+      "notes": "The only explicit image node is the homepage recommendation cover image, fed by item.coverImage at runtime."
+    },
+    "base64Images": {
+      "value": "none-found",
+      "notes": "No Base64 image URLs were found in the audited source set."
+    }
+  },
+  "assets": [
+    {
+      "assetId": "global-page-background",
+      "page": "global",
+      "type": "background",
+      "currentSource": "radial-gradient(circle at top, rgba(255, 248, 236, 0.92), rgba(239, 228, 210, 0.92) 48%, rgba(226, 207, 179, 0.96))",
+      "sourceFile": "miniprogram/app.wxss",
+      "usedBy": ["all-page-shells", "index-page"],
+      "replaceable": true,
+      "notes": "Pure CSS gradient. Replacing it later only needs WXSS/token changes, not image slicing."
+    },
+    {
+      "assetId": "panel-surface-background",
+      "page": "global",
+      "type": "background",
+      "currentSource": "rgba(255, 250, 242, 0.92)",
+      "sourceFile": "miniprogram/app.wxss",
+      "usedBy": ["shared-panel", "profile-assets-card", "atlas-exploration-card", "publish-location-selector"],
+      "replaceable": true,
+      "notes": "Shared card surface across most pages."
+    },
+    {
+      "assetId": "index-recommendation-cover-image",
+      "page": "index",
+      "type": "image",
+      "currentSource": "item.coverImage",
+      "sourceFile": "miniprogram/pages/index/index.wxml",
+      "usedBy": ["index-recommendation-card"],
+      "replaceable": true,
+      "notes": "Dynamic runtime image. Current mode is aspectFill, so replacement images may need crop-safe composition and fixed visual focus."
+    },
+    {
+      "assetId": "index-recommendation-cover-placeholder",
+      "page": "index",
+      "type": "placeholder",
+      "currentSource": "gradient background + emoji '📖' + text '传说节选'",
+      "sourceFile": "miniprogram/pages/index/index.wxml",
+      "usedBy": ["index-recommendation-card"],
+      "replaceable": true,
+      "notes": "This is the current banner fallback, not a real image asset. The cover area keeps a fixed card-side ratio and should stay crop-friendly if replaced."
+    },
+    {
+      "assetId": "profile-avatar-token",
+      "page": "profile",
+      "type": "text-avatar",
+      "currentSource": "text '旅' on linear-gradient(180deg, #9b6937, #6b4527)",
+      "sourceFile": "miniprogram/pages/profile/profile.wxml",
+      "usedBy": ["profile-header"],
+      "replaceable": true,
+      "notes": "Current avatar is text-only. Replacing with an image later would require WXML/WXSS changes and image fit decisions."
+    },
+    {
+      "assetId": "story-ai-avatar",
+      "page": "story",
+      "type": "text-avatar",
+      "currentSource": "emoji plus avatar palette gradients",
+      "sourceFile": "miniprogram/pages/story/story.wxml",
+      "usedBy": ["story-content"],
+      "replaceable": true,
+      "notes": "AI post avatar is rendered from text + gradient classes, not image files."
+    },
+    {
+      "assetId": "native-tabbar",
+      "page": "global",
+      "type": "tabbar",
+      "currentSource": "text-only native tabBar with no iconPath/selectedIconPath",
+      "sourceFile": "miniprogram/app.json",
+      "usedBy": ["tabBar"],
+      "replaceable": false,
+      "notes": "Current tabBar uses labels only. If icon files are added later, app.json and new asset files will both need updates."
+    },
+    {
+      "assetId": "emoji-icon-set",
+      "page": "global",
+      "type": "emoji",
+      "currentSource": "inline emoji characters such as 🔍 📖 📍 🤍 🌐 ⚙️",
+      "sourceFile": "miniprogram/pages/index/index.wxml",
+      "usedBy": ["index-primary-button", "profile-menu", "story-location", "asset-panel"],
+      "replaceable": true,
+      "notes": "Current iconography is mostly text/emoji. Replacing with image icons would require WXML and likely WXSS updates."
+    },
+    {
+      "assetId": "base64-inline-images",
+      "page": "global",
+      "type": "base64",
+      "currentSource": "none",
+      "sourceFile": "audited-source-scan",
+      "usedBy": [],
+      "replaceable": false,
+      "notes": "No Base64 image strings were found."
+    },
+    {
+      "assetId": "local-image-directories",
+      "page": "global",
+      "type": "directory",
+      "currentSource": "none",
+      "sourceFile": "audited-source-scan",
+      "usedBy": [],
+      "replaceable": false,
+      "notes": "miniprogram/images and miniprogram/assets are both absent."
+    }
+  ],
+  "fonts": [
+    {
+      "fontId": "system-default",
+      "currentValue": "\"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "source": "miniprogram/app.wxss",
+      "replaceable": true,
+      "notes": "This is a system stack, not a bundled font file."
+    },
+    {
+      "fontId": "future-custom-font-guidance",
+      "currentValue": "not-installed",
+      "source": "n/a",
+      "replaceable": true,
+      "notes": "To replace the current font later, the first touch points are miniprogram/app.wxss and any page-level overrides. WeChat mini programs can use local bundled font files or configured font assets, but compatibility and package size must be validated per font. If a custom font is introduced, the editor should modify font tokens/config first, then update WXSS generation rather than patching business markup."
+    }
+  ],
+  "replacementGuidance": {
+    "objectFit": {
+      "index-recommendation-cover-image": "mode=\"aspectFill\" already crops; replacement images should keep the focal subject near center-left or center.",
+      "future-static-banners": "If real banner images are added, keep a fixed ratio matching the current recommendation cover area to avoid card height changes."
+    },
+    "fixedAspectAssets": [
+      "index-recommendation-cover-image",
+      "index-recommendation-cover-placeholder"
+    ],
+    "freeCropAssets": [
+      "global-page-background",
+      "panel-surface-background",
+      "emoji-icon-set"
+    ]
+  }
+}

@@ -1,19 +1,19 @@
 <view class="page">
   <view class="home-main">
     <view class="hero">
-      <view class="hero-title">此地有传说</view>
+      <view class="hero-title" data-design-id="index-page-title">此地有传说</view>
       <view class="section-label hero-english">THIS PLACE HAS LEGENDS</view>
-      <view class="hero-slogan">让地点拥有不同的声音</view>
+      <view class="hero-slogan" data-design-id="index-page-subtitle">让地点拥有不同的声音</view>
     </view>
 
     <view class="primary-entry panel">
       <view class="entry-icon">🔍</view>
       <view class="actions">
-        <button class="action-button" bindtap="goToExplore">寻找传说</button>
+        <button class="action-button" bindtap="goToExplore" data-design-id="index-primary-button">寻找传说</button>
       </view>
     </view>
 
-    <view class="recommendation-section panel">
+    <view class="recommendation-section panel" data-design-id="index-recommendation-section">
       <view class="section-label recommendation-label">编辑推荐</view>
       <view class="recommendation-title">先听一段传说，再决定要不要出发</view>
 
@@ -31,6 +31,7 @@
       <view wx:elif="{{recommendationCards.length > 0}}" class="recommendation-swiper-wrap">
         <swiper
           class="recommendation-swiper"
+          data-design-id="index-recommendation-swiper"
           indicator-dots="{{true}}"
           indicator-color="rgba(139, 94, 52, 0.18)"
           indicator-active-color="rgba(139, 94, 52, 0.56)"
@@ -45,6 +46,7 @@
                 class="recommendation-card"
                 bindtap="goToRecommendation"
                 data-story-id="{{item.storyId}}"
+                data-design-id="index-recommendation-card"
                 hover-class="recommendation-card-hover"
               >
                 <view class="recommendation-cover">

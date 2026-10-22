@@ -1,6 +1,6 @@
 <view class="page">
   <view class="section-label">MY STORY</view>
-  <view class="page-title">投稿预览</view>
+  <view class="page-title" data-design-id="my-story-preview-title">投稿预览</view>
   <view class="page-subtitle">这里展示你提交给审核队列的原始内容。</view>
 
   <block wx:if="{{loading}}">
@@ -26,9 +26,10 @@
     <view
       wx:if="{{story.status === 'rejected' && story.rejectionReason}}"
       class="panel story-reason-banner"
+      data-design-id="my-story-preview-rejection"
     >拒绝原因：{{story.rejectionReason}}</view>
 
-    <view class="panel story-card">
+    <view class="panel story-card" data-design-id="my-story-preview-content">
       <view class="story-header">
         <view class="story-title">{{story.title}}</view>
         <view class="story-status status-{{story.status}}">{{story.statusLabel}}</view>
@@ -43,6 +44,7 @@
       <button
         wx:if="{{story.canEdit}}"
         class="action-button"
+        data-design-id="my-story-preview-edit-button"
         bindtap="openEditPage"
       >编辑</button>
       <button
@@ -53,6 +55,7 @@
       <button
         wx:if="{{story.canDelete}}"
         class="action-button action-button--danger"
+        data-design-id="my-story-preview-delete-button"
         bindtap="deleteStory"
         disabled="{{deleting}}"
       >{{deleting ? '删除中...' : '删除投稿'}}</button>

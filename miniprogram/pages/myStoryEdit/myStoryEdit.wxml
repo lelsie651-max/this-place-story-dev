@@ -29,6 +29,7 @@
       <view class="field-label">传说标题</view>
       <input
         class="text-input"
+        data-design-id="my-story-edit-title-input"
         placeholder="给你的故事起一个名字"
         value="{{storyTitle}}"
         bindinput="onTitleInput"
@@ -41,6 +42,7 @@
       <view class="field-label">故事内容</view>
       <textarea
         class="text-area"
+        data-design-id="my-story-edit-content-input"
         placeholder="写下你想重新提交审核的故事内容"
         value="{{storyContent}}"
         bindinput="onContentInput"
@@ -50,8 +52,8 @@
     </view>
 
     <view class="action-group">
-      <button class="action-button" bindtap="submitEdit" loading="{{submitting}}">确认提交</button>
-      <button class="action-button action-button--ghost" bindtap="cancelEdit">取消</button>
+      <button class="action-button" bindtap="submitEdit" loading="{{submitting}}" data-design-id="my-story-edit-submit-button">确认提交</button>
+      <button class="action-button action-button--ghost" bindtap="cancelEdit" data-design-id="my-story-edit-cancel-button">取消</button>
     </view>
   </block>
 </view>
