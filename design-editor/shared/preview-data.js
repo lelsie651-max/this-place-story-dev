@@ -1,10 +1,122 @@
-export const DEVICE_PROFILES = {
-  375: { width: 375, height: 812, label: '375px' },
-  390: { width: 390, height: 844, label: '390px' },
-  414: { width: 414, height: 896, label: '414px' }
-};
+const SIMULATED_CHROME = Object.freeze({
+  statusBarHeight: 20,
+  navigationBarHeight: 24,
+  tabBarHeight: 68,
+  tabBarPaddingTop: 8,
+  tabBarPaddingHorizontal: 10,
+  tabBarPaddingBottom: 14,
+  measurementStatus: 'simulated'
+});
 
-export const DEVICE_WIDTHS = Object.keys(DEVICE_PROFILES).map((item) => Number(item));
+const FRAME_MODEL = Object.freeze({
+  padding: 14,
+  radius: 42,
+  screenRadius: 30
+});
+
+function createDevicePreset(device) {
+  return {
+    ...device,
+    frame: FRAME_MODEL,
+    chrome: { ...SIMULATED_CHROME, ...(device.chrome || {}) },
+    safeAreaBottom: device.safeAreaBottom ?? 0,
+    safeAreaMeasured: device.safeAreaMeasured ?? false,
+    safeAreaStatus: device.safeAreaMeasured ? 'measured' : 'unmeasured'
+  };
+}
+
+export const DEVICE_PRESETS = [
+  createDevicePreset({
+    id: 'huawei-mate-80',
+    name: 'HUAWEI Mate 80',
+    width: 360,
+    height: 809,
+    dpr: 3.5
+  }),
+  createDevicePreset({
+    id: 'iphone-6-7-8',
+    name: 'iPhone 6/7/8',
+    width: 375,
+    height: 667,
+    dpr: 2
+  }),
+  createDevicePreset({
+    id: 'iphone-12-13-pro',
+    name: 'iPhone 12/13 Pro',
+    width: 390,
+    height: 844,
+    dpr: 3
+  }),
+  createDevicePreset({
+    id: 'iphone-xr',
+    name: 'iPhone XR',
+    width: 414,
+    height: 896,
+    dpr: 2
+  })
+];
+
+export const DEFAULT_DEVICE_ID = 'iphone-6-7-8';
+export const DEVICE_PROFILE_BY_ID = Object.fromEntries(
+  DEVICE_PRESETS.map((device) => [device.id, device])
+);
+export const DEVICE_IDS = DEVICE_PRESETS.map((device) => device.id);
+
+export function getDeviceProfile(deviceId = DEFAULT_DEVICE_ID) {
+  return DEVICE_PROFILE_BY_ID[deviceId] || DEVICE_PROFILE_BY_ID[DEFAULT_DEVICE_ID];
+}
+
+export function convertRpxToPx(value, viewportWidth) {
+  return (Number(value) / 750) * viewportWidth;
+}
+
+export function replaceRpxWithPx(value, viewportWidth) {
+  if (value === undefined || value === null || value === '') {
+    return '';
+  }
+
+  return String(value).replace(/(-?\d+(?:\.\d+)?)rpx/g, (_, raw) => {
+    const px = convertRpxToPx(raw, viewportWidth);
+    return `${px.toFixed(2)}px`;
+  });
+}
+
+export function getDeviceMetrics(deviceOrId = DEFAULT_DEVICE_ID) {
+  const device = typeof deviceOrId === 'string' ? getDeviceProfile(deviceOrId) : deviceOrId;
+  const framePadding = device.frame?.padding ?? 14;
+  const statusBarHeight = device.chrome?.statusBarHeight ?? 0;
+  const navigationBarHeight = device.chrome?.navigationBarHeight ?? 0;
+  const tabBarHeight = device.chrome?.tabBarHeight ?? 0;
+  const safeAreaBottom = device.safeAreaBottom ?? 0;
+
+  return {
+    device,
+    viewportWidth: device.width,
+    viewportHeight: device.height,
+    framePadding,
+    frameWidth: device.width + framePadding * 2,
+    frameHeight: device.height + framePadding * 2,
+    screenRadius: device.frame?.screenRadius ?? 30,
+    frameRadius: device.frame?.radius ?? 42,
+    statusBarHeight,
+    navigationBarHeight,
+    topChromeHeight: statusBarHeight + navigationBarHeight,
+    tabBarHeight,
+    safeAreaBottom,
+    bottomBarHeight: tabBarHeight + safeAreaBottom,
+    tabBarPaddingTop: device.chrome?.tabBarPaddingTop ?? 8,
+    tabBarPaddingHorizontal: device.chrome?.tabBarPaddingHorizontal ?? 10,
+    tabBarPaddingBottom: device.chrome?.tabBarPaddingBottom ?? 14
+  };
+}
+
+export function calculateFitScale(stageWidth, stageHeight, metrics, stagePadding = 40) {
+  return Math.min(
+    1,
+    Math.max(0.35, (stageWidth - stagePadding) / metrics.frameWidth),
+    Math.max(0.35, (stageHeight - stagePadding) / metrics.frameHeight)
+  );
+}
 
 export const SCALE_OPTIONS = [
   { value: '0.5', label: '50%' },
@@ -13,12 +125,17 @@ export const SCALE_OPTIONS = [
   { value: 'fit', label: '适合窗口' }
 ];
 
-export const TAB_BAR_ITEMS = [
-  { key: 'index', label: '首页', icon: '◉' },
-  { key: 'publish', label: '投稿', icon: '✎' },
-  { key: 'atlas', label: '足迹', icon: '◎' },
-  { key: 'profile', label: '我的', icon: '◌' }
-];
+export const TAB_BAR_CONFIG = {
+  source: 'app.json',
+  items: [
+    { key: 'index', label: '首页', icon: '◉' },
+    { key: 'atlas', label: '足迹', icon: '◎' },
+    { key: 'publish', label: '投稿', icon: '✎' },
+    { key: 'profile', label: '我的', icon: '◌' }
+  ]
+};
+
+export const TAB_BAR_ITEMS = TAB_BAR_CONFIG.items;
 
 export const PAGE_SAMPLE_DATA = {
   index: {

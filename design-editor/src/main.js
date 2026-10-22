@@ -10,13 +10,18 @@ import {
   buildComponentCatalog
 } from '../shared/schema.js';
 import {
-  DEVICE_PROFILES,
-  DEVICE_WIDTHS,
+  calculateFitScale,
+  DEVICE_PRESETS,
+  DEFAULT_DEVICE_ID,
   PAGE_SAMPLE_DATA,
   SCALE_OPTIONS,
+  TAB_BAR_CONFIG,
   TAB_BAR_ITEMS,
+  getDeviceMetrics,
+  getDeviceProfile as getPreviewDeviceProfile,
   getDefaultComponentState,
-  getDefaultValue
+  getDefaultValue,
+  replaceRpxWithPx
 } from '../shared/preview-data.js';
 import {
   applyAsset,
@@ -30,9 +35,9 @@ import {
   restoreComponent,
   restorePage,
   selectComponent,
+  selectDevice,
   selectPage,
   selectScale,
-  selectWidth,
   undo
 } from './editor-core.js';
 
@@ -52,6 +57,19 @@ const GROUP_ORDER = [
   '图片和 Banner',
   '应用状态'
 ];
+
+const PAGE_NAV_TITLES = {
+  index: '首页',
+  profile: '我的',
+  atlas: '足迹',
+  discovery: '寻找传说',
+  location: '地点详情',
+  story: '故事详情',
+  publish: '投稿',
+  myStories: '我的投稿',
+  myStoryPreview: '投稿预览',
+  myStoryEdit: '重新编辑'
+};
 
 let state = syncSelectedComponent(createEditorState(), createEditorState().selectedPageId);
 let modalState = null;
@@ -191,20 +209,12 @@ function getResolvedStyle(designId) {
   return resolved;
 }
 
-function getDeviceProfile() {
-  return DEVICE_PROFILES[state.selectedWidth] || DEVICE_PROFILES[375];
+function getSelectedDevice() {
+  return getPreviewDeviceProfile(state.selectedDeviceId || DEFAULT_DEVICE_ID);
 }
 
 function toPreviewCssValue(value) {
-  if (value === undefined || value === null || value === '') {
-    return '';
-  }
-
-  const width = state.selectedWidth;
-  return String(value).replace(/(-?\d+(?:\.\d+)?)rpx/g, (_, raw) => {
-    const px = (Number(raw) / 750) * width;
-    return `${px.toFixed(2)}px`;
-  });
+  return replaceRpxWithPx(value, getSelectedDevice().width);
 }
 
 function styleObjectToString(styleObject) {
@@ -212,6 +222,51 @@ function styleObjectToString(styleObject) {
     .filter(([, value]) => value !== undefined && value !== null && value !== '')
     .map(([property, value]) => `${property}: ${toPreviewCssValue(value)};`)
     .join(' ');
+}
+
+function getSelectedDeviceMetrics() {
+  return getDeviceMetrics(getSelectedDevice());
+}
+
+function getSelectedScaleLabel() {
+  if (state.selectedScale === 'fit') {
+    return `适合窗口 ${Math.round((uiState.fitScale || 1) * 100)}%`;
+  }
+
+  const match = SCALE_OPTIONS.find((item) => item.value === String(state.selectedScale));
+  return match?.label || `${Math.round((Number(state.selectedScale) || 1) * 100)}%`;
+}
+
+function renderPreviewMeta() {
+  const device = getSelectedDevice();
+  const metrics = getSelectedDeviceMetrics();
+  const safeAreaText = device.safeAreaMeasured
+    ? `${metrics.safeAreaBottom}px（已测量）`
+    : '未测量（当前按 0px 占位）';
+  const chromeText = device.chrome.measurementStatus === 'simulated'
+    ? '顶部系统区与 tabBar 高度为模拟值'
+    : '顶部系统区与 tabBar 高度已测量';
+
+  return `
+    <div class="preview-meta-card">
+      <div class="preview-meta-line">
+        <strong>当前预览使用：</strong>
+        <span>设计单位：rpx</span>
+        <span>换算规则：rpx × viewportWidth ÷ 750</span>
+      </div>
+      <div class="preview-meta-line">
+        <span>当前设备：${device.name}</span>
+        <span>当前 viewport：${device.width} × ${device.height}</span>
+        <span>DPR：${device.dpr}</span>
+        <span>当前编辑器缩放：${getSelectedScaleLabel()}</span>
+      </div>
+      <div class="preview-meta-line">
+        <span>safe-area：${safeAreaText}</span>
+        <span>${chromeText}</span>
+        <span>tabBar 来源：${TAB_BAR_CONFIG.source}</span>
+      </div>
+    </div>
+  `;
 }
 
 function isSelected(designId) {
@@ -229,8 +284,9 @@ function previewNode(designId, innerHtml, extraClass = '') {
 }
 
 function renderStatusBar() {
+  const metrics = getSelectedDeviceMetrics();
   return `
-    <div class="phone-status-bar">
+    <div class="phone-status-bar" style="height: ${metrics.statusBarHeight}px;">
       <span>9:41</span>
       <span class="phone-status-icons">
         <span>5G</span>
@@ -240,35 +296,75 @@ function renderStatusBar() {
   `;
 }
 
+function renderNavigationBar() {
+  const metrics = getSelectedDeviceMetrics();
+  return `
+    <div class="phone-navigation-bar" style="height: ${metrics.navigationBarHeight}px;">
+      <span class="phone-navigation-title">${PAGE_NAV_TITLES[state.selectedPageId] || '页面预览'}</span>
+      <span class="phone-navigation-badge">${getSelectedDevice().chrome.measurementStatus === 'simulated' ? '模拟系统区' : '已测量系统区'}</span>
+    </div>
+  `;
+}
+
 function getTabKeyForPage(pageId) {
-  return ['index', 'publish', 'atlas', 'profile'].includes(pageId) ? pageId : null;
+  return TAB_BAR_ITEMS.some((item) => item.key === pageId) ? pageId : null;
 }
 
 function renderTabBar(activeKey) {
+  const metrics = getSelectedDeviceMetrics();
+  const device = getSelectedDevice();
   return `
-    <div class="phone-tabbar">
+    <div
+      class="phone-tabbar"
+      style="
+        min-height: ${metrics.bottomBarHeight}px;
+        --tabbar-height: ${metrics.tabBarHeight}px;
+        --safe-area-bottom: ${metrics.safeAreaBottom}px;
+        --tabbar-padding-top: ${metrics.tabBarPaddingTop}px;
+        --tabbar-padding-horizontal: ${metrics.tabBarPaddingHorizontal}px;
+        --tabbar-padding-bottom: ${metrics.tabBarPaddingBottom}px;
+      "
+    >
       ${TAB_BAR_ITEMS.map((item) => `
         <div class="phone-tabbar-item ${item.key === activeKey ? 'is-active' : ''}">
           <span class="phone-tabbar-icon">${item.icon}</span>
           <span>${item.label}</span>
         </div>
       `).join('')}
+      ${device.safeAreaMeasured ? '' : '<div class="phone-safe-area-note">safe-area 未测量</div>'}
     </div>
   `;
 }
 
 function renderPhoneShell(content) {
-  const device = getDeviceProfile();
+  const metrics = getSelectedDeviceMetrics();
   const activeTab = getTabKeyForPage(state.selectedPageId);
   return `
-    <div class="phone-frame-shell" data-phone-shell style="--device-width: ${device.width}px; --device-height: ${device.height}px;">
+    <div
+      class="phone-frame-shell"
+      data-phone-shell
+      style="
+        --device-width: ${metrics.viewportWidth}px;
+        --device-height: ${metrics.viewportHeight}px;
+        --frame-width: ${metrics.frameWidth}px;
+        --frame-height: ${metrics.frameHeight}px;
+        --frame-padding: ${metrics.framePadding}px;
+        --phone-screen-radius: ${metrics.screenRadius}px;
+        --phone-bottom-bar-height: ${metrics.bottomBarHeight}px;
+      "
+    >
       <div class="phone-frame">
         <div class="phone-screen" data-phone-screen>
-          ${renderStatusBar()}
           <div class="phone-scroll ${activeTab ? 'has-tabbar' : ''}" data-phone-scroll>
-            ${content}
+            <div class="page-content">
+              <div class="phone-top-chrome">
+                ${renderStatusBar()}
+                ${renderNavigationBar()}
+              </div>
+              ${content}
+            </div>
+            ${activeTab ? renderTabBar(activeTab) : ''}
           </div>
-          ${activeTab ? renderTabBar(activeTab) : ''}
         </div>
       </div>
     </div>
@@ -366,8 +462,9 @@ function renderIndexPage() {
 
         <section class="mini-panel mini-primary-entry">
           <div class="mini-entry-icon">🔍</div>
-          ${previewNode('index-primary-button', `
-            <div class="mini-button" style="${styleObjectToString({
+          <div class="mini-actions">
+            ${previewNode('index-primary-button', `
+              <div class="mini-button" style="${styleObjectToString({
               minHeight: button.buttonHeight,
               lineHeight: button.lineHeight || button.buttonHeight,
               background: button.buttonBackground,
@@ -382,7 +479,8 @@ function renderIndexPage() {
               borderWidth: button.borderWidth,
               borderStyle: button.borderWidth && button.borderWidth !== '0' ? 'solid' : 'none'
             })}">${button.text}</div>
-          `)}
+            `)}
+          </div>
         </section>
 
         ${previewNode('index-recommendation-section', `
@@ -394,38 +492,41 @@ function renderIndexPage() {
             borderColor: section.cardBorderColor,
             boxShadow: section.cardShadow
           })}">
-            <div class="mini-section-label">编辑推荐</div>
-            <div class="mini-section-title">先听一段传说，再决定要不要出发</div>
-            <div class="mini-section-subtitle">预览按真实首页层级保留标题区、主入口、推荐区和底部固定 Tab。</div>
+            <div class="mini-section-label mini-recommendation-label">编辑推荐</div>
+            <div class="mini-section-title mini-recommendation-title">先听一段传说，再决定要不要出发</div>
             ${previewNode('index-recommendation-swiper', `
-              <div class="mini-swiper-shell" style="${styleObjectToString({ height: swiper.height || '372rpx', margin: swiper.margin })}">
-                ${previewNode('index-recommendation-card', `
-                  <article class="mini-recommendation-card" style="${styleObjectToString({
-                    background: card.cardBackground,
-                    borderRadius: card.borderRadius,
-                    borderColor: card.cardBorderColor,
-                    boxShadow: card.cardShadow,
-                    margin: card.margin
-                  })}">
-                    <div class="mini-recommendation-cover" style="${coverStyle}">
-                      ${card.imageSrc ? '' : `
-                        <div class="mini-recommendation-cover-placeholder">
-                          <div class="mini-cover-emoji">📖</div>
-                          <div class="mini-cover-text">传说节选</div>
+              <div class="mini-recommendation-swiper-wrap">
+                <div class="mini-swiper-shell" style="${styleObjectToString({ height: swiper.height || '372rpx', margin: swiper.margin })}">
+                  ${previewNode('index-recommendation-card', `
+                    <div class="mini-recommendation-slide">
+                      <article class="mini-recommendation-card" style="${styleObjectToString({
+                        background: card.cardBackground,
+                        borderRadius: card.borderRadius,
+                        borderColor: card.cardBorderColor,
+                        boxShadow: card.cardShadow,
+                        margin: card.margin
+                      })}">
+                        <div class="mini-recommendation-cover" style="${coverStyle}">
+                          ${card.imageSrc ? '' : `
+                            <div class="mini-recommendation-cover-placeholder">
+                              <div class="mini-cover-emoji">📖</div>
+                              <div class="mini-cover-text">传说节选</div>
+                            </div>
+                          `}
                         </div>
-                      `}
+                        <div class="mini-recommendation-body">
+                          <div class="mini-tag">${sampleCard.label}</div>
+                          <div class="mini-recommendation-card-title">${card.text || sampleCard.title}</div>
+                          <div class="mini-recommendation-card-location">${sampleCard.location}</div>
+                          <div class="mini-recommendation-card-summary">${sampleCard.summary}</div>
+                          <div class="mini-recommendation-card-action">${sampleCard.cta}</div>
+                        </div>
+                      </article>
                     </div>
-                    <div class="mini-recommendation-body">
-                      <div class="mini-tag">${sampleCard.label}</div>
-                      <div class="mini-recommendation-card-title">${card.text || sampleCard.title}</div>
-                      <div class="mini-recommendation-card-location">${sampleCard.location}</div>
-                      <div class="mini-recommendation-card-summary">${sampleCard.summary}</div>
-                      <div class="mini-recommendation-card-action">${sampleCard.cta}</div>
-                    </div>
-                  </article>
-                `)}
-                <div class="mini-swiper-dots">
-                  ${cards.map((_, index) => `<span class="mini-swiper-dot ${index === 0 ? 'is-active' : ''}"></span>`).join('')}
+                  `)}
+                  <div class="mini-swiper-dots">
+                    ${cards.map((_, index) => `<span class="mini-swiper-dot ${index === 0 ? 'is-active' : ''}"></span>`).join('')}
+                  </div>
                 </div>
               </div>
             `)}
@@ -1205,6 +1306,7 @@ function renderCanvas() {
   const renderer = pageRenderers[state.selectedPageId];
   return `
     <div class="editor-canvas-body">
+      ${renderPreviewMeta()}
       <div class="editor-canvas-stage" data-canvas-stage>
         ${renderPhoneShell(renderer ? renderer() : '<div class="mini-page">页面预览尚未实现。</div>')}
       </div>
@@ -1302,14 +1404,8 @@ function applyPreviewScale() {
     return;
   }
 
-  const device = getDeviceProfile();
-  const frameWidth = device.width + 24;
-  const frameHeight = device.height + 24;
-  const fitScale = Math.min(
-    1,
-    Math.max(0.35, (stage.clientWidth - 40) / frameWidth),
-    Math.max(0.35, (stage.clientHeight - 40) / frameHeight)
-  );
+  const metrics = getSelectedDeviceMetrics();
+  const fitScale = calculateFitScale(stage.clientWidth, stage.clientHeight, metrics);
 
   uiState.fitScale = Number.isFinite(fitScale) ? fitScale : 1;
   phoneShell.style.setProperty('--preview-scale', String(getCurrentPreviewScale()));
@@ -1346,9 +1442,9 @@ function render() {
         <div class="editor-toolbar-controls">
           <div class="toolbar-group">
             <span class="toolbar-label">设备</span>
-            ${DEVICE_WIDTHS.map((width) => `
-              <button type="button" class="toolbar-button ${width === state.selectedWidth ? 'is-active' : ''}" data-device-width="${width}">
-                ${width}px
+            ${DEVICE_PRESETS.map((device) => `
+              <button type="button" class="toolbar-button ${device.id === state.selectedDeviceId ? 'is-active' : ''}" data-device-id="${device.id}">
+                ${device.name}<span class="toolbar-device-meta">${device.width}×${device.height}</span>
               </button>
             `).join('')}
           </div>
@@ -1545,9 +1641,9 @@ app.addEventListener('click', async (event) => {
     return;
   }
 
-  const deviceButton = event.target.closest('[data-device-width]');
+  const deviceButton = event.target.closest('[data-device-id]');
   if (deviceButton) {
-    setState(selectWidth(state, Number(deviceButton.dataset.deviceWidth)));
+    setState(selectDevice(state, deviceButton.dataset.deviceId));
     return;
   }
 

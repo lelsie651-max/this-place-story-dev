@@ -25,7 +25,7 @@ export function createEditorState() {
     lastSavedHash: serializeDraft(draft),
     selectedPageId: 'index',
     selectedComponentId: 'index-page-title',
-    selectedWidth: 375,
+    selectedDeviceId: 'iphone-6-7-8',
     selectedScale: 'fit'
   };
 }
@@ -125,10 +125,10 @@ export function selectComponent(state, designId) {
   };
 }
 
-export function selectWidth(state, width) {
+export function selectDevice(state, deviceId) {
   return {
     ...state,
-    selectedWidth: width
+    selectedDeviceId: deviceId
   };
 }
 
