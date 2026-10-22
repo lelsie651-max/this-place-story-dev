@@ -1,15 +1,26 @@
 .page {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   box-sizing: border-box;
   padding-bottom: calc(112rpx + env(safe-area-inset-bottom));
-  background:
-    radial-gradient(circle at top, rgba(255, 248, 236, 0.92), rgba(239, 228, 210, 0.92) 48%, rgba(226, 207, 179, 0.96));
+  background: transparent;
+}
+
+.home-background-image {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  z-index: 0;
 }
 
 .home-main {
   flex: 0 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 .hero {
@@ -54,6 +65,26 @@
   padding-top: 42rpx;
   padding-bottom: 38rpx;
   transform: none;
+}
+
+.primary-entry .action-button--image {
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+}
+
+.action-button-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.action-button-label {
+  position: relative;
+  z-index: 1;
 }
 
 .recommendation-section {
@@ -259,4 +290,6 @@
   line-height: 1.6;
   text-align: center;
   color: rgba(91, 57, 34, 0.42);
+  position: relative;
+  z-index: 1;
 }

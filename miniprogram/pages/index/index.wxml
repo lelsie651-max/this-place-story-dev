@@ -1,4 +1,9 @@
 <view class="page">
+  <image
+    class="home-background-image"
+    src="../../assets/backgrounds/home-background-placeholder.png"
+    mode="aspectFill"
+  />
   <view class="home-main">
     <view class="hero">
       <view class="hero-title" data-design-id="index-page-title">此地有传说</view>
@@ -9,7 +14,14 @@
     <view class="primary-entry panel">
       <view class="entry-icon">🔍</view>
       <view class="actions">
-        <button class="action-button" bindtap="goToExplore" data-design-id="index-primary-button">寻找传说</button>
+        <button class="action-button action-button--image" bindtap="goToExplore" data-design-id="index-primary-button">
+          <image
+            class="action-button-image"
+            src="../../assets/buttons/home-primary-button-placeholder.png"
+            mode="scaleToFill"
+          />
+          <text class="action-button-label">寻找传说</text>
+        </button>
       </view>
     </view>
 
