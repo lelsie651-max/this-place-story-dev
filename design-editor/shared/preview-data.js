@@ -1,4 +1,24 @@
-export const DEVICE_WIDTHS = [375, 390, 414];
+export const DEVICE_PROFILES = {
+  375: { width: 375, height: 812, label: '375px' },
+  390: { width: 390, height: 844, label: '390px' },
+  414: { width: 414, height: 896, label: '414px' }
+};
+
+export const DEVICE_WIDTHS = Object.keys(DEVICE_PROFILES).map((item) => Number(item));
+
+export const SCALE_OPTIONS = [
+  { value: '0.5', label: '50%' },
+  { value: '0.75', label: '75%' },
+  { value: '1', label: '100%' },
+  { value: 'fit', label: '适合窗口' }
+];
+
+export const TAB_BAR_ITEMS = [
+  { key: 'index', label: '首页', icon: '◉' },
+  { key: 'publish', label: '投稿', icon: '✎' },
+  { key: 'atlas', label: '足迹', icon: '◎' },
+  { key: 'profile', label: '我的', icon: '◌' }
+];
 
 export const PAGE_SAMPLE_DATA = {
   index: {
@@ -9,8 +29,16 @@ export const PAGE_SAMPLE_DATA = {
         location: '南头古城',
         summary: '先听一段传说，再决定要不要出发。这里的砖墙很会替路人保守秘密，但只保守十五分钟。',
         cta: '免费阅读'
+      },
+      {
+        label: '编辑推荐',
+        title: '鼓浪屿像在偷偷开一场海风听证会',
+        location: '鼓浪屿',
+        summary: '海浪负责提供背景证词，路过的人负责把正常散步演成悬疑片预告。',
+        cta: '免费阅读'
       }
-    ]
+    ],
+    companyName: '深圳市筠竹科技有限公司'
   },
   profile: {
     level: '旅行观察员',

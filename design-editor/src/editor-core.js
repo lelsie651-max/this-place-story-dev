@@ -25,7 +25,8 @@ export function createEditorState() {
     lastSavedHash: serializeDraft(draft),
     selectedPageId: 'index',
     selectedComponentId: 'index-page-title',
-    selectedWidth: 375
+    selectedWidth: 375,
+    selectedScale: 'fit'
   };
 }
 
@@ -128,6 +129,13 @@ export function selectWidth(state, width) {
   return {
     ...state,
     selectedWidth: width
+  };
+}
+
+export function selectScale(state, scale) {
+  return {
+    ...state,
+    selectedScale: scale
   };
 }
 

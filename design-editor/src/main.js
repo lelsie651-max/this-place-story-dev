@@ -10,8 +10,11 @@ import {
   buildComponentCatalog
 } from '../shared/schema.js';
 import {
+  DEVICE_PROFILES,
   DEVICE_WIDTHS,
   PAGE_SAMPLE_DATA,
+  SCALE_OPTIONS,
+  TAB_BAR_ITEMS,
   getDefaultComponentState,
   getDefaultValue
 } from '../shared/preview-data.js';
@@ -28,6 +31,7 @@ import {
   restorePage,
   selectComponent,
   selectPage,
+  selectScale,
   selectWidth,
   undo
 } from './editor-core.js';
@@ -40,10 +44,31 @@ const statusLabels = {
   unsupported: '不支持'
 };
 
+const GROUP_ORDER = [
+  '文字',
+  '背景',
+  '尺寸和间距',
+  '按钮和卡片',
+  '图片和 Banner',
+  '应用状态'
+];
+
 let state = syncSelectedComponent(createEditorState(), createEditorState().selectedPageId);
 let modalState = null;
 
 const app = document.querySelector('#app');
+const uiState = {
+  fitScale: 1,
+  sidebarScrollTop: 0,
+  treeScrollTop: 0,
+  inspectorScrollTop: 0,
+  inspectorScrollByComponent: {},
+  phoneScrollByPage: {},
+  pendingPhoneScrollReset: false,
+  inspectorOpenByComponent: {},
+  resizeObserver: null,
+  lastRenderedPageId: createEditorState().selectedPageId
+};
 
 window.addEventListener('beforeunload', (event) => {
   if (!hasUnsavedChanges(state)) {
@@ -51,6 +76,10 @@ window.addEventListener('beforeunload', (event) => {
   }
   event.preventDefault();
   event.returnValue = '';
+});
+
+window.addEventListener('resize', () => {
+  window.requestAnimationFrame(applyPreviewScale);
 });
 
 function syncSelectedComponent(nextState, pageId) {
@@ -62,6 +91,66 @@ function syncSelectedComponent(nextState, pageId) {
 
   const fallback = components[0]?.designId || nextState.selectedComponentId;
   return selectComponent(nextState, fallback);
+}
+
+function getComponentKey(pageId = state.selectedPageId, designId = state.selectedComponentId) {
+  return `${pageId}:${designId}`;
+}
+
+function captureUiState() {
+  const sidebarBody = app.querySelector('[data-sidebar-scroll]');
+  if (sidebarBody) {
+    uiState.sidebarScrollTop = sidebarBody.scrollTop;
+  }
+
+  const treeBody = app.querySelector('[data-tree-scroll]');
+  if (treeBody) {
+    uiState.treeScrollTop = treeBody.scrollTop;
+  }
+
+  const inspectorBody = app.querySelector('[data-inspector-scroll]');
+  if (inspectorBody) {
+    uiState.inspectorScrollTop = inspectorBody.scrollTop;
+    uiState.inspectorScrollByComponent[getComponentKey()] = inspectorBody.scrollTop;
+  }
+
+  const phoneScroll = app.querySelector('[data-phone-scroll]');
+  if (phoneScroll) {
+    uiState.phoneScrollByPage[uiState.lastRenderedPageId] = phoneScroll.scrollTop;
+  }
+}
+
+function restoreUiState() {
+  window.requestAnimationFrame(() => {
+    const sidebarBody = app.querySelector('[data-sidebar-scroll]');
+    if (sidebarBody) {
+      sidebarBody.scrollTop = uiState.sidebarScrollTop;
+    }
+
+    const treeBody = app.querySelector('[data-tree-scroll]');
+    if (treeBody) {
+      treeBody.scrollTop = uiState.treeScrollTop;
+    }
+
+    const inspectorBody = app.querySelector('[data-inspector-scroll]');
+    if (inspectorBody) {
+      inspectorBody.scrollTop = uiState.inspectorScrollByComponent[getComponentKey()] ?? uiState.inspectorScrollTop;
+    }
+
+    const phoneScroll = app.querySelector('[data-phone-scroll]');
+    if (phoneScroll) {
+      const scrollTop = uiState.pendingPhoneScrollReset
+        ? 0
+        : (uiState.phoneScrollByPage[state.selectedPageId] ?? 0);
+      phoneScroll.scrollTop = scrollTop;
+      uiState.phoneScrollByPage[state.selectedPageId] = scrollTop;
+      uiState.pendingPhoneScrollReset = false;
+    }
+
+    uiState.lastRenderedPageId = state.selectedPageId;
+    bindCanvasResizeObserver();
+    applyPreviewScale();
+  });
 }
 
 function setState(nextState) {
@@ -102,6 +191,10 @@ function getResolvedStyle(designId) {
   return resolved;
 }
 
+function getDeviceProfile() {
+  return DEVICE_PROFILES[state.selectedWidth] || DEVICE_PROFILES[375];
+}
+
 function toPreviewCssValue(value) {
   if (value === undefined || value === null || value === '') {
     return '';
@@ -135,6 +228,96 @@ function previewNode(designId, innerHtml, extraClass = '') {
   `;
 }
 
+function renderStatusBar() {
+  return `
+    <div class="phone-status-bar">
+      <span>9:41</span>
+      <span class="phone-status-icons">
+        <span>5G</span>
+        <span>◖◗</span>
+      </span>
+    </div>
+  `;
+}
+
+function getTabKeyForPage(pageId) {
+  return ['index', 'publish', 'atlas', 'profile'].includes(pageId) ? pageId : null;
+}
+
+function renderTabBar(activeKey) {
+  return `
+    <div class="phone-tabbar">
+      ${TAB_BAR_ITEMS.map((item) => `
+        <div class="phone-tabbar-item ${item.key === activeKey ? 'is-active' : ''}">
+          <span class="phone-tabbar-icon">${item.icon}</span>
+          <span>${item.label}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderPhoneShell(content) {
+  const device = getDeviceProfile();
+  const activeTab = getTabKeyForPage(state.selectedPageId);
+  return `
+    <div class="phone-frame-shell" data-phone-shell style="--device-width: ${device.width}px; --device-height: ${device.height}px;">
+      <div class="phone-frame">
+        <div class="phone-screen" data-phone-screen>
+          ${renderStatusBar()}
+          <div class="phone-scroll ${activeTab ? 'has-tabbar' : ''}" data-phone-scroll>
+            ${content}
+          </div>
+          ${activeTab ? renderTabBar(activeTab) : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function getGroupedProperties(component) {
+  const grouped = component.supportedProperties.reduce((acc, propertyKey) => {
+    const property = PROPERTY_LIBRARY[propertyKey];
+    const groupName = property?.group || '未分类';
+    acc[groupName] = acc[groupName] || [];
+    acc[groupName].push(propertyKey);
+    return acc;
+  }, {});
+
+  return Object.fromEntries(
+    Object.entries(grouped).sort((left, right) => GROUP_ORDER.indexOf(left[0]) - GROUP_ORDER.indexOf(right[0]))
+  );
+}
+
+function getPreferredGroupName(component) {
+  const preferredPropertyKey = component.supportedProperties.find((propertyKey) => PROPERTY_LIBRARY[propertyKey]);
+  return PROPERTY_LIBRARY[preferredPropertyKey]?.group || '文字';
+}
+
+function getExpandedGroups(component, grouped) {
+  const componentKey = getComponentKey(component.page, component.designId);
+  const existing = uiState.inspectorOpenByComponent[componentKey];
+  if (existing?.length) {
+    return existing;
+  }
+
+  const defaultGroup = getPreferredGroupName(component);
+  const fallbackGroup = Object.keys(grouped)[0] || '应用状态';
+  uiState.inspectorOpenByComponent[componentKey] = [defaultGroup || fallbackGroup];
+  return uiState.inspectorOpenByComponent[componentKey];
+}
+
+function toggleInspectorGroup(groupName) {
+  const componentKey = getComponentKey();
+  const current = uiState.inspectorOpenByComponent[componentKey] || [];
+  const next = current.includes(groupName)
+    ? current.filter((item) => item !== groupName)
+    : [...current, groupName];
+
+  uiState.inspectorOpenByComponent[componentKey] = next;
+  render();
+}
+
 function renderIndexPage() {
   const title = getResolvedStyle('index-page-title');
   const subtitle = getResolvedStyle('index-page-subtitle');
@@ -142,22 +325,24 @@ function renderIndexPage() {
   const section = getResolvedStyle('index-recommendation-section');
   const swiper = getResolvedStyle('index-recommendation-swiper');
   const card = getResolvedStyle('index-recommendation-card');
-  const sampleCard = PAGE_SAMPLE_DATA.index.recommendationCards[0];
+  const cards = PAGE_SAMPLE_DATA.index.recommendationCards;
+  const sampleCard = cards[0];
 
   const coverStyle = styleObjectToString({
-    width: card.imageWidth || '214rpx',
-    minWidth: card.imageWidth || '214rpx',
+    width: card.imageWidth || '220rpx',
+    minWidth: card.imageWidth || '220rpx',
     height: card.imageHeight || '312rpx',
     borderRadius: card.imageRadius || '0',
     background: card.imageSrc
       ? `center / ${card.objectFit || 'cover'} no-repeat url("${card.imageSrc}")`
-      : 'linear-gradient(180deg, rgba(214, 188, 149, 0.56), rgba(176, 129, 76, 0.66))'
+      : 'linear-gradient(180deg, rgba(226, 207, 179, 0.95), rgba(212, 184, 149, 0.92))'
   });
 
   return `
-    <div class="mini-page">
-      <section style="margin-bottom: ${toPreviewCssValue('40rpx')}; text-align: center;">
-        ${previewNode('index-page-title', `<div style="${styleObjectToString({
+    <div class="mini-page mini-home-page">
+      <div class="mini-home-main">
+        <section class="mini-home-hero">
+          ${previewNode('index-page-title', `<div class="mini-hero-title" style="${styleObjectToString({
           fontSize: title.fontSize,
           color: title.color,
           fontWeight: title.fontWeight,
@@ -167,7 +352,8 @@ function renderIndexPage() {
           textAlign: title.textAlign,
           margin: title.margin
         })}">${title.text}</div>`)}
-        ${previewNode('index-page-subtitle', `<div style="${styleObjectToString({
+          <div class="mini-hero-english">THIS PLACE HAS LEGENDS</div>
+          ${previewNode('index-page-subtitle', `<div class="mini-hero-subtitle" style="${styleObjectToString({
           fontSize: subtitle.fontSize,
           color: subtitle.color,
           fontWeight: subtitle.fontWeight,
@@ -176,62 +362,77 @@ function renderIndexPage() {
           textAlign: subtitle.textAlign,
           margin: subtitle.margin
         })}">${subtitle.text}</div>`)}
-      </section>
+        </section>
 
-      ${previewNode('index-primary-button', `
-        <div class="mini-button" style="${styleObjectToString({
-          minHeight: button.buttonHeight,
-          lineHeight: button.lineHeight || button.buttonHeight,
-          background: button.buttonBackground,
-          color: button.buttonTextColor,
-          borderRadius: button.buttonRadius,
-          padding: button.padding,
-          boxShadow: button.boxShadow,
-          fontSize: button.fontSize,
-          fontWeight: button.fontWeight,
-          textAlign: button.textAlign,
-          borderColor: button.borderColor,
-          borderWidth: button.borderWidth,
-          borderStyle: button.borderWidth && button.borderWidth !== '0' ? 'solid' : 'none'
-        })}">${button.text}</div>
-      `)}
-
-      ${previewNode('index-recommendation-section', `
-        <section class="mini-panel" style="${styleObjectToString({
-          background: section.cardBackground,
-          padding: section.padding,
-          margin: section.margin,
-          borderRadius: section.borderRadius,
-          borderColor: section.cardBorderColor,
-          boxShadow: section.cardShadow
-        })}">
-          <div class="mini-tag" style="margin-bottom: ${toPreviewCssValue('12rpx')}">编辑推荐</div>
-          <h3 style="margin: 0 0 ${toPreviewCssValue('10rpx')}; font-size: ${toPreviewCssValue('30rpx')}; color: #4a3419;">先听一段传说，再决定要不要出发</h3>
-          <p style="margin: 0 0 ${toPreviewCssValue('22rpx')}; font-size: ${toPreviewCssValue('24rpx')}; color: #7a624c; line-height: 1.6;">当前预览使用设计配置中的静态示例内容。</p>
-          ${previewNode('index-recommendation-swiper', `
-            <div style="${styleObjectToString({ height: swiper.height || '312rpx', margin: swiper.margin })}">
-              ${previewNode('index-recommendation-card', `
-                <article class="mini-card" style="display: flex; overflow: hidden; ${styleObjectToString({
-                  background: card.cardBackground,
-                  borderRadius: card.borderRadius,
-                  borderColor: card.cardBorderColor,
-                  boxShadow: card.cardShadow,
-                  margin: card.margin
-                })}">
-                  <div style="${coverStyle}; display: flex; align-items: center; justify-content: center; color: #fff7ef; font-size: ${toPreviewCssValue('42rpx')};">📖</div>
-                  <div style="padding: ${toPreviewCssValue('28rpx 28rpx 24rpx')}; flex: 1; min-width: 0;">
-                    <div class="mini-tag" style="margin-bottom: ${toPreviewCssValue('12rpx')}">${sampleCard.label}</div>
-                    <div style="font-size: ${toPreviewCssValue('32rpx')}; font-weight: 600; line-height: 1.4; color: #412a1f;">${card.text || sampleCard.title}</div>
-                    <div style="margin-top: ${toPreviewCssValue('8rpx')}; font-size: ${toPreviewCssValue('24rpx')}; color: #8b5e34;">${sampleCard.location}</div>
-                    <div style="margin-top: ${toPreviewCssValue('12rpx')}; font-size: ${toPreviewCssValue('24rpx')}; line-height: 1.6; color: #6f5740;">${sampleCard.summary}</div>
-                    <div style="margin-top: ${toPreviewCssValue('18rpx')}; font-size: ${toPreviewCssValue('24rpx')}; font-weight: 600; color: #6b4527;">${sampleCard.cta}</div>
-                  </div>
-                </article>
-              `)}
-            </div>
+        <section class="mini-panel mini-primary-entry">
+          <div class="mini-entry-icon">🔍</div>
+          ${previewNode('index-primary-button', `
+            <div class="mini-button" style="${styleObjectToString({
+              minHeight: button.buttonHeight,
+              lineHeight: button.lineHeight || button.buttonHeight,
+              background: button.buttonBackground,
+              color: button.buttonTextColor,
+              borderRadius: button.buttonRadius,
+              padding: button.padding,
+              boxShadow: button.boxShadow,
+              fontSize: button.fontSize,
+              fontWeight: button.fontWeight,
+              textAlign: button.textAlign,
+              borderColor: button.borderColor,
+              borderWidth: button.borderWidth,
+              borderStyle: button.borderWidth && button.borderWidth !== '0' ? 'solid' : 'none'
+            })}">${button.text}</div>
           `)}
         </section>
-      `)}
+
+        ${previewNode('index-recommendation-section', `
+          <section class="mini-panel mini-recommendation-section" style="${styleObjectToString({
+            background: section.cardBackground,
+            padding: section.padding,
+            margin: section.margin,
+            borderRadius: section.borderRadius,
+            borderColor: section.cardBorderColor,
+            boxShadow: section.cardShadow
+          })}">
+            <div class="mini-section-label">编辑推荐</div>
+            <div class="mini-section-title">先听一段传说，再决定要不要出发</div>
+            <div class="mini-section-subtitle">预览按真实首页层级保留标题区、主入口、推荐区和底部固定 Tab。</div>
+            ${previewNode('index-recommendation-swiper', `
+              <div class="mini-swiper-shell" style="${styleObjectToString({ height: swiper.height || '372rpx', margin: swiper.margin })}">
+                ${previewNode('index-recommendation-card', `
+                  <article class="mini-recommendation-card" style="${styleObjectToString({
+                    background: card.cardBackground,
+                    borderRadius: card.borderRadius,
+                    borderColor: card.cardBorderColor,
+                    boxShadow: card.cardShadow,
+                    margin: card.margin
+                  })}">
+                    <div class="mini-recommendation-cover" style="${coverStyle}">
+                      ${card.imageSrc ? '' : `
+                        <div class="mini-recommendation-cover-placeholder">
+                          <div class="mini-cover-emoji">📖</div>
+                          <div class="mini-cover-text">传说节选</div>
+                        </div>
+                      `}
+                    </div>
+                    <div class="mini-recommendation-body">
+                      <div class="mini-tag">${sampleCard.label}</div>
+                      <div class="mini-recommendation-card-title">${card.text || sampleCard.title}</div>
+                      <div class="mini-recommendation-card-location">${sampleCard.location}</div>
+                      <div class="mini-recommendation-card-summary">${sampleCard.summary}</div>
+                      <div class="mini-recommendation-card-action">${sampleCard.cta}</div>
+                    </div>
+                  </article>
+                `)}
+                <div class="mini-swiper-dots">
+                  ${cards.map((_, index) => `<span class="mini-swiper-dot ${index === 0 ? 'is-active' : ''}"></span>`).join('')}
+                </div>
+              </div>
+            `)}
+          </section>
+        `)}
+      </div>
+      <div class="mini-company-footer">${PAGE_SAMPLE_DATA.index.companyName}</div>
     </div>
   `;
 }
@@ -881,61 +1082,100 @@ function renderPropertyControl(propertyKey, component) {
   `;
 }
 
+function renderGroup(groupName, count, bodyHtml, isOpen) {
+  return `
+    <section class="inspector-group ${isOpen ? 'is-open' : ''}">
+      <button type="button" class="inspector-group-toggle" data-group-toggle="${groupName}">
+        <span>${groupName}</span>
+        <span class="inspector-group-meta">${count}</span>
+      </button>
+      <div class="inspector-group-body">${bodyHtml}</div>
+    </section>
+  `;
+}
+
+function renderApplicationStatusGroup(component) {
+  const counts = Object.values(component.propertyStates).reduce((acc, item) => {
+    acc[item.status] = (acc[item.status] || 0) + 1;
+    return acc;
+  }, { safe: 0, preview: 0, unsupported: 0 });
+
+  return `
+    <div class="component-summary">
+      <h3>${component.label}</h3>
+      <p>designId：<code>${component.designId}</code></p>
+      <p class="selector-meta">选择器：<code>${component.selector}</code></p>
+      <p class="selector-meta">可安全写入：<code>${component.safeApplySelector || '当前没有稳定 WXSS 选择器'}</code></p>
+    </div>
+    <div class="status-summary-grid">
+      <div class="status-summary-card">
+        <strong>${counts.safe}</strong>
+        <span>可应用</span>
+      </div>
+      <div class="status-summary-card">
+        <strong>${counts.preview}</strong>
+        <span>仅预览</span>
+      </div>
+      <div class="status-summary-card">
+        <strong>${counts.unsupported}</strong>
+        <span>不支持</span>
+      </div>
+    </div>
+    <div class="restore-actions">
+      <button type="button" data-action="restore-component">恢复当前组件</button>
+      <button type="button" data-action="restore-page">恢复当前页面</button>
+      <button type="button" data-action="restore-all">恢复全部默认设计</button>
+    </div>
+    <ul class="legend-list">
+      ${UNSUPPORTED_ITEMS.map((item) => `<li><strong>${item.label}</strong><br>${item.reason}</li>`).join('')}
+    </ul>
+  `;
+}
+
 function renderInspector() {
   const component = getComponent();
   if (!component) {
-    return '<div class="inspector-body"><p class="helper-text">当前页面没有可编辑组件。</p></div>';
+    return `
+      <div class="editor-panel-head">
+        <h2>属性面板</h2>
+        <p>当前页面没有可编辑组件。</p>
+      </div>
+    `;
   }
 
-  const grouped = component.supportedProperties.reduce((acc, propertyKey) => {
-    const property = PROPERTY_LIBRARY[propertyKey];
-    const groupName = property?.group || '未分类';
-    if (!acc[groupName]) {
-      acc[groupName] = [];
-    }
-    acc[groupName].push(propertyKey);
-    return acc;
-  }, {});
+  const grouped = getGroupedProperties(component);
+  const expandedGroups = getExpandedGroups(component, grouped);
 
   return `
-    <div class="panel-header">
+    <div class="editor-panel-head">
       <h2>属性面板</h2>
-      <p>右侧明确区分可安全应用、仅预览和不支持的属性状态。</p>
+      <p>默认只展开当前最相关的一组，滚动和折叠都只发生在右栏内部。</p>
     </div>
-    <div class="inspector-body">
-      <section class="inspector-section component-summary">
-        <h3>${component.label}</h3>
-        <p>designId：<code>${component.designId}</code></p>
-        <p class="selector-meta">选择器：<code>${component.selector}</code></p>
-        <p class="selector-meta">可安全写入：<code>${component.safeApplySelector || '当前没有稳定 WXSS 选择器'}</code></p>
-      </section>
-
-      ${Object.entries(grouped).map(([groupName, propertyKeys]) => `
-        <section class="inspector-section property-group">
-          <h4>${groupName}</h4>
-          ${propertyKeys.map((propertyKey) => renderPropertyControl(propertyKey, component)).join('')}
-        </section>
-      `).join('')}
-
-      <section class="inspector-section">
-        <div class="component-summary">
-          <h3>当前不支持</h3>
-          <ul class="legend-list">
-            ${UNSUPPORTED_ITEMS.map((item) => `<li><strong>${item.label}</strong><br>${item.reason}</li>`).join('')}
-          </ul>
-        </div>
-      </section>
+    <div class="editor-inspector-body" data-inspector-scroll>
+      ${Object.entries(grouped).map(([groupName, propertyKeys]) => renderGroup(
+        groupName,
+        propertyKeys.length,
+        propertyKeys.map((propertyKey) => renderPropertyControl(propertyKey, component)).join(''),
+        expandedGroups.includes(groupName)
+      )).join('')}
+      ${renderGroup(
+        '应用状态',
+        6,
+        renderApplicationStatusGroup(component),
+        expandedGroups.includes('应用状态')
+      )}
     </div>
   `;
 }
 
 function renderSidebar() {
+  const components = catalog.byPage[state.selectedPageId] || [];
   return `
-    <div class="panel-header">
+    <div class="editor-panel-head">
       <h2>页面与组件</h2>
-      <p>左侧按页面切换，并展示当前页面的稳定 designId 组件树。</p>
+      <p>页面列表固定在左栏顶部，组件树在左栏内部独立滚动。</p>
     </div>
-    <div class="sidebar-body">
+    <div class="editor-sidebar-body" data-sidebar-scroll>
       <div class="page-list">
         ${pageList.map((pageId) => `
           <button type="button" class="${pageId === state.selectedPageId ? 'is-active' : ''}" data-page-id="${pageId}">
@@ -943,14 +1183,19 @@ function renderSidebar() {
           </button>
         `).join('')}
       </div>
-      <div class="tree-title">组件树</div>
-      <div class="component-tree">
-        ${(catalog.byPage[state.selectedPageId] || []).map((component) => `
+      <div class="tree-panel">
+        <div class="tree-title-row">
+          <span>组件树</span>
+          <span>${components.length}</span>
+        </div>
+        <div class="component-tree" data-tree-scroll>
+          ${components.map((component) => `
           <button type="button" class="${component.designId === state.selectedComponentId ? 'is-active' : ''}" data-component-id="${component.designId}">
             <strong>${component.label}</strong>
             <code>${component.designId}</code>
           </button>
         `).join('')}
+        </div>
       </div>
     </div>
   `;
@@ -959,36 +1204,9 @@ function renderSidebar() {
 function renderCanvas() {
   const renderer = pageRenderers[state.selectedPageId];
   return `
-    <div class="canvas-header">
-      <h2>设备预览</h2>
-      <p>默认模拟微信小程序页面，使用静态示例数据和当前 design 配置预览。</p>
-      <div class="canvas-toolbar">
-        <div class="device-switch">
-          ${DEVICE_WIDTHS.map((width) => `
-            <button type="button" class="${width === state.selectedWidth ? 'is-active' : ''}" data-device-width="${width}">
-              ${width}px
-            </button>
-          `).join('')}
-        </div>
-        <div class="toolbar-row">
-          <span class="status-pill ${hasUnsavedChanges(state) ? 'is-dirty' : ''}">
-            ${hasUnsavedChanges(state) ? '有未保存修改' : '已与上次导出/应用同步'}
-          </span>
-          <button type="button" data-action="undo">撤销</button>
-          <button type="button" data-action="redo">重做</button>
-          <button type="button" data-action="restore-component">恢复当前组件</button>
-          <button type="button" data-action="restore-page">恢复当前页面</button>
-          <button type="button" data-action="restore-all">恢复全部默认设计</button>
-        </div>
-      </div>
-    </div>
-    <div class="canvas-body">
-      <div class="device-stage">
-        <div class="device-frame" style="--device-width: ${state.selectedWidth}px;">
-          <div class="device-screen">
-            ${renderer ? renderer() : '<div class="mini-page">页面预览尚未实现。</div>'}
-          </div>
-        </div>
+    <div class="editor-canvas-body">
+      <div class="editor-canvas-stage" data-canvas-stage>
+        ${renderPhoneShell(renderer ? renderer() : '<div class="mini-page">页面预览尚未实现。</div>')}
       </div>
     </div>
   `;
@@ -1069,31 +1287,100 @@ function renderModal() {
   return '';
 }
 
+function getCurrentPreviewScale() {
+  if (state.selectedScale === 'fit') {
+    return uiState.fitScale || 1;
+  }
+  return Number(state.selectedScale) || 1;
+}
+
+function applyPreviewScale() {
+  const stage = app.querySelector('[data-canvas-stage]');
+  const phoneShell = app.querySelector('[data-phone-shell]');
+  const fitLabel = app.querySelector('[data-fit-label]');
+  if (!stage || !phoneShell) {
+    return;
+  }
+
+  const device = getDeviceProfile();
+  const frameWidth = device.width + 24;
+  const frameHeight = device.height + 24;
+  const fitScale = Math.min(
+    1,
+    Math.max(0.35, (stage.clientWidth - 40) / frameWidth),
+    Math.max(0.35, (stage.clientHeight - 40) / frameHeight)
+  );
+
+  uiState.fitScale = Number.isFinite(fitScale) ? fitScale : 1;
+  phoneShell.style.setProperty('--preview-scale', String(getCurrentPreviewScale()));
+  if (fitLabel) {
+    fitLabel.textContent = `适合窗口 ${Math.round(uiState.fitScale * 100)}%`;
+  }
+}
+
+function bindCanvasResizeObserver() {
+  if (uiState.resizeObserver) {
+    uiState.resizeObserver.disconnect();
+  }
+
+  const stage = app.querySelector('[data-canvas-stage]');
+  if (!stage || typeof ResizeObserver === 'undefined') {
+    return;
+  }
+
+  uiState.resizeObserver = new ResizeObserver(() => {
+    applyPreviewScale();
+  });
+  uiState.resizeObserver.observe(stage);
+}
+
 function render() {
+  captureUiState();
   app.innerHTML = `
-    <div class="editor-shell">
-      <header class="topbar">
-        <div class="topbar-title">
+    <div class="editor-app">
+      <header class="editor-toolbar">
+        <div class="editor-toolbar-brand">
           <h1>此地有传说 UI 设计编辑器</h1>
-          <p>独立运行在 <code>design-editor/</code>，预览不依赖 CloudBase，也不会在你点“应用到小程序”之前改动 <code>miniprogram/</code>。</p>
+          <p>固定工作台布局，手机预览按真实设备宽高渲染，未点击“应用到小程序”前不会改动 miniprogram。</p>
         </div>
-        <div class="topbar-actions">
-          <span class="status-pill ${hasUnsavedChanges(state) ? 'is-dirty' : ''}">
-            ${hasUnsavedChanges(state) ? '未保存修改提示已开启' : '当前没有未保存修改'}
-          </span>
-          <button type="button" data-action="export" class="primary">导出设计</button>
-          <button type="button" data-action="apply-preview">应用到小程序</button>
+        <div class="editor-toolbar-controls">
+          <div class="toolbar-group">
+            <span class="toolbar-label">设备</span>
+            ${DEVICE_WIDTHS.map((width) => `
+              <button type="button" class="toolbar-button ${width === state.selectedWidth ? 'is-active' : ''}" data-device-width="${width}">
+                ${width}px
+              </button>
+            `).join('')}
+          </div>
+          <div class="toolbar-group">
+            <span class="toolbar-label">缩放</span>
+            ${SCALE_OPTIONS.map((item) => `
+              <button type="button" class="toolbar-button ${String(state.selectedScale) === item.value ? 'is-active' : ''}" data-scale-value="${item.value}">
+                <span ${item.value === 'fit' ? 'data-fit-label' : ''}>${item.label}</span>
+              </button>
+            `).join('')}
+          </div>
+          <div class="toolbar-group">
+            <span class="status-pill ${hasUnsavedChanges(state) ? 'is-dirty' : ''}">
+              ${hasUnsavedChanges(state) ? '有未保存修改' : '已与最近导出/应用同步'}
+            </span>
+            <button type="button" class="toolbar-button" data-action="undo">撤销</button>
+            <button type="button" class="toolbar-button" data-action="redo">重做</button>
+            <button type="button" class="toolbar-button toolbar-button--primary" data-action="export">导出设计</button>
+            <button type="button" class="toolbar-button" data-action="apply-preview">应用到小程序</button>
+          </div>
         </div>
       </header>
 
-      <main class="workspace">
-        <aside class="sidebar">${renderSidebar()}</aside>
-        <section class="canvas-panel">${renderCanvas()}</section>
-        <aside class="inspector">${renderInspector()}</aside>
+      <main class="editor-workspace">
+        <aside class="editor-sidebar">${renderSidebar()}</aside>
+        <section class="editor-canvas">${renderCanvas()}</section>
+        <aside class="editor-inspector">${renderInspector()}</aside>
       </main>
     </div>
     ${renderModal()}
   `;
+  restoreUiState();
 }
 
 function toBase64(file) {
@@ -1238,8 +1525,15 @@ app.addEventListener('click', async (event) => {
     return;
   }
 
+  const groupToggle = event.target.closest('[data-group-toggle]');
+  if (groupToggle) {
+    toggleInspectorGroup(groupToggle.dataset.groupToggle);
+    return;
+  }
+
   const pageButton = event.target.closest('[data-page-id]');
   if (pageButton) {
+    uiState.pendingPhoneScrollReset = true;
     const nextState = syncSelectedComponent(selectPage(state, pageButton.dataset.pageId), pageButton.dataset.pageId);
     setState(nextState);
     return;
@@ -1254,6 +1548,12 @@ app.addEventListener('click', async (event) => {
   const deviceButton = event.target.closest('[data-device-width]');
   if (deviceButton) {
     setState(selectWidth(state, Number(deviceButton.dataset.deviceWidth)));
+    return;
+  }
+
+  const scaleButton = event.target.closest('[data-scale-value]');
+  if (scaleButton) {
+    setState(selectScale(state, scaleButton.dataset.scaleValue));
     return;
   }
 
@@ -1273,9 +1573,11 @@ app.addEventListener('click', async (event) => {
       setState(restoreComponent(state, state.selectedPageId, state.selectedComponentId));
       return;
     case 'restore-page':
+      uiState.pendingPhoneScrollReset = true;
       setState(restorePage(state, state.selectedPageId));
       return;
     case 'restore-all':
+      uiState.pendingPhoneScrollReset = true;
       setState(restoreAll(state));
       return;
     case 'export':
