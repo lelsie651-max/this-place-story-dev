@@ -1,0 +1,658 @@
+{
+  "generatedAt": "2026-10-22",
+  "project": "此地有传说",
+  "measurement": {
+    "mode": "static-source-audit",
+    "runtimeMeasured": false,
+    "reason": "当前 CLI 环境无法直接进入微信开发者工具或真机执行 wx.createSelectorQuery。",
+    "recommendedRuntimeTargets": [
+      "home-title",
+      "home-primary-button",
+      "home-recommendation-section",
+      "home-recommendation-card",
+      "profile-assets-card",
+      "profile-menu-item",
+      "atlas-item-card",
+      "publish-title-input",
+      "publish-content-input",
+      "native-tab-bar"
+    ]
+  },
+  "pages": [
+    {
+      "page": "index",
+      "path": "miniprogram/pages/index",
+      "dynamic": true,
+      "layoutMode": [
+        "flow",
+        "flex",
+        "swiper"
+      ],
+      "businessRisk": [
+        "推荐卡片点击链路",
+        "免费阅读逻辑",
+        "底部安全区适配"
+      ]
+    },
+    {
+      "page": "profile",
+      "path": "miniprogram/pages/profile",
+      "dynamic": true,
+      "layoutMode": [
+        "flow",
+        "flex"
+      ],
+      "businessRisk": [
+        "广告奖励按钮",
+        "动态计数",
+        "tab 跳转"
+      ]
+    },
+    {
+      "page": "atlas",
+      "path": "miniprogram/pages/atlas",
+      "dynamic": true,
+      "layoutMode": [
+        "flow"
+      ],
+      "businessRisk": [
+        "足迹列表",
+        "空状态/错误状态"
+      ]
+    },
+    {
+      "page": "discovery",
+      "path": "miniprogram/pages/discovery",
+      "dynamic": true,
+      "layoutMode": [
+        "flow"
+      ],
+      "businessRisk": [
+        "地点选点",
+        "地点列表跳转"
+      ]
+    },
+    {
+      "page": "location",
+      "path": "miniprogram/pages/location",
+      "dynamic": true,
+      "layoutMode": [
+        "grid",
+        "flow",
+        "fixed-mask"
+      ],
+      "businessRisk": [
+        "放大镜扣减",
+        "请求遮罩",
+        "故事模式选择",
+        "足迹写入"
+      ]
+    },
+    {
+      "page": "story",
+      "path": "miniprogram/pages/story",
+      "dynamic": true,
+      "layoutMode": [
+        "flow",
+        "flex"
+      ],
+      "businessRisk": [
+        "AI/非AI双布局",
+        "收藏按钮",
+        "返回链路"
+      ]
+    },
+    {
+      "page": "publish",
+      "path": "miniprogram/pages/publish",
+      "dynamic": true,
+      "layoutMode": [
+        "flow"
+      ],
+      "businessRisk": [
+        "地点选择",
+        "表单状态",
+        "提交按钮"
+      ]
+    },
+    {
+      "page": "myStories",
+      "path": "miniprogram/pages/myStories",
+      "dynamic": true,
+      "layoutMode": [
+        "flow"
+      ],
+      "businessRisk": [
+        "审核状态展示",
+        "列表跳转"
+      ]
+    },
+    {
+      "page": "myStoryPreview",
+      "path": "miniprogram/pages/myStoryPreview",
+      "dynamic": true,
+      "layoutMode": [
+        "flow",
+        "flex"
+      ],
+      "businessRisk": [
+        "拒绝原因展示",
+        "编辑/删除按钮显隐"
+      ]
+    },
+    {
+      "page": "myStoryEdit",
+      "path": "miniprogram/pages/myStoryEdit",
+      "dynamic": true,
+      "layoutMode": [
+        "flow"
+      ],
+      "businessRisk": [
+        "表单回填",
+        "提交校验"
+      ]
+    }
+  ],
+  "tokens": {
+    "hasUnifiedTokenFile": false,
+    "sharedBaseStyles": [
+      ".page",
+      ".section-label",
+      ".page-title",
+      ".page-subtitle",
+      ".panel",
+      ".panel-title",
+      ".panel-text",
+      ".tag",
+      ".actions",
+      ".action-button"
+    ],
+    "topColors": [
+      { "value": "#8b5e34", "count": 23 },
+      { "value": "#4c3424", "count": 17 },
+      { "value": "#6b4527", "count": 11 },
+      { "value": "rgba(140, 94, 52, 0.12)", "count": 10 },
+      { "value": "#8a725c", "count": 9 }
+    ],
+    "topFontSizes": [
+      { "value": "24rpx", "count": 19 },
+      { "value": "28rpx", "count": 12 },
+      { "value": "26rpx", "count": 9 },
+      { "value": "36rpx", "count": 7 },
+      { "value": "32rpx", "count": 6 }
+    ],
+    "topRadii": [
+      { "value": "999rpx", "count": 17 },
+      { "value": "50%", "count": 5 },
+      { "value": "28rpx", "count": 3 },
+      { "value": "22rpx", "count": 3 }
+    ]
+  },
+  "resources": {
+    "hasImagesDirectory": false,
+    "hasAssetsDirectory": false,
+    "usesCustomFont": false,
+    "fontFamily": "\"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+    "tabBarHasLocalIcons": false,
+    "imageNodesCount": 1,
+    "backgroundImageUsage": [],
+    "notes": [
+      "首页推荐卡片是当前唯一显式 image 节点。",
+      "当前页面视觉主要依赖渐变、纯色、阴影、emoji 和文字。",
+      "未发现 @font-face、远程字体 URL、iconPath 或 selectedIconPath。"
+    ]
+  },
+  "components": [
+    {
+      "componentId": "home-title",
+      "page": "index",
+      "selector": ".hero-title",
+      "stableIdPresent": false,
+      "wxmlNode": "view.hero-title",
+      "styleSource": "miniprogram/pages/index/index.wxss:.hero-title",
+      "size": {
+        "width": "auto",
+        "height": "auto"
+      },
+      "spacing": {
+        "marginBottom": "14rpx",
+        "padding": "0"
+      },
+      "position": {
+        "mode": "flow",
+        "align": "text-align:center"
+      },
+      "typography": {
+        "fontSize": "72rpx",
+        "lineHeight": "1.2",
+        "fontWeight": "600",
+        "color": "#412a1f"
+      },
+      "background": "none",
+      "radius": "0",
+      "border": "none",
+      "shadow": "none",
+      "editable": [
+        "font",
+        "spacing",
+        "color"
+      ]
+    },
+    {
+      "componentId": "home-primary-button",
+      "page": "index",
+      "selector": ".primary-entry .action-button",
+      "stableIdPresent": false,
+      "wxmlNode": "button.action-button",
+      "styleSource": "miniprogram/app.wxss:.action-button",
+      "size": {
+        "width": "100%",
+        "minHeight": "96rpx"
+      },
+      "spacing": {
+        "marginTop": "12rpx (via .actions)",
+        "padding": "0"
+      },
+      "position": {
+        "mode": "flow",
+        "align": "center"
+      },
+      "typography": {
+        "fontSize": "32rpx",
+        "lineHeight": "96rpx",
+        "fontWeight": "600",
+        "color": "#ffffff"
+      },
+      "background": "linear-gradient(135deg, #9b6937, #6b4527)",
+      "radius": "999rpx",
+      "border": "none",
+      "shadow": "0 14rpx 30rpx rgba(107, 69, 39, 0.2)",
+      "editable": [
+        "size",
+        "spacing",
+        "background",
+        "radius",
+        "font",
+        "shadow"
+      ]
+    },
+    {
+      "componentId": "home-recommendation-card",
+      "page": "index",
+      "selector": ".recommendation-card",
+      "stableIdPresent": false,
+      "wxmlNode": "view.recommendation-card",
+      "styleSource": "miniprogram/pages/index/index.wxss:.recommendation-card",
+      "size": {
+        "width": "100%",
+        "height": "300rpx"
+      },
+      "spacing": {
+        "margin": "0",
+        "padding": "0"
+      },
+      "position": {
+        "mode": "flex",
+        "align": "cover + content columns"
+      },
+      "typography": {
+        "titleFontSize": "32rpx",
+        "summaryFontSize": "24rpx"
+      },
+      "background": "linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(248, 238, 220, 0.98))",
+      "radius": "28rpx",
+      "border": "1rpx solid rgba(140, 94, 52, 0.12)",
+      "shadow": "0 20rpx 36rpx rgba(107, 69, 39, 0.12)",
+      "editable": [
+        "background",
+        "radius",
+        "shadow",
+        "cover",
+        "font",
+        "spacing"
+      ]
+    },
+    {
+      "componentId": "profile-assets-card",
+      "page": "profile",
+      "selector": ".asset-panel",
+      "stableIdPresent": false,
+      "wxmlNode": "view.asset-panel.panel",
+      "styleSource": "miniprogram/pages/profile/profile.wxss:.asset-panel",
+      "size": {
+        "width": "auto",
+        "height": "auto"
+      },
+      "spacing": {
+        "marginBottom": "32rpx",
+        "padding": "32rpx (via .panel)"
+      },
+      "position": {
+        "mode": "flow",
+        "align": "block"
+      },
+      "typography": {
+        "numberFontSize": "58rpx",
+        "labelFontSize": "24rpx"
+      },
+      "background": "linear-gradient(180deg, rgba(255, 249, 238, 0.98), rgba(246, 232, 208, 0.96))",
+      "radius": "28rpx",
+      "border": "1rpx solid rgba(140, 94, 52, 0.12)",
+      "shadow": "0 16rpx 40rpx rgba(108, 74, 45, 0.08)",
+      "editable": [
+        "background",
+        "spacing",
+        "font",
+        "radius"
+      ]
+    },
+    {
+      "componentId": "profile-menu-item",
+      "page": "profile",
+      "selector": ".menu-item",
+      "stableIdPresent": false,
+      "wxmlNode": "view.menu-item.panel",
+      "styleSource": "miniprogram/pages/profile/profile.wxss:.menu-item",
+      "size": {
+        "width": "auto",
+        "height": "auto"
+      },
+      "spacing": {
+        "marginBottom": "28rpx (via .panel)",
+        "paddingTop": "28rpx",
+        "paddingBottom": "28rpx"
+      },
+      "position": {
+        "mode": "flex",
+        "align": "space-between"
+      },
+      "typography": {
+        "fontSize": "32rpx",
+        "subtextFontSize": "22rpx"
+      },
+      "background": "panel background",
+      "radius": "28rpx",
+      "border": "1rpx solid rgba(140, 94, 52, 0.12)",
+      "shadow": "0 16rpx 40rpx rgba(108, 74, 45, 0.08)",
+      "editable": [
+        "icon",
+        "font",
+        "spacing",
+        "background"
+      ]
+    },
+    {
+      "componentId": "atlas-item-card",
+      "page": "atlas",
+      "selector": ".atlas-card",
+      "stableIdPresent": false,
+      "wxmlNode": "view.atlas-card.panel",
+      "styleSource": "miniprogram/pages/atlas/atlas.wxss:.atlas-card",
+      "size": {
+        "width": "auto",
+        "height": "auto"
+      },
+      "spacing": {
+        "marginBottom": "28rpx (via .panel)",
+        "padding": "32rpx (via .panel)"
+      },
+      "position": {
+        "mode": "flow",
+        "align": "block"
+      },
+      "typography": {
+        "locationFontSize": "36rpx",
+        "timeFontSize": "26rpx"
+      },
+      "background": "panel background",
+      "radius": "28rpx",
+      "border": "1rpx solid rgba(140, 94, 52, 0.12)",
+      "shadow": "0 16rpx 40rpx rgba(108, 74, 45, 0.08)",
+      "editable": [
+        "background",
+        "spacing",
+        "font",
+        "tag"
+      ]
+    },
+    {
+      "componentId": "discovery-location-card",
+      "page": "discovery",
+      "selector": ".mode-card",
+      "stableIdPresent": false,
+      "wxmlNode": "view.mode-card.panel",
+      "styleSource": "miniprogram/pages/discovery/discovery.wxss:.mode-card",
+      "size": {
+        "width": "auto",
+        "height": "auto"
+      },
+      "spacing": {
+        "marginBottom": "28rpx (via .panel)",
+        "padding": "32rpx (via .panel)"
+      },
+      "position": {
+        "mode": "flow + relative",
+        "align": "block"
+      },
+      "typography": {
+        "titleFontSize": "36rpx",
+        "entryFontSize": "28rpx"
+      },
+      "background": "panel background + decorative radial highlight",
+      "radius": "28rpx",
+      "border": "1rpx solid rgba(140, 94, 52, 0.12)",
+      "shadow": "0 16rpx 40rpx rgba(108, 74, 45, 0.08)",
+      "editable": [
+        "background",
+        "badgeColor",
+        "spacing",
+        "font"
+      ]
+    },
+    {
+      "componentId": "location-request-mask",
+      "page": "location",
+      "selector": ".search-mask",
+      "stableIdPresent": false,
+      "wxmlNode": "view.search-mask > view.search-panel",
+      "styleSource": "miniprogram/pages/location/location.wxss:.search-mask,.search-panel",
+      "size": {
+        "width": "fixed inset 0 / panel 100%",
+        "height": "full screen / auto"
+      },
+      "spacing": {
+        "maskPadding": "48rpx",
+        "panelPadding": "56rpx 44rpx"
+      },
+      "position": {
+        "mode": "fixed",
+        "align": "center"
+      },
+      "typography": {
+        "titleFontSize": "36rpx",
+        "textFontSize": "28rpx"
+      },
+      "background": "rgba(73, 46, 23, 0.42) + warm panel gradient",
+      "radius": "32rpx",
+      "border": "none",
+      "shadow": "0 24rpx 60rpx rgba(73, 46, 23, 0.18)",
+      "editable": [
+        "panelBackground",
+        "radius",
+        "shadow",
+        "font"
+      ],
+      "doNotEdit": [
+        "position",
+        "fullscreen behavior",
+        "z-index"
+      ]
+    },
+    {
+      "componentId": "story-forum-card",
+      "page": "story",
+      "selector": ".story-forum-card",
+      "stableIdPresent": false,
+      "wxmlNode": "view.story-forum-card.panel",
+      "styleSource": "miniprogram/pages/story/story.wxss:.story-forum-card",
+      "size": {
+        "width": "auto",
+        "height": "auto"
+      },
+      "spacing": {
+        "padding": "34rpx 30rpx"
+      },
+      "position": {
+        "mode": "flow",
+        "align": "block"
+      },
+      "typography": {
+        "titleFontSize": "46rpx",
+        "authorFontSize": "34rpx",
+        "metaFontSize": "24rpx"
+      },
+      "background": "linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(248, 239, 226, 0.95))",
+      "radius": "28rpx",
+      "border": "1rpx solid rgba(140, 94, 52, 0.12)",
+      "shadow": "0 16rpx 40rpx rgba(108, 74, 45, 0.08)",
+      "editable": [
+        "background",
+        "avatarPalette",
+        "font",
+        "spacing"
+      ]
+    },
+    {
+      "componentId": "publish-title-input",
+      "page": "publish",
+      "selector": ".text-input",
+      "stableIdPresent": false,
+      "wxmlNode": "input.text-input",
+      "styleSource": "miniprogram/pages/publish/publish.wxss:.text-input",
+      "size": {
+        "width": "100%",
+        "minHeight": "92rpx"
+      },
+      "spacing": {
+        "paddingLeftRight": "24rpx"
+      },
+      "position": {
+        "mode": "flow",
+        "align": "block"
+      },
+      "typography": {
+        "fontSize": "inherits page",
+        "lineHeight": "92rpx",
+        "color": "#4c3424"
+      },
+      "background": "rgba(255, 247, 235, 0.92)",
+      "radius": "22rpx",
+      "border": "none",
+      "shadow": "none",
+      "editable": [
+        "background",
+        "radius",
+        "padding",
+        "font",
+        "minHeight"
+      ]
+    },
+    {
+      "componentId": "publish-content-input",
+      "page": "publish",
+      "selector": ".text-area",
+      "stableIdPresent": false,
+      "wxmlNode": "textarea.text-area",
+      "styleSource": "miniprogram/pages/publish/publish.wxss:.text-area",
+      "size": {
+        "width": "100%",
+        "minHeight": "280rpx"
+      },
+      "spacing": {
+        "padding": "24rpx"
+      },
+      "position": {
+        "mode": "flow",
+        "align": "block"
+      },
+      "typography": {
+        "fontSize": "inherits page",
+        "lineHeight": "1.8",
+        "color": "#4c3424"
+      },
+      "background": "rgba(255, 247, 235, 0.92)",
+      "radius": "22rpx",
+      "border": "none",
+      "shadow": "none",
+      "editable": [
+        "background",
+        "radius",
+        "padding",
+        "font",
+        "minHeight"
+      ]
+    },
+    {
+      "componentId": "my-story-reason-banner",
+      "page": "myStoryPreview",
+      "selector": ".story-reason-banner",
+      "stableIdPresent": false,
+      "wxmlNode": "view.story-reason-banner",
+      "styleSource": "miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.story-reason-banner",
+      "size": {
+        "width": "auto",
+        "height": "auto"
+      },
+      "spacing": {
+        "marginBottom": "24rpx",
+        "padding": "18rpx 20rpx"
+      },
+      "position": {
+        "mode": "flow",
+        "align": "block"
+      },
+      "typography": {
+        "fontSize": "26rpx",
+        "lineHeight": "1.7",
+        "color": "#8a4d4d"
+      },
+      "background": "rgba(169, 90, 90, 0.08)",
+      "radius": "20rpx",
+      "border": "none",
+      "shadow": "none",
+      "editable": [
+        "background",
+        "font",
+        "spacing",
+        "radius"
+      ]
+    }
+  ],
+  "editorFeasibility": {
+    "recommended": true,
+    "recommendedOutput": "JSON config first, optional WXSS generation later",
+    "needsStableIdsFirst": true,
+    "needsUnifiedTokensFirst": true,
+    "allowDirectDragAbsoluteLayout": false,
+    "editableFirstBatch": [
+      "index",
+      "profile",
+      "atlas",
+      "publish"
+    ],
+    "shouldSupport": [
+      "undo",
+      "redo",
+      "resetToDefault",
+      "designVersioning",
+      "narrow-width preview",
+      "multi-theme"
+    ],
+    "recommendedFiles": [
+      "design-tokens.json",
+      "page-layout.json",
+      "asset-manifest.json",
+      "component-registry.json"
+    ]
+  }
+}

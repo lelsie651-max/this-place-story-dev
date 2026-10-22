@@ -121,7 +121,6 @@ Page({
     devTestToolsChecking: false,
     devTestToolsEnvVersion: 'release',
     menuItems: [
-      { key: 'atlas', label: '我的图鉴', icon: '🗺', route: '/pages/atlas/atlas' },
       { key: 'favorites', label: '我的收藏', icon: '🤍', route: '/pages/favorites/favorites' },
       { key: 'stories', label: '我的投稿', icon: '📖', route: '/pages/myStories/myStories' },
       { key: 'language', label: '语言设置', icon: '🌐' },

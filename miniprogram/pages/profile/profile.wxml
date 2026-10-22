@@ -8,7 +8,7 @@
 
   <view class="page-title">个人中心</view>
   <view class="page-subtitle">
-    在这里查看你的收藏、图鉴和当前可用资源。
+    在这里查看你的收藏、投稿和当前可用资源。
   </view>
 
   <view class="asset-panel panel">
