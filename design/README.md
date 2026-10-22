@@ -150,3 +150,16 @@ design-editor/
 - `data-design-id` 是本轮选用的稳定标识方案，因为它不会影响现有布局和事件。
 - 当前 tabBar 为微信原生 tabBar，颜色可以被设计系统管理，但精确高度仍要通过运行时测量补足。
 - 当前项目没有本地图片目录，也没有自定义字体文件；未来替换资源前要先确定包体、兼容性和裁切规则。
+
+## 语义映射规则
+
+- token 不能只看颜色数值是否相同，还要看真实用途。
+- 即使数值相同，如果语义不同，也要拆成不同 token。
+  - 例如：`cardBackground`
+  - `inputBackground`
+  - `ghostButtonBackground`
+- 组件 selector 以后优先使用 `data-design-id`，避免依赖页面文案、动态 route、用户数据或临时 class 组合。
+- 编辑器只应控制视觉层，不应直接修改业务 JS。
+- 编辑器不应控制云函数、数据查询、页面跳转和权限逻辑。
+- `discovery-location-picker` 是地点选择按钮，不是输入框。
+- `location-magnifying-badge` 是地点页徽章，不是次按钮。

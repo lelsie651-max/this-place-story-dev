@@ -96,7 +96,8 @@
     {
       "designId": "profile-favorites-entry",
       "page": "profile",
-      "selector": ".menu-item[data-route='/pages/favorites/favorites']",
+      "selectorType": "data-design-id",
+      "selector": "[data-design-id='profile-favorites-entry']",
       "sourceFile": "miniprogram/pages/profile/profile.wxml",
       "styleFile": "miniprogram/pages/profile/profile.wxss",
       "role": "menu-entry",
@@ -107,7 +108,8 @@
     {
       "designId": "profile-submissions-entry",
       "page": "profile",
-      "selector": ".menu-item[data-route='/pages/myStories/myStories']",
+      "selectorType": "data-design-id",
+      "selector": "[data-design-id='profile-submissions-entry']",
       "sourceFile": "miniprogram/pages/profile/profile.wxml",
       "styleFile": "miniprogram/pages/profile/profile.wxss",
       "role": "menu-entry",
@@ -118,7 +120,8 @@
     {
       "designId": "profile-language-entry",
       "page": "profile",
-      "selector": ".menu-item",
+      "selectorType": "data-design-id",
+      "selector": "[data-design-id='profile-language-entry']",
       "sourceFile": "miniprogram/pages/profile/profile.wxml",
       "styleFile": "miniprogram/pages/profile/profile.wxss",
       "role": "menu-entry",
@@ -129,7 +132,8 @@
     {
       "designId": "profile-settings-entry",
       "page": "profile",
-      "selector": ".menu-item",
+      "selectorType": "data-design-id",
+      "selector": "[data-design-id='profile-settings-entry']",
       "sourceFile": "miniprogram/pages/profile/profile.wxml",
       "styleFile": "miniprogram/pages/profile/profile.wxss",
       "role": "menu-entry",
@@ -182,15 +186,17 @@
       "notes": "Location discovery page title."
     },
     {
-      "designId": "discovery-search-input",
+      "designId": "discovery-location-picker",
       "page": "discovery",
-      "selector": ".choose-location-button",
+      "controlType": "button",
+      "selectorType": "data-design-id",
+      "selector": "[data-design-id='discovery-location-picker']",
       "sourceFile": "miniprogram/pages/discovery/discovery.wxml",
       "styleFile": "miniprogram/pages/discovery/discovery.wxss",
-      "role": "location-selector",
-      "editableProperties": ["text", "fontSize", "color", "background", "borderRadius", "shadow", "margin"],
+      "role": "location-picker-button",
+      "editableProperties": ["text", "fontFamily", "fontSize", "fontWeight", "color", "backgroundColor", "borderRadius", "padding", "margin", "shadow"],
       "layoutMode": "flow",
-      "notes": "Current page has no text input; the location chooser button is the stable entry point for future editor control."
+      "notes": "This is the location choose button. It is not a text input and should be matched through data-design-id."
     },
     {
       "designId": "discovery-location-card",
@@ -327,7 +333,8 @@
     {
       "designId": "publish-location-selector",
       "page": "publish",
-      "selector": ".field-card[bindtap='chooseLocation']",
+      "selectorType": "data-design-id",
+      "selector": "[data-design-id='publish-location-selector']",
       "sourceFile": "miniprogram/pages/publish/publish.wxml",
       "styleFile": "miniprogram/pages/publish/publish.wxss",
       "role": "location-selector",

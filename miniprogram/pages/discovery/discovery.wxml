@@ -5,7 +5,7 @@
   </view>
 
   <view class="location-entry panel">
-    <button class="choose-location-button" bindtap="handleChooseLocation" loading="{{chooseLocationLoading}}" data-design-id="discovery-search-input">
+    <button class="choose-location-button" bindtap="handleChooseLocation" loading="{{chooseLocationLoading}}" data-design-id="discovery-location-picker">
       选择你的位置
     </button>
   </view>

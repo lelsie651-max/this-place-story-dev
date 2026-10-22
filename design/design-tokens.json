@@ -63,10 +63,6 @@
     "cardBackground": {
       "values": [
         {
-          "value": "rgba(255, 247, 235, 0.92)",
-          "source": "miniprogram/pages/publish/publish.wxss:.text-input, miniprogram/pages/myStoryEdit/myStoryEdit.wxss:.text-input, miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.action-button--ghost"
-        },
-        {
           "value": "rgba(255, 247, 235, 0.88)",
           "source": "miniprogram/pages/story/story.wxss:.story-meta"
         },
@@ -75,7 +71,37 @@
           "source": "miniprogram/pages/index/index.wxss:.recommendation-skeleton-card"
         }
       ],
-      "notes": "Input and meta surfaces use a slightly denser beige fill than the shared panel."
+      "notes": "Only card-container surfaces are recorded here. Inputs and ghost buttons keep their own semantic tokens even when a numeric color is similar."
+    },
+    "inputBackground": {
+      "values": [
+        {
+          "value": "rgba(255, 247, 235, 0.92)",
+          "source": "miniprogram/pages/publish/publish.wxss:.text-input, .text-area"
+        },
+        {
+          "value": "rgba(255, 247, 235, 0.92)",
+          "source": "miniprogram/pages/myStoryEdit/myStoryEdit.wxss:.text-input, .text-area"
+        }
+      ],
+      "notes": "Current publish and edit inputs use the same numeric background value, but they are tracked separately from card backgrounds because the semantic role is input."
+    },
+    "ghostButtonBackground": {
+      "values": [
+        {
+          "value": "rgba(255, 247, 235, 0.72)",
+          "source": "miniprogram/app.wxss:.action-button.ghost"
+        },
+        {
+          "value": "rgba(255, 247, 235, 0.92)",
+          "source": "miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.action-button--ghost"
+        },
+        {
+          "value": "rgba(255, 247, 235, 0.92)",
+          "source": "miniprogram/pages/myStoryEdit/myStoryEdit.wxss:.action-button--ghost"
+        }
+      ],
+      "notes": "Ghost and secondary-style button surfaces may share a close beige value with inputs, but the semantic role here is button."
     },
     "primary": {
       "values": [
@@ -554,12 +580,9 @@
           {
             "value": "96rpx",
             "source": "miniprogram/app.wxss:.action-button.secondary"
-          },
-          {
-            "value": "84rpx",
-            "source": "miniprogram/pages/discovery/discovery.wxss:.choose-location-button line-height"
           }
-        ]
+        ],
+        "notes": "Current shared secondary buttons inherit the base action-button height. The discovery location picker is tracked separately because it is a dedicated picker control, not a shared secondary button."
       },
       "backgroundColor": {
         "values": [
@@ -572,6 +595,59 @@
             "source": "miniprogram/app.wxss:.action-button.ghost"
           },
           {
+            "value": "rgba(255, 247, 235, 0.92)",
+            "source": "miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.action-button--ghost, miniprogram/pages/myStoryEdit/myStoryEdit.wxss:.action-button--ghost"
+          }
+        ],
+        "notes": "Only real secondary or ghost button surfaces are kept here."
+      },
+      "borderRadius": {
+        "values": [
+          {
+            "value": "999rpx",
+            "source": "miniprogram/app.wxss:.action-button.secondary, .action-button.ghost"
+          }
+        ],
+        "notes": "Shared secondary/ghost buttons use the shared pill radius. The discovery location picker keeps its own component token."
+      },
+      "padding": {
+        "values": [
+          {
+            "value": "not declared",
+            "source": "miniprogram/app.wxss:.action-button.secondary",
+            "usage": "shared secondary button"
+          },
+          {
+            "value": "not declared",
+            "source": "miniprogram/app.wxss:.action-button.ghost",
+            "usage": "shared ghost button"
+          },
+          {
+            "value": "not declared",
+            "source": "miniprogram/pages/myStoryPreview/myStoryPreview.wxss:.action-button--ghost",
+            "usage": "preview return button modifier"
+          },
+          {
+            "value": "not declared",
+            "source": "miniprogram/pages/myStoryEdit/myStoryEdit.wxss:.action-button--ghost",
+            "usage": "edit cancel or return button modifier"
+          }
+        ],
+        "notes": "Current secondary buttons do not define an explicit padding token. Layout is driven by the shared action-button height and line-height, so no badge value is used as a substitute."
+      }
+    },
+    "locationPickerButton": {
+      "height": {
+        "values": [
+          {
+            "value": "84rpx",
+            "source": "miniprogram/pages/discovery/discovery.wxss:.choose-location-button line-height"
+          }
+        ]
+      },
+      "backgroundColor": {
+        "values": [
+          {
             "value": "linear-gradient(180deg, rgba(255, 249, 241, 0.98), rgba(246, 234, 214, 0.96))",
             "source": "miniprogram/pages/discovery/discovery.wxss:.choose-location-button"
           }
@@ -581,7 +657,26 @@
         "values": [
           {
             "value": "999rpx",
-            "source": "miniprogram/app.wxss:.action-button.secondary, .action-button.ghost, miniprogram/pages/discovery/discovery.wxss:.choose-location-button"
+            "source": "miniprogram/pages/discovery/discovery.wxss:.choose-location-button"
+          }
+        ]
+      },
+      "padding": {
+        "values": [
+          {
+            "value": "not declared",
+            "source": "miniprogram/pages/discovery/discovery.wxss:.choose-location-button"
+          }
+        ],
+        "notes": "This button is a dedicated location picker control rather than a shared secondary button."
+      }
+    },
+    "magnifyingBadge": {
+      "height": {
+        "values": [
+          {
+            "value": "72rpx",
+            "source": "miniprogram/pages/location/location.wxss:.location-magnifying-badge min-height"
           }
         ]
       },
@@ -590,10 +685,14 @@
           {
             "value": "0 20rpx",
             "source": "miniprogram/pages/location/location.wxss:.location-magnifying-badge"
-          },
+          }
+        ]
+      },
+      "backgroundColor": {
+        "values": [
           {
-            "value": "none declared; button layout is mostly driven by line-height",
-            "source": "miniprogram/app.wxss:.action-button.secondary"
+            "value": "rgba(255, 247, 235, 0.92)",
+            "source": "miniprogram/pages/location/location.wxss:.location-magnifying-badge"
           }
         ]
       }
