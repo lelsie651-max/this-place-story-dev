@@ -5,7 +5,7 @@
   min-height: 100vh;
   box-sizing: border-box;
   padding-bottom: calc(112rpx + env(safe-area-inset-bottom));
-  background: transparent;
+  background: #efe4d2;
 }
 
 .home-background-image {
@@ -71,6 +71,11 @@
   position: relative;
   overflow: hidden;
   background: transparent;
+  border: none;
+}
+
+.primary-entry .action-button--image::after {
+  border: none;
 }
 
 .action-button-image {
