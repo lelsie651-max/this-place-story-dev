@@ -31,19 +31,27 @@
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "首页"
+        "text": "首页",
+        "iconPath": "assets/tabbar/home.png",
+        "selectedIconPath": "assets/tabbar/home-active.png"
       },
       {
         "pagePath": "pages/atlas/atlas",
-        "text": "足迹"
+        "text": "足迹",
+        "iconPath": "assets/tabbar/atlas.png",
+        "selectedIconPath": "assets/tabbar/atlas-active.png"
       },
       {
         "pagePath": "pages/publish/publish",
-        "text": "投稿"
+        "text": "投稿",
+        "iconPath": "assets/tabbar/publish.png",
+        "selectedIconPath": "assets/tabbar/publish-active.png"
       },
       {
         "pagePath": "pages/profile/profile",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "assets/tabbar/profile.png",
+        "selectedIconPath": "assets/tabbar/profile-active.png"
       }
     ]
   },

@@ -1,3 +1,108 @@
+/* =====================================================
+   首页布局调整区
+   用户只需要修改这里已经标注的数字。
+   不要修改 selector、花括号、事件和页面逻辑。
+   单位使用 rpx。
+   说明：
+   1. rpx 是响应式尺寸单位，改大就更大，改小就更小。
+   2. translateX 正数向右，负数向左。
+   3. translateY 正数向下，负数向上。
+   4. 改 width / min-height / height 会改变板块大小。
+   5. 改 transform 只移动板块位置。
+   6. 改 margin 会改变板块之间的间距。
+   7. 去掉 .page--embedded-branding 后，可恢复普通文字模式。
+   ===================================================== */
+
+.page.page--embedded-branding .home-background-image {
+  top: 0rpx; /* 背景图上下位置：正数向下，负数向上 */
+  left: 0rpx; /* 背景图左右位置：正数向右，负数向左 */
+  width: 100%; /* 背景图宽度：改大可放大显示区域 */
+  height: 100vh; /* 背景图高度：通常保持 100vh */
+  transform: translateX(0rpx) translateY(0rpx) scale(1); /* 0rpx=不左右移动，0rpx=不上下移动，1=原始缩放 */
+  transform-origin: center top;
+}
+
+.page.page--embedded-branding .hero {
+  padding-top: 420rpx; /* 嵌入品牌模式下，按钮距离顶部背景 Logo 的起始高度 */
+  margin-bottom: 24rpx; /* hero 与下方“寻找传说”区域的间距 */
+}
+
+.page.page--embedded-branding .home-primary-entry-slot {
+  width: 686rpx; /* “寻找传说”外层区域宽度 */
+  min-height: 250rpx; /* “寻找传说”外层区域最小高度 */
+  margin-top: 0rpx; /* “寻找传说”外层区域与上方的间距 */
+  margin-bottom: 0rpx; /* “寻找传说”外层区域与下方的间距 */
+  transform: translateX(0rpx) translateY(0rpx); /* 外层区域左右/上下移动 */
+}
+
+.page.page--embedded-branding .primary-entry {
+  width: 686rpx; /* 外层卡片宽度 */
+  min-height: 250rpx; /* 外层卡片最小高度 */
+  margin-top: 0rpx; /* 外层卡片内部顶部偏移 */
+  margin-bottom: 0rpx; /* 外层卡片内部底部偏移 */
+}
+
+.page.page--embedded-branding .primary-entry .actions {
+  margin-top: 16rpx; /* 按钮与上方图标的间距 */
+}
+
+.page.page--embedded-branding .primary-entry .action-button--image {
+  width: 620rpx; /* 寻找传说按钮宽度 */
+  min-height: 96rpx; /* 寻找传说按钮高度 */
+  transform: translateX(0rpx) translateY(0rpx); /* 按钮左右/上下移动 */
+}
+
+.page.page--embedded-branding .home-recommendation-slot {
+  width: 686rpx; /* 编辑推荐外层区域宽度 */
+  min-height: 448rpx; /* 编辑推荐外层区域最小高度 */
+  margin-top: 32rpx; /* 编辑推荐与“寻找传说”区域的间距 */
+  margin-bottom: 0rpx; /* 编辑推荐与下方页脚的间距 */
+  transform: translateX(0rpx) translateY(0rpx); /* 编辑推荐外层左右/上下移动 */
+}
+
+.page.page--embedded-branding .recommendation-section {
+  width: 686rpx; /* 编辑推荐外框宽度 */
+  min-height: 448rpx; /* 编辑推荐外框最小高度 */
+  margin-top: 0rpx; /* 编辑推荐外框顶部偏移 */
+  margin-bottom: 0rpx; /* 编辑推荐外框底部偏移 */
+}
+
+.page.page--embedded-branding .recommendation-card {
+  width: 624rpx; /* 推荐内部卡片宽度 */
+  height: 312rpx; /* 推荐内部卡片高度 */
+  transform: translateX(0rpx) translateY(0rpx); /* 推荐内部卡片左右/上下移动 */
+}
+
+.page.page--embedded-branding .recommendation-cover {
+  width: 220rpx; /* 左侧封面宽度 */
+  flex: 0 0 220rpx; /* 左侧封面宽度，通常与上一行保持一致 */
+}
+
+.page.page--embedded-branding .recommendation-body {
+  flex: none;
+  width: calc(100% - 220rpx); /* 文字区域宽度：通常等于卡片宽度减去左侧封面宽度 */
+}
+
+.page.page--embedded-branding .recommendation-card-title {
+  margin-top: 14rpx; /* 标题与上方标签的间距 */
+  transform: translateY(0rpx); /* 标题上下位置 */
+}
+
+.page.page--embedded-branding .recommendation-card-location {
+  margin-top: 10rpx; /* 地点与标题的间距 */
+  transform: translateY(0rpx); /* 地点上下位置 */
+}
+
+.page.page--embedded-branding .recommendation-card-summary {
+  margin-top: 14rpx; /* 简介与地点的间距 */
+  transform: translateY(0rpx); /* 简介上下位置 */
+}
+
+.page.page--embedded-branding .recommendation-card-action {
+  padding-top: 22rpx; /* “免费阅读”与简介的间距 */
+  transform: translateY(0rpx); /* “免费阅读”上下位置 */
+}
+
 .page {
   position: relative;
   display: flex;
@@ -8,19 +113,38 @@
   background: #efe4d2;
 }
 
-.home-background-image {
+.home-background-layer {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100vh;
+  overflow: hidden;
   z-index: 0;
+  pointer-events: none;
+}
+
+.home-background-image {
+  position: absolute;
+  top: 0rpx;
+  left: 0rpx;
+  width: 100%;
+  height: 100vh;
+  pointer-events: none;
 }
 
 .home-main {
   flex: 0 0 auto;
   position: relative;
   z-index: 1;
+}
+
+.home-primary-entry-slot,
+.home-recommendation-slot {
+  position: relative;
+  z-index: 1;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .hero {
@@ -60,11 +184,43 @@
   text-align: center;
 }
 
+.page--embedded-branding .hero-title,
+.page--embedded-branding .hero-english,
+.page--embedded-branding .hero-slogan {
+  display: none;
+}
+
+.panel-visual-image,
+.recommendation-card-visual-image,
+.recommendation-cover-visual-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.panel-visual-content,
+.recommendation-card-content {
+  position: relative;
+  z-index: 1;
+}
+
 .primary-entry {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
   text-align: center;
   padding-top: 42rpx;
   padding-bottom: 38rpx;
   transform: none;
+  background: transparent;
+}
+
+.primary-entry .actions {
+  align-items: center;
 }
 
 .primary-entry .action-button--image {
@@ -85,6 +241,7 @@
   width: 100%;
   height: 100%;
   border-radius: inherit;
+  pointer-events: none;
 }
 
 .action-button-label {
@@ -93,8 +250,10 @@
 }
 
 .recommendation-section {
-  margin-top: 32rpx;
+  position: relative;
+  width: 100%;
   padding: 38rpx 30rpx 34rpx;
+  background: transparent;
 }
 
 .recommendation-label {
@@ -131,11 +290,12 @@
   align-items: stretch;
   width: 100%;
   height: 312rpx;
+  position: relative;
   box-sizing: border-box;
   overflow: hidden;
   border: 1rpx solid rgba(140, 94, 52, 0.12);
   border-radius: 28rpx;
-  background: linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(248, 238, 220, 0.98));
+  background: transparent;
   box-shadow: 0 22rpx 40rpx rgba(107, 69, 39, 0.12);
 }
 
@@ -143,18 +303,31 @@
   opacity: 0.9;
 }
 
+.recommendation-card-content {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
+}
+
 .recommendation-cover {
+  position: relative;
   flex: 0 0 220rpx;
   width: 220rpx;
-  background: linear-gradient(180deg, rgba(226, 207, 179, 0.95), rgba(212, 184, 149, 0.92));
+  overflow: hidden;
+  background: transparent;
 }
 
 .recommendation-cover-image {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
 }
 
 .recommendation-cover-placeholder {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
