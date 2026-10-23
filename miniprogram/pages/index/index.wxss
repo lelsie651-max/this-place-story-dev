@@ -55,11 +55,11 @@
 }
 
 .page.page--embedded-branding .recommendation-cover-placeholder-icon {
-  display: block; /* “传说节选”图标显示开关：隐藏改 none，恢复改 block */
+  display: none; /* “传说节选”图标显示开关：隐藏改 none，恢复改 block */
 }
 
 .page.page--embedded-branding .recommendation-cover-placeholder-label {
-  display: block; /* “传说节选”文字显示开关：隐藏改 none，恢复改 block */
+  display: none; /* “传说节选”文字显示开关：隐藏改 none，恢复改 block */
 }
 
 /* =====================================================
@@ -98,7 +98,7 @@
 .page.page--embedded-branding .primary-entry .action-button--image {
   width: 500rpx; /* 寻找传说按钮宽度 */
   min-height: 150rpx; /* 寻找传说按钮高度 */
-  transform: translateX(-10rpx) translateY(-180rpx); /* 按钮左右/上下移动 */
+  transform: translateX(-10rpx) translateY(-90rpx); /* 按钮左右/上下移动 */
   margin: 16rpx auto 0; /* 按钮与上方放大镜的间距 */
 }
 
@@ -115,7 +115,7 @@
   width: 686rpx; /* 编辑推荐内容层宽度 */
   margin-top: 32rpx; /* 编辑推荐内容层与寻找传说区域的间距 */
   margin-left: 0rpx; /* 编辑推荐内容层左右偏移 */
-  transform: translateX(-30rpx) translateY(-220rpx); /* 编辑推荐内容层左右/上下移动 */
+  transform: translateX(-30rpx) translateY(-95rpx); /* 编辑推荐内容层左右/上下移动 */
   padding: 38rpx 30rpx 34rpx; /* 编辑推荐内容层内边距 */
 }
 
