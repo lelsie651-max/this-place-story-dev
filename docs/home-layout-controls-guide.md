@@ -152,13 +152,15 @@ transform: translateX(0rpx) translateY(0rpx);
 - `translateY(200rpx)`：向下移动 200rpx
 - `translateY(-40rpx)`：向上移动 40rpx
 
-如果把卡片向下移动很多，比如 `translateY(200rpx)`，请同时确认下面三个高度足够大：
+品牌图模式不再把卡片放进 swiper，所以不需要通过增加 swiper 高度来解决裁切。
 
-- `.home-recommendation-stage` 的 `height`
-- `.recommendation-swiper-wrap` 的 `height`
-- `.recommendation-swiper` 的 `height`
+品牌图模式请修改：
 
-当前默认是 `840rpx`，用于容纳当前 `600rpx` 高卡片再下移 `200rpx`。
+- `.home-recommendation-design-canvas`：设计画布位置和工作范围
+- `.home-recommendation-panel`：外层编辑推荐框位置和宽高
+- `.home-recommendation-card`：内部传说节选卡片位置和宽高
+
+普通模式仍保留原生 swiper，推荐逻辑不变。
 
 ## G. 如何修改推荐卡片宽高
 

@@ -62,8 +62,15 @@
   display: none; /* “传说节选”文字显示开关：隐藏改 none，恢复改 block */
 }
 
+.page.page--embedded-branding .recommendation-card-title,
+.page.page--embedded-branding .recommendation-card-location,
+.page.page--embedded-branding .recommendation-card-summary,
+.page.page--embedded-branding .recommendation-card-action {
+  display: block; /* 推荐卡片文字显示开关：隐藏改 none，恢复改 block */
+}
+
 /* =====================================================
-   首页布局调整区
+   首页品牌图布局调整区
    用户只需要修改这里已经标注的数字。
    不要修改 selector、花括号、事件和页面逻辑。
    单位使用 rpx。
@@ -76,6 +83,25 @@
    6. 改 margin 会改变板块之间的间距。
    7. 去掉 .page--embedded-branding 后，可恢复普通文字模式。
    ===================================================== */
+
+.page.page--embedded-branding {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.page.page--embedded-branding .home-main {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: visible;
+}
 
 .page.page--embedded-branding .home-primary-entry-panel-image {
   display: none; /* 隐藏外框图时改成 none；恢复显示时改回 block */
@@ -119,55 +145,133 @@
   padding: 38rpx 30rpx 34rpx; /* 编辑推荐内容层内边距 */
 }
 
-.page.page--embedded-branding .home-recommendation-stage {
-  width: 686rpx; /* 推荐区域可视舞台宽度 */
-  height: 840rpx; /* 推荐区域可视舞台高度：需大于卡片高度 + 卡片下移距离 */
-  margin-top: 0rpx; /* 舞台与推荐标题区的间距 */
-  margin-left: 0rpx; /* 舞台左右位置：正数向右，负数向左 */
-  transform: translateX(0rpx) translateY(0rpx); /* 舞台整体左右/上下移动 */
-  overflow: visible; /* 舞台允许内容显示；真正防露边由 swiper-wrap 控制 */
+.page.page--embedded-branding .home-recommendation-slot {
+  position: absolute;
+  left: 0rpx;
+  top: 0rpx;
+  width: 100%;
+  height: 0rpx;
+  margin: 0;
+  overflow: visible;
 }
 
-.page.page--embedded-branding .recommendation-swiper-wrap {
-  height: 840rpx; /* swiper 外层可视高度：要能容纳卡片下移后的完整高度 */
+.page.page--embedded-branding .recommendation-panel-content {
+  position: absolute;
+  left: 0rpx;
+  top: 0rpx;
+  width: 100%;
+  height: 0rpx;
+  margin: 0;
+  padding: 0;
+  transform: none;
+  overflow: visible;
 }
 
-.page.page--embedded-branding .recommendation-swiper {
-  height: 840rpx; /* 微信 swiper 自身高度：translateY(200rpx) 不裁切的关键 */
+.page.page--embedded-branding .home-recommendation-content {
+  position: absolute;
+  left: 0rpx;
+  top: 0rpx;
+  width: 100%;
+  height: 0rpx;
+  overflow: visible;
 }
 
-.page.page--embedded-branding .recommendation-slide {
-  height: 840rpx; /* swiper-item 内部承载高度，通常与 swiper 高度一致 */
+.home-recommendation-native {
+  display: block;
 }
 
-.page.page--embedded-branding .recommendation-card {
-  width: 670rpx; /* 推荐内部卡片宽度 */
-  height: 600rpx; /* 推荐内部卡片高度 */
-  transform: translateX(0rpx) translateY(0rpx); /* 推荐内部卡片左右/上下移动 */
-  margin: 0 auto; /* 推荐内部卡片在 swiper-item 中居中 */
+.home-recommendation-design-canvas {
+  display: none;
+}
+
+.page.page--embedded-branding .home-recommendation-native {
+  display: none;
+}
+
+.page.page--embedded-branding .home-recommendation-design-canvas {
+  display: block;
+  position: absolute;
+  left: 0rpx; /* 设计画布左右位置 */
+  top: 0rpx; /* 设计画布上下位置 */
+  width: 750rpx; /* 设计画布宽度 */
+  height: 900rpx; /* 设计画布工作高度，不作为页面滚动高度 */
+  overflow: visible;
+}
+
+.page.page--embedded-branding .home-recommendation-panel {
+  display: block;
+  position: absolute;
+  left: 0rpx; /* 编辑推荐外框左右位置 */
+  top: 0rpx; /* 编辑推荐外框上下位置 */
+  width: 686rpx; /* 编辑推荐外框宽度 */
+  height: 448rpx; /* 编辑推荐外框高度 */
+  overflow: visible;
+}
+
+.page.page--embedded-branding .home-recommendation-panel-image {
+  display: block; /* 外层面板图片显示开关 */
+  position: absolute;
+  left: 0rpx;
+  top: 0rpx;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.page.page--embedded-branding .home-recommendation-card {
+  display: flex;
+  position: absolute;
+  left: 0rpx; /* 内部传说节选卡片左右位置 */
+  top: 0rpx; /* 内部传说节选卡片上下位置 */
+  width: 624rpx; /* 内部传说节选卡片宽度 */
+  height: 312rpx; /* 内部传说节选卡片高度 */
+  overflow: hidden;
+  box-sizing: border-box;
+  transform: translateX(0rpx) translateY(0rpx); /* 卡片移动，不改变点击逻辑 */
+  margin: 0;
+}
+
+.page.page--embedded-branding .home-recommendation-card .recommendation-card-content {
+  display: flex;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
 }
 
 .page.page--embedded-branding .recommendation-cover {
-  width: 220rpx; /* 推荐左侧封面宽度 */
-  height: 312rpx; /* 推荐左侧封面高度 */
-  flex: 0 0 220rpx; /* 封面 flex-basis：必须和 width 保持一致 */
-  min-width: 0; /* 避免旧最小宽度阻止封面变窄 */
-  flex-shrink: 0; /* 禁止 flex 自动压缩封面 */
-  transform: translateX(0rpx) translateY(0rpx); /* 推荐左侧封面左右/上下移动 */
+  width: 220rpx; /* 左侧封面宽度 */
+  height: 312rpx; /* 左侧封面高度 */
+  flex: 0 0 220rpx; /* flex-basis 必须和 width 同步 */
+  min-width: 0;
+  min-height: 0;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .page.page--embedded-branding .recommendation-cover-image,
 .page.page--embedded-branding .recommendation-cover-visual-image,
 .page.page--embedded-branding .recommendation-cover-placeholder {
-  width: 100%; /* 封面内部图片/占位内容跟随封面宽度 */
-  height: 100%; /* 封面内部图片/占位内容跟随封面高度 */
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-.page.page--embedded-branding .recommendation-body {
-  width: calc(100% - 220rpx); /* 推荐文字区域宽度 */
-  padding: 28rpx 28rpx 26rpx; /* 推荐文字区域内边距 */
-  transform: translateX(0rpx) translateY(0rpx); /* 推荐文字区域左右/上下移动 */
-  margin: 0rpx; /* 推荐文字区域外边距 */
+.page.page--embedded-branding .home-recommendation-card .recommendation-body {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  padding: 28rpx 28rpx 26rpx;
+  box-sizing: border-box;
+  transform: none;
+  margin: 0;
+}
+
+.page.page--embedded-branding .home-recommendation-card .recommendation-card-title,
+.page.page--embedded-branding .home-recommendation-card .recommendation-card-location,
+.page.page--embedded-branding .home-recommendation-card .recommendation-card-summary,
+.page.page--embedded-branding .home-recommendation-card .recommendation-card-action {
+  display: block;
 }
 
 .page.page--embedded-branding .recommendation-card-title {

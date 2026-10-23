@@ -55,64 +55,118 @@
           </view>
         </view>
 
-        <view wx:elif="{{recommendationCards.length > 0}}" class="home-recommendation-stage">
-          <view class="recommendation-swiper-wrap">
-            <swiper
-              class="recommendation-swiper"
-              data-design-id="index-recommendation-swiper"
-              indicator-dots="{{true}}"
-              indicator-color="rgba(139, 94, 52, 0.18)"
-              indicator-active-color="rgba(139, 94, 52, 0.56)"
-              autoplay="{{false}}"
-              circular="{{false}}"
-              display-multiple-items="1"
-              easing-function="easeOutCubic"
-            >
-              <swiper-item wx:for="{{recommendationCards}}" wx:key="storyId">
-                <view class="recommendation-slide">
-                  <view
-                    class="recommendation-card"
-                    bindtap="goToRecommendation"
-                    data-story-id="{{item.storyId}}"
-                    data-design-id="index-recommendation-card"
-                    hover-class="recommendation-card-hover"
-                  >
-                    <image
-                      class="recommendation-card-image"
-                      src="../../assets/cards/home-recommendation-card-placeholder.png"
-                      mode="scaleToFill"
-                    />
-                    <view class="recommendation-card-content">
-                      <view class="recommendation-cover">
+        <view wx:elif="{{recommendationCards.length > 0}}" class="home-recommendation-content">
+          <view class="home-recommendation-native">
+            <view class="home-recommendation-stage">
+              <view class="recommendation-swiper-wrap">
+                <swiper
+                  class="recommendation-swiper"
+                  data-design-id="index-recommendation-swiper"
+                  indicator-dots="{{true}}"
+                  indicator-color="rgba(139, 94, 52, 0.18)"
+                  indicator-active-color="rgba(139, 94, 52, 0.56)"
+                  autoplay="{{false}}"
+                  circular="{{false}}"
+                  display-multiple-items="1"
+                  easing-function="easeOutCubic"
+                >
+                  <swiper-item wx:for="{{recommendationCards}}" wx:key="storyId">
+                    <view class="recommendation-slide">
+                      <view
+                        class="recommendation-card"
+                        bindtap="goToRecommendation"
+                        data-story-id="{{item.storyId}}"
+                        data-design-id="index-recommendation-card"
+                        hover-class="recommendation-card-hover"
+                      >
                         <image
-                          class="recommendation-cover-visual-image"
-                          src="../../assets/banners/home-recommendation-cover-placeholder.png"
+                          class="recommendation-card-image"
+                          src="../../assets/cards/home-recommendation-card-placeholder.png"
                           mode="scaleToFill"
                         />
-                        <image
-                          wx:if="{{item.coverImage}}"
-                          class="recommendation-cover-image"
-                          src="{{item.coverImage}}"
-                          mode="aspectFill"
-                        />
-                        <view wx:else class="recommendation-cover-placeholder">
-                          <view class="recommendation-cover-emoji recommendation-cover-placeholder-icon">📖</view>
-                          <view class="recommendation-cover-text recommendation-cover-placeholder-label">传说节选</view>
+                        <view class="recommendation-card-content">
+                          <view class="recommendation-cover">
+                            <image
+                              class="recommendation-cover-visual-image"
+                              src="../../assets/banners/home-recommendation-cover-placeholder.png"
+                              mode="scaleToFill"
+                            />
+                            <image
+                              wx:if="{{item.coverImage}}"
+                              class="recommendation-cover-image"
+                              src="{{item.coverImage}}"
+                              mode="aspectFill"
+                            />
+                            <view wx:else class="recommendation-cover-placeholder">
+                              <view class="recommendation-cover-emoji recommendation-cover-placeholder-icon">📖</view>
+                              <view class="recommendation-cover-text recommendation-cover-placeholder-label">传说节选</view>
+                            </view>
+                          </view>
+
+                          <view class="recommendation-body">
+                            <view class="tag recommendation-card-label">{{item.label}}</view>
+                            <view class="recommendation-card-title">{{item.displayTitle}}</view>
+                            <view class="recommendation-card-location">{{item.locationName}}</view>
+                            <view class="recommendation-card-summary">{{item.displaySummary}}</view>
+                            <view class="recommendation-card-action">{{item.actionText}}</view>
+                          </view>
                         </view>
                       </view>
-
-                      <view class="recommendation-body">
-                        <view class="tag recommendation-card-label">{{item.label}}</view>
-                        <view class="recommendation-card-title">{{item.displayTitle}}</view>
-                        <view class="recommendation-card-location">{{item.locationName}}</view>
-                        <view class="recommendation-card-summary">{{item.displaySummary}}</view>
-                        <view class="recommendation-card-action">{{item.actionText}}</view>
-                      </view>
                     </view>
+                  </swiper-item>
+                </swiper>
+              </view>
+            </view>
+          </view>
+
+          <view class="home-recommendation-design-canvas">
+            <view class="home-recommendation-panel">
+              <image
+                class="home-recommendation-panel-image"
+                src="../../assets/cards/home-recommendation-panel-placeholder.png"
+                mode="scaleToFill"
+              />
+            </view>
+            <view
+              class="home-recommendation-card recommendation-card"
+              bindtap="goToRecommendation"
+              data-story-id="{{recommendationCards[0].storyId}}"
+              data-design-id="index-recommendation-card"
+              hover-class="recommendation-card-hover"
+            >
+              <image
+                class="recommendation-card-image"
+                src="../../assets/cards/home-recommendation-card-placeholder.png"
+                mode="scaleToFill"
+              />
+              <view class="recommendation-card-content">
+                <view class="recommendation-cover">
+                  <image
+                    class="recommendation-cover-visual-image"
+                    src="../../assets/banners/home-recommendation-cover-placeholder.png"
+                    mode="scaleToFill"
+                  />
+                  <image
+                    wx:if="{{recommendationCards[0].coverImage}}"
+                    class="recommendation-cover-image"
+                    src="{{recommendationCards[0].coverImage}}"
+                    mode="aspectFill"
+                  />
+                  <view wx:else class="recommendation-cover-placeholder">
+                    <view class="recommendation-cover-emoji recommendation-cover-placeholder-icon">📖</view>
+                    <view class="recommendation-cover-text recommendation-cover-placeholder-label">传说节选</view>
                   </view>
                 </view>
-              </swiper-item>
-            </swiper>
+
+                <view class="recommendation-body">
+                  <view class="tag recommendation-card-label">{{recommendationCards[0].label}}</view>
+                  <view class="recommendation-card-title">{{recommendationCards[0].displayTitle}}</view>
+                  <view class="recommendation-card-location">{{recommendationCards[0].locationName}}</view>
+                  <view class="recommendation-card-summary">{{recommendationCards[0].displaySummary}}</view>
+                  <view class="recommendation-card-action">{{recommendationCards[0].actionText}}</view>
+                </view>
+              </view>
+            </view>
           </view>
         </view>
 
