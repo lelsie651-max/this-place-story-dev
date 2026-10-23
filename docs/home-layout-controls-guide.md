@@ -1,108 +1,228 @@
 # 首页布局调整使用说明
 
-这次结构准备完成后，你以后只需要做两件事：
+这次修复后，首页的外框图片层和功能内容层已经拆开了。
 
-1. 用自己的 PNG 覆盖指定占位图片。
-2. 只在 `miniprogram/pages/index/index.wxss` 顶部“首页布局调整区”里修改已经写好的数字。
+你以后只需要做两件事：
 
-不要去改 selector、花括号、事件名、WXML 结构和 JS 逻辑。
+1. 覆盖指定 PNG；
+2. 只修改 `miniprogram/pages/index/index.wxss` 顶部“首页布局调整区”里的数字。
+
+不要改事件名，不要改 WXML 结构，不要改 JS。
 
 ## 1. 如何进入首页布局调整区
 
-1. 打开项目目录里的 `miniprogram/pages/index/index.wxss`
+1. 打开 `miniprogram/pages/index/index.wxss`
 2. 直接看文件最顶部
-3. 找到这一段大注释：
+3. 找到大注释：
 
 `首页布局调整区`
 
-从这段注释开始，到下面第一批首页样式结束，都是以后可以手动调数字的位置。
+从这里开始，下面那一组带中文注释的数字，就是以后手动调整首页的唯一入口。
 
-## 2. 哪个数字控制背景图
+## 2. 背景图怎么调
 
-看这一段：
+看这个 selector：
 
 ` .page.page--embedded-branding .home-background-image `
 
 这里可以改：
 
-- `top`：背景图上下位置
-- `left`：背景图左右位置
-- `width`：背景图宽度
-- `height`：背景图高度
-- `translateX(...)`：背景图左右移动
-- `translateY(...)`：背景图上下移动
-- `scale(...)`：背景图缩放
+- `top`：上下位置
+- `left`：左右位置
+- `width`：宽度
+- `height`：高度
+- `translateX(...)`：左右移动
+- `translateY(...)`：上下移动
+- `scale(...)`：缩放
 
 方向说明：
 
-- `translateY(40rpx)`：向下 40rpx
-- `translateY(-40rpx)`：向上 40rpx
 - `translateX(40rpx)`：向右 40rpx
 - `translateX(-40rpx)`：向左 40rpx
+- `translateY(40rpx)`：向下 40rpx
+- `translateY(-40rpx)`：向上 40rpx
 
-## 3. 哪个数字控制“寻找传说”区域
+## 3. 寻找传说外框图片怎么调
 
-看这一段：
+看这个 selector：
 
-- `.page.page--embedded-branding .home-primary-entry-slot`
-- `.page.page--embedded-branding .primary-entry`
+` .page.page--embedded-branding .home-primary-entry-panel-image `
 
-这里可以改：
-
-- `width`：整个“寻找传说”外层区域宽度
-- `min-height`：整个区域最小高度
-- `margin-top`：与上方内容的间距
-- `margin-bottom`：与下方内容的间距
-- `translateX(...)`：整体左右移动
-- `translateY(...)`：整体上下移动
-
-## 4. 哪个数字控制“寻找传说”按钮
-
-看这一段：
-
-`.page.page--embedded-branding .primary-entry .action-button--image`
+这里控制的是“白色外框图片”，不是按钮内容。
 
 这里可以改：
 
-- `width`：按钮宽度
-- `min-height`：按钮高度
-- `translateX(...)`：按钮左右移动
-- `translateY(...)`：按钮上下移动
+- `display`
+- `width`
+- `height`
+- `top`
+- `left`
+- `transform`
+- `transform-origin`
 
-## 5. 哪个数字控制编辑推荐外框
+正确隐藏方式：
 
-看这一段：
+```css
+.page.page--embedded-branding .home-primary-entry-panel-image {
+  display: none;
+}
+```
 
-- `.page.page--embedded-branding .home-recommendation-slot`
-- `.page.page--embedded-branding .recommendation-section`
+恢复显示：
+
+```css
+.page.page--embedded-branding .home-primary-entry-panel-image {
+  display: block;
+}
+```
+
+重要：
+
+- 不要把宽度直接设成 0
+- 不要把最小高度直接设成 0
+- 不要通过压缩父容器来隐藏外框
+
+## 4. 寻找传说内容怎么调
+
+看这个 selector：
+
+` .page.page--embedded-branding .home-primary-entry-content `
+
+这里控制的是内容层，里面有：
+
+- 放大镜
+- 按钮
+- 按钮文字
 
 这里可以改：
 
-- `width`：编辑推荐外层宽度
-- `min-height`：编辑推荐外层最小高度
-- `margin-top`：和“寻找传说”区域的间距
-- `margin-bottom`：和页脚之间的间距
-- `translateX(...)`：整体左右移动
-- `translateY(...)`：整体上下移动
+- `width`
+- `margin-top`
+- `margin-left`
+- `transform`
+- `padding`
 
-## 6. 哪个数字控制推荐内部卡片
+外框图隐藏后，这一层仍然会保留，所以按钮不会消失，也不会被挤到右边。
 
-看这一段：
+## 5. 寻找传说按钮怎么调
 
-- `.page.page--embedded-branding .recommendation-card`
-- `.page.page--embedded-branding .recommendation-cover`
-- `.page.page--embedded-branding .recommendation-body`
+看这个 selector：
+
+` .page.page--embedded-branding .primary-entry .action-button--image `
 
 这里可以改：
 
-- `recommendation-card` 的 `width`：卡片整体宽度
-- `recommendation-card` 的 `height`：卡片整体高度
-- `recommendation-cover` 的 `width`：左侧封面宽度
-- `recommendation-body` 的 `width`：右侧文字区域宽度
+- `width`
+- `min-height`
+- `transform`
+- `margin`
 
-如果你改了左侧封面宽度，通常也要一起改右侧文字区域宽度。
+这里控制的是按钮本身，不会影响外框图片。
 
-## 7. 哪个数字控制推荐卡片内部文字
+## 6. 编辑推荐外框图片怎么调
+
+看这个 selector：
+
+` .page.page--embedded-branding .recommendation-panel-image `
+
+这里控制的是“编辑推荐外框图片”，不是推荐内容本身。
+
+这里可以改：
+
+- `display`
+- `width`
+- `height`
+- `top`
+- `left`
+- `transform`
+
+正确隐藏方式：
+
+```css
+.page.page--embedded-branding .recommendation-panel-image {
+  display: none;
+}
+```
+
+恢复显示：
+
+```css
+.page.page--embedded-branding .recommendation-panel-image {
+  display: block;
+}
+```
+
+隐藏这张图后：
+
+- swiper 还在
+- 推荐卡片还在
+- 推荐点击事件还在
+- 推荐文字还在
+
+## 7. 编辑推荐内容怎么调
+
+看这个 selector：
+
+` .page.page--embedded-branding .recommendation-panel-content `
+
+这里可以改：
+
+- `width`
+- `margin-top`
+- `margin-left`
+- `transform`
+- `padding`
+
+这里控制的是：
+
+- 编辑推荐标题
+- 副标题
+- swiper
+- 推荐卡片内容
+
+## 8. 推荐内部卡片怎么调
+
+看这个 selector：
+
+` .page.page--embedded-branding .recommendation-card `
+
+这里可以改：
+
+- `width`
+- `height`
+- `transform`
+- `margin`
+
+这控制的是整张推荐卡片。
+
+## 9. 推荐左侧封面怎么调
+
+看这个 selector：
+
+` .page.page--embedded-branding .recommendation-cover `
+
+这里可以改：
+
+- `width`
+- `height`
+- `transform`
+
+## 10. 推荐文字区域怎么调
+
+看这个 selector：
+
+` .page.page--embedded-branding .recommendation-body `
+
+这里可以改：
+
+- `width`
+- `padding`
+- `transform`
+- `margin`
+
+如果你只想调文字区域，不想动卡片外框，就改这里。
+
+## 11. 推荐卡片内部文字位置怎么调
 
 看这些 selector：
 
@@ -111,112 +231,51 @@
 - `.page.page--embedded-branding .recommendation-card-summary`
 - `.page.page--embedded-branding .recommendation-card-action`
 
-这里可以改：
+这里可以改每一段文字自己的上下位置。
 
-- `margin-top`：和上一行的间距
-- `translateY(...)`：当前文字块上下位置
+## 12. 如何恢复普通文字模式
 
-对应关系：
-
-- `recommendation-card-title`：标题位置
-- `recommendation-card-location`：地点位置
-- `recommendation-card-summary`：简介位置
-- `recommendation-card-action`：免费阅读文案位置
-
-## 8. 如何隐藏整个区域
-
-如果你想临时隐藏“寻找传说”区域：
-
-1. 找到 `.page.page--embedded-branding .home-primary-entry-slot`
-2. 把 `width` 改小到接近 `0rpx`
-3. 把 `min-height` 改成 `0rpx`
-4. 把 `margin-top` / `margin-bottom` 改成 `0rpx`
-
-如果你想临时隐藏“编辑推荐”区域：
-
-1. 找到 `.page.page--embedded-branding .home-recommendation-slot`
-2. 把 `width` 改小到接近 `0rpx`
-3. 把 `min-height` 改成 `0rpx`
-4. 把 `margin-top` / `margin-bottom` 改成 `0rpx`
-
-## 9. 如何恢复显示
-
-把上面改小的数字改回原来的默认值即可。
-
-如果你把首页背景图里已经内嵌的 Logo 模式取消，想恢复 WXML 里的旧标题文字：
+如果以后不用“背景图已内嵌品牌文字”模式：
 
 1. 打开 `miniprogram/pages/index/index.wxml`
 2. 找到根节点：
    - `class="page page--embedded-branding"`
-3. 把它改回：
+3. 改回：
    - `class="page"`
 
-这样 `.hero-title`、`.hero-english`、`.hero-slogan` 就会重新显示。
+这样：
 
-## 10. 如何只去掉旧白色背景但保留功能
+- `.hero-title`
+- `.hero-english`
+- `.hero-slogan`
 
-本轮已经把这些功能区改成了“图片底层 + 内容层”结构：
+就会重新显示。
 
-- 寻找传说外层卡片
-- 寻找传说按钮
-- 编辑推荐外层卡片
-- 编辑推荐内部卡片
-- 推荐封面占位图
+## 13. 以后要替换哪些 PNG
 
-以后你只需要替换 PNG，不需要改事件。
+- 背景图：
+  - `miniprogram/assets/backgrounds/home-background-placeholder.png`
+- 寻找传说外框图：
+  - `miniprogram/assets/cards/home-primary-entry-panel-placeholder.png`
+- 寻找传说按钮图：
+  - `miniprogram/assets/buttons/home-primary-button-placeholder.png`
+- 编辑推荐外框图：
+  - `miniprogram/assets/cards/home-recommendation-panel-placeholder.png`
+- 推荐内部卡片图：
+  - `miniprogram/assets/cards/home-recommendation-card-placeholder.png`
+- 推荐封面占位图：
+  - `miniprogram/assets/banners/home-recommendation-cover-placeholder.png`
 
-## 11. 以后只需要替换哪些 PNG
+替换这些 PNG 只会改变外观，不会改变点击事件。
 
-首页背景图：
-
-- `miniprogram/assets/backgrounds/home-background-placeholder.png`
-
-寻找传说外层卡片：
-
-- `miniprogram/assets/cards/home-primary-entry-panel-placeholder.png`
-
-寻找传说按钮：
-
-- `miniprogram/assets/buttons/home-primary-button-placeholder.png`
-
-编辑推荐外层卡片：
-
-- `miniprogram/assets/cards/home-recommendation-panel-placeholder.png`
-
-编辑推荐内部卡片：
-
-- `miniprogram/assets/cards/home-recommendation-card-placeholder.png`
-
-推荐封面占位图：
-
-- `miniprogram/assets/banners/home-recommendation-cover-placeholder.png`
-
-TabBar 图标：
-
-- `miniprogram/assets/tabbar/home.png`
-- `miniprogram/assets/tabbar/home-active.png`
-- `miniprogram/assets/tabbar/atlas.png`
-- `miniprogram/assets/tabbar/atlas-active.png`
-- `miniprogram/assets/tabbar/publish.png`
-- `miniprogram/assets/tabbar/publish-active.png`
-- `miniprogram/assets/tabbar/profile.png`
-- `miniprogram/assets/tabbar/profile-active.png`
-
-注意：
-
-- 图片里不要放 TabBar 文字
-- TabBar 文字还是原生显示
-- 不要改文件名
-- 直接覆盖同名 PNG 即可
-
-## 12. 替换 PNG 后怎么重新编译
+## 14. 替换 PNG 后怎么重新编译
 
 1. 回到微信开发者工具
-2. 等资源刷新；如果没有自动刷新，就点击“编译”
-3. 查看首页和底部 TabBar 是否更新
-4. 如果图片没刷新，先保存 PNG，再重新点击“编译”
+2. 点击“编译”
+3. 看首页是否更新
+4. 如果图片没有刷新，先保存 PNG，再重新点击“编译”
 
-## 13. 你以后只要记住这两件事
+## 15. 以后记住这两件事
 
 1. 换图：覆盖指定 PNG
 2. 调位置：只改 `index.wxss` 顶部“首页布局调整区”里的数字

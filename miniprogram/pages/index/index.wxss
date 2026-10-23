@@ -27,60 +27,66 @@
   margin-bottom: 24rpx; /* hero 与下方“寻找传说”区域的间距 */
 }
 
-.page.page--embedded-branding .home-primary-entry-slot {
-  width: 686rpx; /* “寻找传说”外层区域宽度 */
-  min-height: 250rpx; /* “寻找传说”外层区域最小高度 */
-  margin-top: 0rpx; /* “寻找传说”外层区域与上方的间距 */
-  margin-bottom: 0rpx; /* “寻找传说”外层区域与下方的间距 */
-  transform: translateX(0rpx) translateY(0rpx); /* 外层区域左右/上下移动 */
+.page.page--embedded-branding .home-primary-entry-panel-image {
+  display: block; /* 隐藏外框图时改成 none；恢复显示时改回 block */
+  width: 686rpx; /* 寻找传说外框图片宽度 */
+  height: 250rpx; /* 寻找传说外框图片高度 */
+  top: 0rpx; /* 寻找传说外框图片上下位置：正数向下，负数向上 */
+  left: 0rpx; /* 寻找传说外框图片左右位置：正数向右，负数向左 */
+  transform: translateX(0rpx) translateY(0rpx); /* 外框图片左右/上下移动 */
+  transform-origin: center top; /* 外框图片缩放基准点 */
 }
 
-.page.page--embedded-branding .primary-entry {
-  width: 686rpx; /* 外层卡片宽度 */
-  min-height: 250rpx; /* 外层卡片最小高度 */
-  margin-top: 0rpx; /* 外层卡片内部顶部偏移 */
-  margin-bottom: 0rpx; /* 外层卡片内部底部偏移 */
-}
-
-.page.page--embedded-branding .primary-entry .actions {
-  margin-top: 16rpx; /* 按钮与上方图标的间距 */
+.page.page--embedded-branding .home-primary-entry-content {
+  width: 686rpx; /* 寻找传说内容层宽度 */
+  margin-top: 0rpx; /* 寻找传说内容层与上方的间距 */
+  margin-left: 0rpx; /* 寻找传说内容层左右偏移 */
+  transform: translateX(0rpx) translateY(0rpx); /* 寻找传说内容层左右/上下移动 */
+  padding: 42rpx 32rpx 38rpx; /* 寻找传说内容层内边距 */
 }
 
 .page.page--embedded-branding .primary-entry .action-button--image {
   width: 620rpx; /* 寻找传说按钮宽度 */
   min-height: 96rpx; /* 寻找传说按钮高度 */
   transform: translateX(0rpx) translateY(0rpx); /* 按钮左右/上下移动 */
+  margin: 16rpx auto 0; /* 按钮与上方放大镜的间距 */
 }
 
-.page.page--embedded-branding .home-recommendation-slot {
-  width: 686rpx; /* 编辑推荐外层区域宽度 */
-  min-height: 448rpx; /* 编辑推荐外层区域最小高度 */
-  margin-top: 32rpx; /* 编辑推荐与“寻找传说”区域的间距 */
-  margin-bottom: 0rpx; /* 编辑推荐与下方页脚的间距 */
-  transform: translateX(0rpx) translateY(0rpx); /* 编辑推荐外层左右/上下移动 */
+.page.page--embedded-branding .recommendation-panel-image {
+  display: block; /* 隐藏外框图时改成 none；恢复显示时改回 block */
+  width: 686rpx; /* 编辑推荐外框图片宽度 */
+  height: 448rpx; /* 编辑推荐外框图片高度 */
+  top: 0rpx; /* 编辑推荐外框图片上下位置：正数向下，负数向上 */
+  left: 0rpx; /* 编辑推荐外框图片左右位置：正数向右，负数向左 */
+  transform: translateX(0rpx) translateY(0rpx); /* 编辑推荐外框图片左右/上下移动 */
 }
 
-.page.page--embedded-branding .recommendation-section {
-  width: 686rpx; /* 编辑推荐外框宽度 */
-  min-height: 448rpx; /* 编辑推荐外框最小高度 */
-  margin-top: 0rpx; /* 编辑推荐外框顶部偏移 */
-  margin-bottom: 0rpx; /* 编辑推荐外框底部偏移 */
+.page.page--embedded-branding .recommendation-panel-content {
+  width: 686rpx; /* 编辑推荐内容层宽度 */
+  margin-top: 32rpx; /* 编辑推荐内容层与寻找传说区域的间距 */
+  margin-left: 0rpx; /* 编辑推荐内容层左右偏移 */
+  transform: translateX(0rpx) translateY(0rpx); /* 编辑推荐内容层左右/上下移动 */
+  padding: 38rpx 30rpx 34rpx; /* 编辑推荐内容层内边距 */
 }
 
 .page.page--embedded-branding .recommendation-card {
   width: 624rpx; /* 推荐内部卡片宽度 */
   height: 312rpx; /* 推荐内部卡片高度 */
   transform: translateX(0rpx) translateY(0rpx); /* 推荐内部卡片左右/上下移动 */
+  margin: 0 auto; /* 推荐内部卡片在 swiper-item 中居中 */
 }
 
 .page.page--embedded-branding .recommendation-cover {
-  width: 220rpx; /* 左侧封面宽度 */
-  flex: 0 0 220rpx; /* 左侧封面宽度，通常与上一行保持一致 */
+  width: 220rpx; /* 推荐左侧封面宽度 */
+  height: 312rpx; /* 推荐左侧封面高度 */
+  transform: translateX(0rpx) translateY(0rpx); /* 推荐左侧封面左右/上下移动 */
 }
 
 .page.page--embedded-branding .recommendation-body {
-  flex: none;
-  width: calc(100% - 220rpx); /* 文字区域宽度：通常等于卡片宽度减去左侧封面宽度 */
+  width: calc(100% - 220rpx); /* 推荐文字区域宽度 */
+  padding: 28rpx 28rpx 26rpx; /* 推荐文字区域内边距 */
+  transform: translateX(0rpx) translateY(0rpx); /* 推荐文字区域左右/上下移动 */
+  margin: 0rpx; /* 推荐文字区域外边距 */
 }
 
 .page.page--embedded-branding .recommendation-card-title {
@@ -143,6 +149,7 @@
 .home-recommendation-slot {
   position: relative;
   z-index: 1;
+  width: 686rpx;
   margin-left: auto;
   margin-right: auto;
 }
@@ -190,31 +197,66 @@
   display: none;
 }
 
-.panel-visual-image,
-.recommendation-card-visual-image,
-.recommendation-cover-visual-image {
+.home-primary-entry-panel-image {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
   z-index: 0;
   pointer-events: none;
 }
 
-.panel-visual-content,
+.recommendation-panel-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.recommendation-card-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.recommendation-cover-visual-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.home-primary-entry-content {
+  position: relative;
+  z-index: 1;
+}
+
+.recommendation-panel-content,
 .recommendation-card-content {
   position: relative;
   z-index: 1;
 }
 
+.home-primary-entry-content,
+.recommendation-panel-content {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
 .primary-entry {
   position: relative;
-  width: 100%;
+  width: 686rpx;
   box-sizing: border-box;
   text-align: center;
-  padding-top: 42rpx;
-  padding-bottom: 38rpx;
   transform: none;
   background: transparent;
 }
@@ -251,8 +293,7 @@
 
 .recommendation-section {
   position: relative;
-  width: 100%;
-  padding: 38rpx 30rpx 34rpx;
+  width: 686rpx;
   background: transparent;
 }
 
@@ -293,10 +334,10 @@
   position: relative;
   box-sizing: border-box;
   overflow: hidden;
-  border: 1rpx solid rgba(140, 94, 52, 0.12);
+  border: 1rpx solid transparent;
   border-radius: 28rpx;
   background: transparent;
-  box-shadow: 0 22rpx 40rpx rgba(107, 69, 39, 0.12);
+  box-shadow: none;
 }
 
 .recommendation-card-hover {
@@ -308,6 +349,8 @@
   align-items: stretch;
   width: 100%;
   height: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 .recommendation-cover {
@@ -353,7 +396,6 @@
   flex-direction: column;
   justify-content: flex-start;
   min-width: 0;
-  padding: 28rpx 28rpx 26rpx;
   box-sizing: border-box;
 }
 
