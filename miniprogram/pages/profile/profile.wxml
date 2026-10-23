@@ -1,92 +1,134 @@
 <view class="page">
-  <view class="section-label">PROFILE</view>
-  <view class="profile-header panel">
-    <view class="profile-avatar">旅</view>
-    <view class="profile-name">旅行探索者</view>
-    <view class="profile-subtitle">在每个地点留下自己的故事线索。</view>
-  </view>
-
-  <view class="page-title" data-design-id="profile-page-title">个人中心</view>
-  <view class="page-subtitle">
-    在这里查看你的收藏、投稿和当前可用资源。
-  </view>
-
-  <view class="asset-panel panel" data-design-id="profile-assets-card">
-    <view class="asset-label">用户资产</view>
-    <view class="asset-item">
-      <view class="asset-item-left">
-        <view class="asset-icon">🔍</view>
-        <view>
-          <view class="asset-name">放大镜</view>
-          <view class="asset-note">用于未来探索和地点互动的个人资源</view>
-        </view>
-      </view>
-      <view class="asset-value">
-        <view class="asset-number">{{magnifyingGlass}}</view>
-        <view class="asset-unit">枚</view>
+  <image
+    class="profile-background-image"
+    src="../../assets/backgrounds/profile-background-placeholder.png"
+    mode="aspectFill"
+  />
+  <view class="profile-content">
+    <view class="section-label">PROFILE</view>
+    <view class="profile-header panel visual-card">
+      <image
+        class="visual-card__image profile-header-image"
+        src="../../assets/cards/profile-header-placeholder.png"
+        mode="scaleToFill"
+      />
+      <view class="visual-card__content">
+        <view class="profile-avatar">旅</view>
+        <view class="profile-name">旅行探索者</view>
+        <view class="profile-subtitle">在每个地点留下自己的故事线索。</view>
       </view>
     </view>
 
-    <view wx:if="{{adRewardAvailable}}" class="reward-divider"></view>
+    <view class="page-title" data-design-id="profile-page-title">个人中心</view>
+    <view class="page-subtitle">
+      在这里查看你的收藏、投稿和当前可用资源。
+    </view>
 
-    <view wx:if="{{adRewardAvailable}}" class="reward-panel">
-      <view class="reward-summary">
-        <view>
-          <view class="reward-title">今日广告奖励：{{adRewardDailyCount}} / {{adRewardDailyLimit}}</view>
-          <view class="reward-note">完整看完视频后可获得 1 枚放大镜</view>
+    <view class="asset-panel panel visual-card" data-design-id="profile-assets-card">
+      <image
+        class="visual-card__image profile-assets-image"
+        src="../../assets/cards/profile-assets-placeholder.png"
+        mode="scaleToFill"
+      />
+      <view class="visual-card__content">
+        <view class="asset-label">用户资产</view>
+        <view class="asset-item">
+          <view class="asset-item-left">
+            <view class="asset-icon">🔍</view>
+            <view>
+              <view class="asset-name">放大镜</view>
+              <view class="asset-note">用于未来探索和地点互动的个人资源</view>
+            </view>
+          </view>
+          <view class="asset-value">
+            <view class="asset-number">{{magnifyingGlass}}</view>
+            <view class="asset-unit">枚</view>
+          </view>
         </view>
-        <view class="reward-badge">+1</view>
-      </view>
 
-      <button
-        class="reward-button {{(adRewardButtonLoading || adRewardDailyCount >= adRewardDailyLimit) ? 'reward-button-disabled' : ''}}"
-        loading="{{adRewardButtonLoading}}"
-        disabled="{{adRewardButtonLoading || adRewardDailyCount >= adRewardDailyLimit}}"
-        bindtap="handleWatchAdTap"
+        <view wx:if="{{adRewardAvailable}}" class="reward-divider"></view>
+
+        <view wx:if="{{adRewardAvailable}}" class="reward-panel">
+          <view class="reward-summary">
+            <view>
+              <view class="reward-title">今日广告奖励：{{adRewardDailyCount}} / {{adRewardDailyLimit}}</view>
+              <view class="reward-note">完整看完视频后可获得 1 枚放大镜</view>
+            </view>
+            <view class="reward-badge">+1</view>
+          </view>
+
+          <button
+            class="reward-button {{(adRewardButtonLoading || adRewardDailyCount >= adRewardDailyLimit) ? 'reward-button-disabled' : ''}}"
+            loading="{{adRewardButtonLoading}}"
+            disabled="{{adRewardButtonLoading || adRewardDailyCount >= adRewardDailyLimit}}"
+            bindtap="handleWatchAdTap"
+          >
+            <image
+              class="reward-button-image"
+              src="../../assets/buttons/profile-reward-button-placeholder.png"
+              mode="scaleToFill"
+            />
+            <text class="reward-button-label">
+              {{adRewardDailyCount >= adRewardDailyLimit ? '今日广告奖励已用完' : '看视频获得 1 枚放大镜'}}
+            </text>
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <view class="function-label">功能入口</view>
+    <view class="menu-list">
+      <view
+        wx:for="{{menuItems}}"
+        wx:key="key"
+        class="menu-item panel visual-card"
+        data-design-id="{{item.key === 'favorites' ? 'profile-favorites-entry' : item.key === 'stories' ? 'profile-submissions-entry' : item.key === 'language' ? 'profile-language-entry' : item.key === 'settings' ? 'profile-settings-entry' : ''}}"
+        data-route="{{item.route}}"
+        bindtap="handleMenuTap"
       >
-        {{adRewardDailyCount >= adRewardDailyLimit ? '今日广告奖励已用完' : '看视频获得 1 枚放大镜'}}
-      </button>
-    </view>
-  </view>
-
-  <view class="function-label">功能入口</view>
-  <view class="menu-list">
-    <view
-      wx:for="{{menuItems}}"
-      wx:key="key"
-      class="menu-item panel"
-      data-design-id="{{item.key === 'favorites' ? 'profile-favorites-entry' : item.key === 'stories' ? 'profile-submissions-entry' : item.key === 'language' ? 'profile-language-entry' : item.key === 'settings' ? 'profile-settings-entry' : ''}}"
-      data-route="{{item.route}}"
-      bindtap="handleMenuTap"
-    >
-      <view class="menu-item-left">
-        <view class="menu-icon">{{item.icon}}</view>
-        <view>
-          <view class="menu-label">{{item.label}}</view>
-          <view wx:if="{{item.key === 'favorites'}}" class="menu-subtext">
-            已收藏 {{favoriteCount}} 条
+        <image
+          class="visual-card__image profile-menu-item-image"
+          src="../../assets/cards/profile-menu-item-placeholder.png"
+          mode="scaleToFill"
+        />
+        <view class="visual-card__content menu-item-content">
+          <view class="menu-item-left">
+            <view class="menu-icon">{{item.icon}}</view>
+            <view>
+              <view class="menu-label">{{item.label}}</view>
+              <view wx:if="{{item.key === 'favorites'}}" class="menu-subtext">
+                已收藏 {{favoriteCount}} 条
+              </view>
+              <view wx:if="{{item.key === 'stories'}}" class="menu-subtext">
+                已提交 {{myStoryCount}} 条
+              </view>
+            </view>
           </view>
-          <view wx:if="{{item.key === 'stories'}}" class="menu-subtext">
-            已提交 {{myStoryCount}} 条
+          <view class="menu-item-right">
+            <view wx:if="{{item.key === 'favorites'}}" class="menu-count">{{favoriteCount}}</view>
+            <view wx:if="{{item.key === 'stories'}}" class="menu-count">{{myStoryCount}}</view>
+            <view class="menu-arrow">›</view>
           </view>
         </view>
       </view>
-      <view class="menu-item-right">
-        <view wx:if="{{item.key === 'favorites'}}" class="menu-count">{{favoriteCount}}</view>
-        <view wx:if="{{item.key === 'stories'}}" class="menu-count">{{myStoryCount}}</view>
-        <view class="menu-arrow">›</view>
-      </view>
     </view>
-  </view>
 
-  <view wx:if="{{devTestToolsVisible}}" class="dev-tools-panel panel" bindtap="openDevTestTools">
-    <view class="dev-tools-main">
-      <view class="dev-tools-title-row">
-        <text class="dev-tools-title">开发测试工具</text>
-        <text class="dev-tools-badge">{{devTestToolsEnvVersion}}</text>
+    <view wx:if="{{devTestToolsVisible}}" class="dev-tools-panel panel visual-card" bindtap="openDevTestTools">
+      <image
+        class="visual-card__image profile-menu-item-image"
+        src="../../assets/cards/profile-menu-item-placeholder.png"
+        mode="scaleToFill"
+      />
+      <view class="visual-card__content dev-tools-content">
+        <view class="dev-tools-main">
+          <view class="dev-tools-title-row">
+            <text class="dev-tools-title">开发测试工具</text>
+            <text class="dev-tools-badge">{{devTestToolsEnvVersion}}</text>
+          </view>
+          <view class="dev-tools-note">仅 develop / trial 管理员可用，用于调整真机测试状态。</view>
+        </view>
+        <view class="dev-tools-arrow">›</view>
       </view>
-      <view class="dev-tools-note">仅 develop / trial 管理员可用，用于调整真机测试状态。</view>
     </view>
-    <view class="dev-tools-arrow">›</view>
   </view>
 </view>
