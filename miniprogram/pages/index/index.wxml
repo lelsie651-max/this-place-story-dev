@@ -20,15 +20,15 @@
         mode="scaleToFill"
       />
       <view class="home-primary-entry-content primary-entry panel">
-        <view class="entry-icon">🔍</view>
+        <view class="entry-icon primary-button-icon">🔍</view>
         <view class="actions">
           <button class="action-button action-button--image" bindtap="goToExplore" data-design-id="index-primary-button">
             <image
-              class="action-button-image"
+              class="action-button-image primary-button-image"
               src="../../assets/buttons/home-primary-button-placeholder.png"
               mode="scaleToFill"
             />
-            <text class="action-button-label">寻找传说</text>
+            <text class="action-button-label primary-button-label">寻找传说</text>
           </button>
         </view>
       </view>
@@ -41,8 +41,8 @@
         mode="scaleToFill"
       />
       <view class="recommendation-panel-content recommendation-section panel" data-design-id="index-recommendation-section">
-        <view class="section-label recommendation-label">编辑推荐</view>
-        <view class="recommendation-title">先听一段传说，再决定要不要出发</view>
+        <view class="section-label recommendation-label recommendation-heading">编辑推荐</view>
+        <view class="recommendation-title recommendation-subtitle">先听一段传说，再决定要不要出发</view>
 
         <view wx:if="{{recommendationLoading}}" class="recommendation-loading">
           <view class="recommendation-skeleton-card">
