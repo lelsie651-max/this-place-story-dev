@@ -32,19 +32,19 @@
 }
 
 .page.page--embedded-branding .primary-button-icon {
-  display: block; /* 放大镜 icon 显示开关：隐藏改 none，恢复改 block */
+  display: none; /* 放大镜 icon 显示开关：隐藏改 none，恢复改 block */
 }
 
 .page.page--embedded-branding .primary-button-label {
-  display: inline; /* “寻找传说”文字显示开关：隐藏改 none，恢复改 inline */
+  display: none; /* “寻找传说”文字显示开关：隐藏改 none，恢复改 inline */
 }
 
 .page.page--embedded-branding .recommendation-heading {
-  display: block; /* “编辑推荐”标题显示开关：隐藏改 none，恢复改 block */
+  display: none; /* “编辑推荐”标题显示开关：隐藏改 none，恢复改 block */
 }
 
 .page.page--embedded-branding .recommendation-subtitle {
-  display: block; /* 推荐副标题显示开关：隐藏改 none，恢复改 block */
+  display: none; /* 推荐副标题显示开关：隐藏改 none，恢复改 block */
 }
 
 .page.page--embedded-branding .home-primary-entry-panel-image {
@@ -73,7 +73,7 @@
 }
 
 .page.page--embedded-branding .recommendation-panel-image {
-  display: block; /* 隐藏外框图时改成 none；恢复显示时改回 block */
+  display: none; /* 隐藏外框图时改成 none；恢复显示时改回 block */
   width: 686rpx; /* 编辑推荐外框图片宽度 */
   height: 448rpx; /* 编辑推荐外框图片高度 */
   top: -200rpx; /* 编辑推荐外框图片上下位置：正数向下，负数向上 */
@@ -90,8 +90,8 @@
 }
 
 .page.page--embedded-branding .recommendation-card {
-  width: 624rpx; /* 推荐内部卡片宽度 */
-  height: 312rpx; /* 推荐内部卡片高度 */
+  width: 670rpx; /* 推荐内部卡片宽度 */
+  height: 600rpx; /* 推荐内部卡片高度 */
   transform: translateX(0rpx) translateY(0rpx); /* 推荐内部卡片左右/上下移动 */
   margin: 0 auto; /* 推荐内部卡片在 swiper-item 中居中 */
 }
