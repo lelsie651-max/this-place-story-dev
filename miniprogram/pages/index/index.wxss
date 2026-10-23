@@ -124,7 +124,7 @@
 .page.page--embedded-branding .primary-entry .action-button--image {
   width: 500rpx; /* 寻找传说按钮宽度 */
   min-height: 150rpx; /* 寻找传说按钮高度 */
-  transform: translateX(-10rpx) translateY(-90rpx); /* 按钮左右/上下移动 */
+  transform: translateX(-10rpx) translateY(-30rpx); /* 按钮左右/上下移动 */
   margin: 16rpx auto 0; /* 按钮与上方放大镜的间距 */
 }
 
@@ -132,7 +132,7 @@
   display: none; /* 隐藏外框图时改成 none；恢复显示时改回 block */
   width: 686rpx; /* 编辑推荐外框图片宽度 */
   height: 448rpx; /* 编辑推荐外框图片高度 */
-  top: -200rpx; /* 编辑推荐外框图片上下位置：正数向下，负数向上 */
+  top: 00rpx; /* 编辑推荐外框图片上下位置：正数向下，负数向上 */
   left: 0rpx; /* 编辑推荐外框图片左右位置：正数向右，负数向左 */
   transform: translateX(0rpx) translateY(0rpx); /* 编辑推荐外框图片左右/上下移动 */
 }
