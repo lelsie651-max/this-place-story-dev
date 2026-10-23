@@ -1,17 +1,23 @@
 /* =====================================================
-   首页布局调整区
-   用户只需要修改这里已经标注的数字。
-   不要修改 selector、花括号、事件和页面逻辑。
-   单位使用 rpx。
-   说明：
-   1. rpx 是响应式尺寸单位，改大就更大，改小就更小。
-   2. translateX 正数向右，负数向左。
-   3. translateY 正数向下，负数向上。
-   4. 改 width / min-height / height 会改变板块大小。
-   5. 改 transform 只移动板块位置。
-   6. 改 margin 会改变板块之间的间距。
-   7. 去掉 .page--embedded-branding 后，可恢复普通文字模式。
+   首页显示/隐藏控制区
+   显示：display: block / inline
+   隐藏：display: none
+   只改 display 后面的值，不要改 selector 和花括号。
    ===================================================== */
+
+.page.page--embedded-branding .hero-title {
+  display: none; /* 首页中文标题：背景图已有 logo 时默认隐藏；恢复显示改 block */
+}
+
+.page.page--embedded-branding .hero-english {
+  display: none; /* 首页英文副标题：背景图已有文字时默认隐藏；恢复显示改 block */
+}
+
+.page.page--embedded-branding .hero-slogan,
+.page.page--embedded-branding .hero-subtitle,
+.page.page--embedded-branding .hero-copy {
+  display: none; /* 首页宣传语：背景图已有文案时默认隐藏；恢复显示改 block */
+}
 
 .page.page--embedded-branding .home-background-image {
   top: 0rpx; /* 背景图上下位置：正数向下，负数向上 */
@@ -31,6 +37,7 @@
   display: block; /* 按钮背景图显示开关：隐藏改 none，恢复改 block */
 }
 
+.page.page--embedded-branding .primary-entry-icon,
 .page.page--embedded-branding .primary-button-icon {
   display: none; /* 放大镜 icon 显示开关：隐藏改 none，恢复改 block */
 }
@@ -46,6 +53,29 @@
 .page.page--embedded-branding .recommendation-subtitle {
   display: none; /* 推荐副标题显示开关：隐藏改 none，恢复改 block */
 }
+
+.page.page--embedded-branding .recommendation-cover-placeholder-icon {
+  display: block; /* “传说节选”图标显示开关：隐藏改 none，恢复改 block */
+}
+
+.page.page--embedded-branding .recommendation-cover-placeholder-label {
+  display: block; /* “传说节选”文字显示开关：隐藏改 none，恢复改 block */
+}
+
+/* =====================================================
+   首页布局调整区
+   用户只需要修改这里已经标注的数字。
+   不要修改 selector、花括号、事件和页面逻辑。
+   单位使用 rpx。
+   说明：
+   1. rpx 是响应式尺寸单位，改大就更大，改小就更小。
+   2. translateX 正数向右，负数向左。
+   3. translateY 正数向下，负数向上。
+   4. 改 width / min-height / height 会改变板块大小。
+   5. 改 transform 只移动板块位置。
+   6. 改 margin 会改变板块之间的间距。
+   7. 去掉 .page--embedded-branding 后，可恢复普通文字模式。
+   ===================================================== */
 
 .page.page--embedded-branding .home-primary-entry-panel-image {
   display: none; /* 隐藏外框图时改成 none；恢复显示时改回 block */
@@ -89,6 +119,27 @@
   padding: 38rpx 30rpx 34rpx; /* 编辑推荐内容层内边距 */
 }
 
+.page.page--embedded-branding .home-recommendation-stage {
+  width: 686rpx; /* 推荐区域可视舞台宽度 */
+  height: 840rpx; /* 推荐区域可视舞台高度：需大于卡片高度 + 卡片下移距离 */
+  margin-top: 0rpx; /* 舞台与推荐标题区的间距 */
+  margin-left: 0rpx; /* 舞台左右位置：正数向右，负数向左 */
+  transform: translateX(0rpx) translateY(0rpx); /* 舞台整体左右/上下移动 */
+  overflow: visible; /* 舞台允许内容显示；真正防露边由 swiper-wrap 控制 */
+}
+
+.page.page--embedded-branding .recommendation-swiper-wrap {
+  height: 840rpx; /* swiper 外层可视高度：要能容纳卡片下移后的完整高度 */
+}
+
+.page.page--embedded-branding .recommendation-swiper {
+  height: 840rpx; /* 微信 swiper 自身高度：translateY(200rpx) 不裁切的关键 */
+}
+
+.page.page--embedded-branding .recommendation-slide {
+  height: 840rpx; /* swiper-item 内部承载高度，通常与 swiper 高度一致 */
+}
+
 .page.page--embedded-branding .recommendation-card {
   width: 670rpx; /* 推荐内部卡片宽度 */
   height: 600rpx; /* 推荐内部卡片高度 */
@@ -99,7 +150,17 @@
 .page.page--embedded-branding .recommendation-cover {
   width: 220rpx; /* 推荐左侧封面宽度 */
   height: 312rpx; /* 推荐左侧封面高度 */
+  flex: 0 0 220rpx; /* 封面 flex-basis：必须和 width 保持一致 */
+  min-width: 0; /* 避免旧最小宽度阻止封面变窄 */
+  flex-shrink: 0; /* 禁止 flex 自动压缩封面 */
   transform: translateX(0rpx) translateY(0rpx); /* 推荐左侧封面左右/上下移动 */
+}
+
+.page.page--embedded-branding .recommendation-cover-image,
+.page.page--embedded-branding .recommendation-cover-visual-image,
+.page.page--embedded-branding .recommendation-cover-placeholder {
+  width: 100%; /* 封面内部图片/占位内容跟随封面宽度 */
+  height: 100%; /* 封面内部图片/占位内容跟随封面高度 */
 }
 
 .page.page--embedded-branding .recommendation-body {
@@ -209,12 +270,6 @@
   font-weight: 600;
   line-height: 1.7;
   text-align: center;
-}
-
-.page--embedded-branding .hero-title,
-.page--embedded-branding .hero-english,
-.page--embedded-branding .hero-slogan {
-  display: none;
 }
 
 .home-primary-entry-panel-image {

@@ -1,5 +1,274 @@
 # 首页布局调整使用说明
 
+## 最新操作说明：先看这里
+
+以后只需要打开：
+
+`miniprogram/pages/index/index.wxss`
+
+然后只改文件最顶部两个区域里的值：
+
+- `首页显示/隐藏控制区`
+- `首页布局调整区`
+
+不要改 WXML，不要改 JS，不要改事件名。
+
+## A. 如何隐藏和恢复首页标题
+
+首页背景图已经包含品牌 logo 时，以下三项默认隐藏：
+
+- `.page.page--embedded-branding .hero-title`：中文标题
+- `.page.page--embedded-branding .hero-english`：英文标题
+- `.page.page--embedded-branding .hero-slogan` / `.hero-subtitle` / `.hero-copy`：宣传语
+
+隐藏：
+
+```css
+display: none;
+```
+
+恢复显示：
+
+```css
+display: block;
+```
+
+## B. 如何隐藏寻找传说区域里的 icon
+
+放大镜 icon 对应：
+
+`.page.page--embedded-branding .primary-entry-icon`
+
+也可以使用同一个节点上的：
+
+`.page.page--embedded-branding .primary-button-icon`
+
+隐藏：
+
+```css
+display: none;
+```
+
+恢复：
+
+```css
+display: block;
+```
+
+## C. 如何保留按钮但隐藏按钮文字
+
+“寻找传说”文字对应：
+
+`.page.page--embedded-branding .primary-button-label`
+
+隐藏文字：
+
+```css
+display: none;
+```
+
+恢复文字：
+
+```css
+display: inline;
+```
+
+这样只会隐藏文字，不会隐藏按钮背景，也不会影响 `goToExplore` 点击。
+
+## D. 如何隐藏编辑推荐标题和副标题
+
+“编辑推荐”标题对应：
+
+`.page.page--embedded-branding .recommendation-heading`
+
+隐藏：
+
+```css
+display: none;
+```
+
+恢复：
+
+```css
+display: block;
+```
+
+“先听一段传说，再决定要不要出发”副标题对应：
+
+`.page.page--embedded-branding .recommendation-subtitle`
+
+隐藏：
+
+```css
+display: none;
+```
+
+恢复：
+
+```css
+display: block;
+```
+
+这些开关不会影响 swiper、推荐卡片、推荐点击和动态数据。
+
+## E. 如何隐藏“传说节选”icon 和文字
+
+“传说节选”的图标对应：
+
+`.page.page--embedded-branding .recommendation-cover-placeholder-icon`
+
+“传说节选”的文字对应：
+
+`.page.page--embedded-branding .recommendation-cover-placeholder-label`
+
+隐藏：
+
+```css
+display: none;
+```
+
+恢复：
+
+```css
+display: block;
+```
+
+注意：这里控制的是没有动态封面图时的 fallback 内容。如果推荐数据有 `coverImage`，页面会优先显示动态封面图。
+
+## F. 如何修改推荐卡片位置
+
+推荐卡片对应：
+
+`.page.page--embedded-branding .recommendation-card`
+
+在 `transform` 里改数字：
+
+```css
+transform: translateX(0rpx) translateY(0rpx);
+```
+
+- `translateX(40rpx)`：向右移动 40rpx
+- `translateX(-40rpx)`：向左移动 40rpx
+- `translateY(200rpx)`：向下移动 200rpx
+- `translateY(-40rpx)`：向上移动 40rpx
+
+如果把卡片向下移动很多，比如 `translateY(200rpx)`，请同时确认下面三个高度足够大：
+
+- `.home-recommendation-stage` 的 `height`
+- `.recommendation-swiper-wrap` 的 `height`
+- `.recommendation-swiper` 的 `height`
+
+当前默认是 `840rpx`，用于容纳当前 `600rpx` 高卡片再下移 `200rpx`。
+
+## G. 如何修改推荐卡片宽高
+
+推荐卡片仍然改：
+
+`.page.page--embedded-branding .recommendation-card`
+
+可改：
+
+- `width`：卡片宽度
+- `height`：卡片高度
+- `margin`：卡片在 swiper-item 里的位置
+- `transform`：卡片移动
+
+单位使用 `rpx`。
+
+## H. 如何修改推荐封面宽高
+
+推荐左侧封面对应：
+
+`.page.page--embedded-branding .recommendation-cover`
+
+这里要同步改三处：
+
+```css
+width: 220rpx;       /* 封面宽度 */
+height: 312rpx;      /* 封面高度 */
+flex: 0 0 220rpx;   /* 第三个数字必须和 width 一致 */
+```
+
+示例 1：横向矩形
+
+```css
+width: 320rpx;
+height: 220rpx;
+flex: 0 0 320rpx;
+```
+
+示例 2：正方形
+
+```css
+width: 220rpx;
+height: 220rpx;
+flex: 0 0 220rpx;
+```
+
+封面内部图片已经设置为：
+
+```css
+width: 100%;
+height: 100%;
+```
+
+所以它会跟随封面大小变化。
+
+## I. 每个 selector 对应哪个视觉元素
+
+- `.hero-title`：首页中文标题
+- `.hero-english`：首页英文标题
+- `.hero-slogan` / `.hero-subtitle` / `.hero-copy`：首页宣传语
+- `.primary-entry-panel-image`：寻找传说外框图片
+- `.primary-entry-icon` / `.primary-button-icon`：放大镜 icon
+- `.primary-button-image`：寻找传说按钮背景图
+- `.primary-button-label`：寻找传说按钮文字
+- `.recommendation-panel-image`：编辑推荐外框图片
+- `.recommendation-heading`：编辑推荐标题
+- `.recommendation-subtitle`：编辑推荐副标题
+- `.home-recommendation-stage`：推荐区域可视舞台
+- `.recommendation-swiper-wrap`：swiper 外层可视容器
+- `.recommendation-swiper`：微信 swiper 组件
+- `.recommendation-card`：推荐内部卡片
+- `.recommendation-cover`：推荐左侧封面区域
+- `.recommendation-cover-image`：动态封面图
+- `.recommendation-cover-placeholder-icon`：无封面图时的“传说节选”图标
+- `.recommendation-cover-placeholder-label`：无封面图时的“传说节选”文字
+- `.recommendation-card-title`：推荐卡片标题
+- `.recommendation-card-location`：推荐地点
+- `.recommendation-card-summary`：推荐简介
+- `.recommendation-card-action`：免费阅读文案
+
+当前首页没有独立的 `.primary-entry-title`、`.primary-entry-description`、`.secondary-button-icon`、`.secondary-button-label` 节点。
+
+## J. 占位图路径和替换规则
+
+推荐封面占位图路径：
+
+`miniprogram/assets/banners/home-recommendation-cover-placeholder.png`
+
+WXML 引用路径：
+
+`../../assets/banners/home-recommendation-cover-placeholder.png`
+
+替换后不需要改 WXML。逻辑显示尺寸由 `.recommendation-cover` 控制。动态 `coverImage` 存在时优先显示动态图片；没有动态 `coverImage` 时，会显示本地占位图和 fallback 文案。
+
+## K. 恢复默认值的方法
+
+如果调乱了：
+
+1. 打开 `miniprogram/pages/index/index.wxss`
+2. 找到顶部“首页布局调整区”
+3. 把你改过的数字改回注释旁边的原值
+4. 点击微信开发者工具里的“编译”
+
+显示/隐藏项也是一样：
+
+- 隐藏用 `display: none`
+- 恢复显示按注释改回 `display: block` 或 `display: inline`
+
+---
+
 这次修复后，首页的外框图片层和功能内容层已经拆开了。
 
 你以后只需要做两件事：
