@@ -1,616 +1,76 @@
-# 首页布局调整使用说明
-
-## 最新操作说明：先看这里
-
-以后只需要打开：
-
-`miniprogram/pages/index/index.wxss`
-
-然后只改文件最顶部两个区域里的值：
-
-- `首页显示/隐藏控制区`
-- `首页布局调整区`
-
-不要改 WXML，不要改 JS，不要改事件名。
-
-## A. 如何隐藏和恢复首页标题
-
-首页背景图已经包含品牌 logo 时，以下三项默认隐藏：
-
-- `.page.page--embedded-branding .hero-title`：中文标题
-- `.page.page--embedded-branding .hero-english`：英文标题
-- `.page.page--embedded-branding .hero-slogan` / `.hero-subtitle` / `.hero-copy`：宣传语
-
-隐藏：
-
-```css
-display: none;
-```
-
-恢复显示：
-
-```css
-display: block;
-```
-
-## B. 如何隐藏寻找传说区域里的 icon
-
-放大镜 icon 对应：
-
-`.page.page--embedded-branding .primary-entry-icon`
-
-也可以使用同一个节点上的：
-
-`.page.page--embedded-branding .primary-button-icon`
-
-隐藏：
-
-```css
-display: none;
-```
-
-恢复：
-
-```css
-display: block;
-```
-
-## C. 如何保留按钮但隐藏按钮文字
-
-“寻找传说”文字对应：
-
-`.page.page--embedded-branding .primary-button-label`
-
-隐藏文字：
-
-```css
-display: none;
-```
-
-恢复文字：
-
-```css
-display: inline;
-```
-
-这样只会隐藏文字，不会隐藏按钮背景，也不会影响 `goToExplore` 点击。
-
-## D. 如何隐藏编辑推荐标题和副标题
-
-“编辑推荐”标题对应：
-
-`.page.page--embedded-branding .recommendation-heading`
-
-隐藏：
-
-```css
-display: none;
-```
-
-恢复：
-
-```css
-display: block;
-```
-
-“先听一段传说，再决定要不要出发”副标题对应：
-
-`.page.page--embedded-branding .recommendation-subtitle`
-
-隐藏：
-
-```css
-display: none;
-```
-
-恢复：
-
-```css
-display: block;
-```
-
-这些开关不会影响 swiper、推荐卡片、推荐点击和动态数据。
-
-## E. 如何隐藏“传说节选”icon 和文字
-
-“传说节选”的图标对应：
-
-`.page.page--embedded-branding .recommendation-cover-placeholder-icon`
-
-“传说节选”的文字对应：
-
-`.page.page--embedded-branding .recommendation-cover-placeholder-label`
-
-隐藏：
-
-```css
-display: none;
-```
-
-恢复：
-
-```css
-display: block;
-```
-
-注意：这里控制的是没有动态封面图时的 fallback 内容。如果推荐数据有 `coverImage`，页面会优先显示动态封面图。
-
-## F. 如何修改推荐卡片位置
-
-推荐卡片对应：
-
-`.page.page--embedded-branding .recommendation-card`
-
-在 `transform` 里改数字：
-
-```css
-transform: translateX(0rpx) translateY(0rpx);
-```
-
-- `translateX(40rpx)`：向右移动 40rpx
-- `translateX(-40rpx)`：向左移动 40rpx
-- `translateY(200rpx)`：向下移动 200rpx
-- `translateY(-40rpx)`：向上移动 40rpx
-
-品牌图模式不再把卡片放进 swiper，所以不需要通过增加 swiper 高度来解决裁切。
-
-品牌图模式请修改：
-
-- `.home-recommendation-design-canvas`：设计画布位置和工作范围
-- `.home-recommendation-panel`：外层编辑推荐框位置和宽高
-- `.home-recommendation-card`：内部传说节选卡片位置和宽高
-
-普通模式仍保留原生 swiper，推荐逻辑不变。
-
-## G. 如何修改推荐卡片宽高
-
-推荐卡片仍然改：
-
-`.page.page--embedded-branding .recommendation-card`
-
-可改：
-
-- `width`：卡片宽度
-- `height`：卡片高度
-- `margin`：卡片在 swiper-item 里的位置
-- `transform`：卡片移动
-
-单位使用 `rpx`。
-
-## H. 如何修改推荐封面宽高
-
-推荐左侧封面对应：
-
-`.page.page--embedded-branding .recommendation-cover`
-
-这里要同步改三处：
-
-```css
-width: 220rpx;       /* 封面宽度 */
-height: 312rpx;      /* 封面高度 */
-flex: 0 0 220rpx;   /* 第三个数字必须和 width 一致 */
-```
-
-示例 1：横向矩形
-
-```css
-width: 320rpx;
-height: 220rpx;
-flex: 0 0 320rpx;
-```
-
-示例 2：正方形
-
-```css
-width: 220rpx;
-height: 220rpx;
-flex: 0 0 220rpx;
-```
-
-封面内部图片已经设置为：
-
-```css
-width: 100%;
-height: 100%;
-```
-
-所以它会跟随封面大小变化。
-
-## I. 每个 selector 对应哪个视觉元素
-
-- `.hero-title`：首页中文标题
-- `.hero-english`：首页英文标题
-- `.hero-slogan` / `.hero-subtitle` / `.hero-copy`：首页宣传语
-- `.primary-entry-panel-image`：寻找传说外框图片
-- `.primary-entry-icon` / `.primary-button-icon`：放大镜 icon
-- `.primary-button-image`：寻找传说按钮背景图
-- `.primary-button-label`：寻找传说按钮文字
-- `.recommendation-panel-image`：编辑推荐外框图片
-- `.recommendation-heading`：编辑推荐标题
-- `.recommendation-subtitle`：编辑推荐副标题
-- `.home-recommendation-stage`：推荐区域可视舞台
-- `.recommendation-swiper-wrap`：swiper 外层可视容器
-- `.recommendation-swiper`：微信 swiper 组件
-- `.recommendation-card`：推荐内部卡片
-- `.recommendation-cover`：推荐左侧封面区域
-- `.recommendation-cover-image`：动态封面图
-- `.recommendation-cover-placeholder-icon`：无封面图时的“传说节选”图标
-- `.recommendation-cover-placeholder-label`：无封面图时的“传说节选”文字
-- `.recommendation-card-title`：推荐卡片标题
-- `.recommendation-card-location`：推荐地点
-- `.recommendation-card-summary`：推荐简介
-- `.recommendation-card-action`：免费阅读文案
-
-当前首页没有独立的 `.primary-entry-title`、`.primary-entry-description`、`.secondary-button-icon`、`.secondary-button-label` 节点。
-
-## J. 占位图路径和替换规则
-
-推荐封面占位图路径：
-
-`miniprogram/assets/banners/home-recommendation-cover-placeholder.png`
-
-WXML 引用路径：
-
-`../../assets/banners/home-recommendation-cover-placeholder.png`
-
-替换后不需要改 WXML。逻辑显示尺寸由 `.recommendation-cover` 控制。动态 `coverImage` 存在时优先显示动态图片；没有动态 `coverImage` 时，会显示本地占位图和 fallback 文案。
-
-## K. 恢复默认值的方法
-
-如果调乱了：
-
-1. 打开 `miniprogram/pages/index/index.wxss`
-2. 找到顶部“首页布局调整区”
-3. 把你改过的数字改回注释旁边的原值
-4. 点击微信开发者工具里的“编译”
-
-显示/隐藏项也是一样：
-
-- 隐藏用 `display: none`
-- 恢复显示按注释改回 `display: block` 或 `display: inline`
-
----
-
-这次修复后，首页的外框图片层和功能内容层已经拆开了。
-
-你以后只需要做两件事：
-
-1. 覆盖指定 PNG；
-2. 只修改 `miniprogram/pages/index/index.wxss` 顶部“首页布局调整区”里的数字。
-
-不要改事件名，不要改 WXML 结构，不要改 JS。
-
-## 1. 如何进入首页布局调整区
-
-1. 打开 `miniprogram/pages/index/index.wxss`
-2. 直接看文件最顶部
-3. 找到大注释：
-
-`首页布局调整区`
-
-从这里开始，下面那一组带中文注释的数字，就是以后手动调整首页的唯一入口。
-
-## 2. 背景图怎么调
-
-看这个 selector：
-
-` .page.page--embedded-branding .home-background-image `
-
-这里可以改：
-
-- `top`：上下位置
-- `left`：左右位置
-- `width`：宽度
-- `height`：高度
-- `translateX(...)`：左右移动
-- `translateY(...)`：上下移动
-- `scale(...)`：缩放
-
-方向说明：
-
-- `translateX(40rpx)`：向右 40rpx
-- `translateX(-40rpx)`：向左 40rpx
-- `translateY(40rpx)`：向下 40rpx
-- `translateY(-40rpx)`：向上 40rpx
-
-## 3. 寻找传说外框图片怎么调
-
-看这个 selector：
-
-` .page.page--embedded-branding .home-primary-entry-panel-image `
-
-这里控制的是“白色外框图片”，不是按钮内容。
-
-这里可以改：
-
-- `display`
-- `width`
-- `height`
-- `top`
-- `left`
-- `transform`
-- `transform-origin`
-
-正确隐藏方式：
-
-```css
-.page.page--embedded-branding .home-primary-entry-panel-image {
-  display: none;
-}
-```
-
-恢复显示：
-
-```css
-.page.page--embedded-branding .home-primary-entry-panel-image {
-  display: block;
-}
-```
-
-重要：
-
-- 不要把宽度直接设成 0
-- 不要把最小高度直接设成 0
-- 不要通过压缩父容器来隐藏外框
-
-## 4. 寻找传说内容怎么调
-
-看这个 selector：
-
-` .page.page--embedded-branding .home-primary-entry-content `
-
-这里控制的是内容层，里面有：
-
-- 放大镜
-- 按钮
-- 按钮文字
-
-这里可以改：
-
-- `width`
-- `margin-top`
-- `margin-left`
-- `transform`
-- `padding`
-
-外框图隐藏后，这一层仍然会保留，所以按钮不会消失，也不会被挤到右边。
-
-## 5. 寻找传说按钮怎么调
-
-看这个 selector：
-
-` .page.page--embedded-branding .primary-entry .action-button--image `
-
-这里可以改：
-
-- `width`
-- `min-height`
-- `transform`
-- `margin`
-
-这里控制的是按钮本身，不会影响外框图片。
-
-## 6. 寻找传说按钮内部元素怎么隐藏和恢复
-
-按钮背景图：
-
-- selector：`.page.page--embedded-branding .primary-button-image`
-- 隐藏：把 `display: block;` 改成 `display: none;`
-- 恢复：把 `display: none;` 改回 `display: block;`
-
-放大镜 icon：
-
-- selector：`.page.page--embedded-branding .primary-button-icon`
-- 隐藏：把 `display: block;` 改成 `display: none;`
-- 恢复：把 `display: none;` 改回 `display: block;`
-
-“寻找传说”文字：
-
-- selector：`.page.page--embedded-branding .primary-button-label`
-- 隐藏：把 `display: inline;` 改成 `display: none;`
-- 恢复：把 `display: none;` 改回 `display: inline;`
-
-这些开关都在 `miniprogram/pages/index/index.wxss` 顶部“首页布局调整区”里。隐藏其中一个，不会删除按钮，也不会改 `goToExplore` 点击事件。
-
-## 7. 编辑推荐外框图片怎么调
-
-看这个 selector：
-
-` .page.page--embedded-branding .recommendation-panel-image `
-
-这里控制的是“编辑推荐外框图片”，不是推荐内容本身。
-
-这里可以改：
-
-- `display`
-- `width`
-- `height`
-- `top`
-- `left`
-- `transform`
-
-正确隐藏方式：
-
-```css
-.page.page--embedded-branding .recommendation-panel-image {
-  display: none;
-}
-```
-
-恢复显示：
-
-```css
-.page.page--embedded-branding .recommendation-panel-image {
-  display: block;
-}
-```
-
-隐藏这张图后：
-
-- swiper 还在
-- 推荐卡片还在
-- 推荐点击事件还在
-- 推荐文字还在
-
-## 8. 编辑推荐标题和副标题怎么隐藏和恢复
-
-“编辑推荐”标题：
-
-- selector：`.page.page--embedded-branding .recommendation-heading`
-- 隐藏：把 `display: block;` 改成 `display: none;`
-- 恢复：把 `display: none;` 改回 `display: block;`
-
-“先听一段传说，再决定要不要出发”副标题：
-
-- selector：`.page.page--embedded-branding .recommendation-subtitle`
-- 隐藏：把 `display: block;` 改成 `display: none;`
-- 恢复：把 `display: none;` 改回 `display: block;`
-
-这些开关只控制编辑推荐顶部两行文字，不会影响 swiper、推荐卡片、推荐卡片标题、推荐简介、免费阅读和 `goToRecommendation`。
-
-## 9. 编辑推荐内容怎么调
-
-看这个 selector：
-
-` .page.page--embedded-branding .recommendation-panel-content `
-
-这里可以改：
-
-- `width`
-- `margin-top`
-- `margin-left`
-- `transform`
-- `padding`
-
-这里控制的是：
-
-- 编辑推荐标题
-- 副标题
-- swiper
-- 推荐卡片内容
-
-## 10. 推荐内部卡片怎么调
-
-看这个 selector：
-
-` .page.page--embedded-branding .recommendation-card `
-
-这里可以改：
-
-- `width`
-- `height`
-- `transform`
-- `margin`
-
-这控制的是整张推荐卡片。
-
-## 11. 推荐左侧封面怎么调
-
-看这个 selector：
-
-` .page.page--embedded-branding .recommendation-cover `
-
-这里可以改：
-
-- `width`
-- `height`
-- `transform`
-
-## 12. 推荐文字区域怎么调
-
-看这个 selector：
-
-` .page.page--embedded-branding .recommendation-body `
-
-这里可以改：
-
-- `width`
-- `padding`
-- `transform`
-- `margin`
-
-如果你只想调文字区域，不想动卡片外框，就改这里。
-
-## 13. 推荐卡片内部文字位置怎么调
-
-看这些 selector：
-
-- `.page.page--embedded-branding .recommendation-card-title`
-- `.page.page--embedded-branding .recommendation-card-location`
-- `.page.page--embedded-branding .recommendation-card-summary`
-- `.page.page--embedded-branding .recommendation-card-action`
-
-这里可以改每一段文字自己的上下位置。
-
-## 14. 如何恢复普通文字模式
-
-如果以后不用“背景图已内嵌品牌文字”模式：
-
-1. 打开 `miniprogram/pages/index/index.wxml`
-2. 找到根节点：
-   - `class="page page--embedded-branding"`
-3. 改回：
-   - `class="page"`
-
-这样：
-
-- `.hero-title`
-- `.hero-english`
-- `.hero-slogan`
-
-就会重新显示。
-
-## 15. 以后要替换哪些 PNG
-
-- 背景图：
-  - `miniprogram/assets/backgrounds/home-background-placeholder.png`
-- 寻找传说外框图：
-  - `miniprogram/assets/cards/home-primary-entry-panel-placeholder.png`
-- 寻找传说按钮图：
-  - `miniprogram/assets/buttons/home-primary-button-placeholder.png`
-- 编辑推荐外框图：
-  - `miniprogram/assets/cards/home-recommendation-panel-placeholder.png`
-- 推荐内部卡片图：
-  - `miniprogram/assets/cards/home-recommendation-card-placeholder.png`
-- 推荐封面占位图：
-  - `miniprogram/assets/banners/home-recommendation-cover-placeholder.png`
-
-替换这些 PNG 只会改变外观，不会改变点击事件。
-
-## 16. TabBar 图标对应关系
-
-底部 TabBar 的文字仍然由小程序原生显示，PNG 里不要放文字。
-
-首页：
-
-- 未点击普通状态：`miniprogram/assets/tabbar/home.png`
-- 点击后选中状态：`miniprogram/assets/tabbar/home-active.png`
-
-足迹：
-
-- 未点击普通状态：`miniprogram/assets/tabbar/atlas.png`
-- 点击后选中状态：`miniprogram/assets/tabbar/atlas-active.png`
-
-投稿：
-
-- 未点击普通状态：`miniprogram/assets/tabbar/publish.png`
-- 点击后选中状态：`miniprogram/assets/tabbar/publish-active.png`
-
-我的：
-
-- 未点击普通状态：`miniprogram/assets/tabbar/profile.png`
-- 点击后选中状态：`miniprogram/assets/tabbar/profile-active.png`
-
-你只需要覆盖这些 PNG，不需要修改 `app.json`。TabBar 顺序保持：首页 / 足迹 / 投稿 / 我的。
-
-## 17. 替换 PNG 后怎么重新编译
-
-1. 回到微信开发者工具
-2. 点击“编译”
-3. 看首页是否更新
-4. 如果图片没有刷新，先保存 PNG，再重新点击“编译”
-
-## 18. 以后记住这两件事
-
-1. 换图：覆盖指定 PNG
-2. 调位置：只改 `index.wxss` 顶部“首页布局调整区”里的数字
+# 首页布局控制指南
+
+唯一人工维护来源：`design/home-index-elements.json`。不要手改生成的 WXML/WXSS。
+
+## 坐标与显隐
+
+- x/y/width/height 使用 rpx，根和背景的 heightUnit=vh 指可用窗口高度。scale 以左上角为原点。
+- 子项 followParent 固定为 true，只有根节点为 false。WXML/HTML 按 parentId 真实嵌套，x/y 始终为局部坐标，随父级平移和缩放，不累计为根坐标。宽高不重排兄弟节点。
+- group.visible 只是编辑标记，不隐藏后代；hit.visible 不禁用原生 button。根节点一直保留。
+- 固定单屏，越界裁切，不通过滚动解决。装饰层 pointer-events:none；按钮和轮播功能层 pointer-events:auto。
+- 固定层级由配置 fixedLayers 与 elements 数组顺序共同决定：fixedLayers 指定节点层级，同级节点按数组顺序渲染，后项在前项之上。应保持按钮区域高于推荐区域，避免推荐阻挡按钮点击。
+- text 非空时覆盖展示；text 为空字符串时继续使用 textBinding 动态数据，预览与小程序保持一致，不修改故事数据。
+
+## 图片操作
+
+- 隐藏：visible=false；恢复显示：visible=true，路径不变。
+- 清除：imageCleared=true，禁止动态图、默认图、字符和底色回退。单改 visible 不会撤销清除。
+- 恢复默认图：imageCleared=false，imagePath 设为 defaultImages[designId]（或留空使用默认图）；保留 visible 原值，不自动显示原本隐藏的元素。显示/隐藏是独立操作。
+- 替换：填 imagePath，设 imageCleared=false。仅支持 miniprogram/assets/ 项目路径、/assets/ 小程序路径和 HTTPS 地址，不支持其他本地目录或协议。
+- 上传图片先暂存供编辑器预览；点击保存后才复制到项目素材目录。上传不等于保存，也不会立即覆盖当前页面素材。
+- 封面优先使用 item.coverImage，无动态图时使用本地回退。网络加载失败不自动切换回退图。
+- 放大镜字符和标签底色是临时回退，填图片路径即可替换。
+- imageMode: aspectFill/aspectFit/scaleToFill。imageCropX/Y=0..100 是放大取景的临时控件限制，不是标准焦点裁切，也不是原图像素裁切。50 为居中；aspectFill 偏离中心时额外放大，最多两倍防止露白，会改变可见范围。其他模式忽略取景值。
+- 背景已内嵌的按钮、标题、框和装饰无法通过独立节点开关删除。
+
+## 业务边界
+
+- button 保留 goToExplore；推荐保留 goToRecommendation 和 item.storyId。不修改数据、路由、云函数。
+- swiper 绑定 onRecommendationChange/currentRecommendationIndex；仅由 change 事件处理同步当前索引，不修改推荐数据读取函数，也不承诺数据更新时重置索引。此模块仅负责展示与绑定。
+- 三个小点按有效推荐数量显示；预览 record 由调用方传入，不是业务数据源。
+- 预览使用 750 设计像素，宿主提供缩放和 --home-preview-height。图片 src 统一为 /__design_editor/home-asset?path=编码路径；/assets/ 转为 miniprogram/assets/ 项目路径，HTTPS 地址也经过该入口。
+
+## 配置备注
+
+- 唯一人工维护来源；首页结构、样式、元素清单由此生成。
+- 品牌首页固定单屏，不通过滚动解决越界。
+- 背景仍内嵌按钮、标题、推荐框、封面和装饰，独立节点开关不能删除背景像素。
+- 按钮初始命中范围来自旧样式推导，尚未真机测量。
+- 放大镜字符和标签底色是临时方案，填写各自图片路径即可换图，无需修改布局或业务。
+
+## 保存、生成与校验
+
+- 编辑器保存时备份将被覆盖的现有文件，复制本次暂存上传素材，并写入唯一配置 `design/home-index-elements.json` 及三份产物：`miniprogram/pages/index/index.wxml`、`miniprogram/pages/index/index.wxss`、`docs/home-layout-controls-guide.md`。
+- 保存前的编辑和上传仅用于草稿预览；以保存成功结果确认落盘，失败时查看错误和备份，不将预览当作已保存。
+
+`node scripts/home-generator.js --check` 只读比较，缺失或不一致时退出码 1。不带 --check 会写入首页 WXML/WXSS 和本指南；该命令不等同于编辑器保存，不负责写回配置、处理暂存上传或创建编辑器保存备份。
+
+## 元素清单
+
+| designId | 名称 | parentId | type | visible | x, y | width x height | imagePath | defaultImages | 说明 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| index-page | 首页 | - | root | true | 0, 0 | 750 x 100vh |  |  | 首页整体范围，不含原生导航栏和底部导航；高度单位为可用窗口百分比。 |
+| index-background-image | 首页背景图片 | index-page | image | true | 0, 0 | 750 x 100vh | miniprogram/assets/backgrounds/home-background-placeholder.png | miniprogram/assets/backgrounds/home-background-placeholder.png | 整张背景仍含按钮、标题、推荐框、封面和装饰，不能通过子元素开关删除。 |
+| index-primary-region | 寻找传说区域 | index-page | group | true | 32, 444 | 686 x 250rpx |  |  | 整体移动四个子项；自身没有外观，显隐不关闭子项。 |
+| index-primary-button | 按钮点击区域 | index-primary-region | hit | true | 83, 45 | 500 x 150rpx |  |  | 保留原生按钮与现有跳转；显隐仅控制编辑辅助标记，不禁用点击。初始范围沿用旧样式推导。 |
+| index-primary-background | 按钮底图 | index-primary-region | image | true | 83, 45 | 500 x 150rpx | miniprogram/assets/buttons/home-primary-button-placeholder.png | miniprogram/assets/buttons/home-primary-button-placeholder.png | 只控制按钮图片，不影响文字、图标或点击范围。 |
+| index-primary-icon | 放大镜图标 | index-primary-region | icon | false | 150, 82 | 64 x 64rpx |  |  | 临时使用现有放大镜字符，不是最终图片；填写图片路径即可替换。背景另有内嵌放大镜。 |
+| index-primary-label | 寻找传说文字 | index-primary-region | text | false | 220, 93 | 240 x 48rpx |  |  | 独立文字，默认延续隐藏，背景中仍有同名文字。 |
+| index-recommendation-section | 编辑推荐区域 | index-page | group | true | 32, 650 | 686 x 450rpx |  |  | 整体移动外框、标题、内容和小点；自身没有外观。 |
+| index-recommendation-outer-frame | 最底部外框图片 | index-recommendation-section | image | false | 0, 0 | 686 x 448rpx | miniprogram/assets/cards/home-recommendation-panel-placeholder.png | miniprogram/assets/cards/home-recommendation-panel-placeholder.png | 仅保留一个外框节点；背景内嵌外框仍然存在。 |
+| index-recommendation-heading | 编辑推荐标题文字 | index-recommendation-section | text | false | 28, 0 | 620 x 42rpx |  |  | 独立大标题，背景中的同名文字仍然存在。 |
+| index-recommendation-subtitle | 标题下面的小文字 | index-recommendation-section | text | false | 28, 42 | 620 x 34rpx |  |  | 只控制独立说明文字，不影响故事内容。 |
+| index-recommendation-content | 推荐内容区域 | index-recommendation-section | group | true | 28, 90 | 624 x 320rpx |  |  | 每条推荐共用同一套设计；滑动与点击包装不增加视觉编辑项。 |
+| index-recommendation-inner-frame | 推荐内框图片 | index-recommendation-content | image | true | 0, 0 | 624 x 320rpx | miniprogram/assets/cards/home-recommendation-card-placeholder.png | miniprogram/assets/cards/home-recommendation-card-placeholder.png | 推荐内容的独立纸纹底图。 |
+| index-recommendation-cover | 推荐封面图片 | index-recommendation-content | image | true | 0, 0 | 260 x 260rpx | miniprogram/assets/banners/home-recommendation-cover-placeholder.png | miniprogram/assets/banners/home-recommendation-cover-placeholder.png | 动态封面优先，无动态图使用本地回退图；编辑器只显示一个封面对象。 |
+| index-recommendation-tag-group | 推荐标签区域 | index-recommendation-content | group | true | 280, 12 | 132 x 42rpx |  |  | 整体移动标签底图和文字，两者仍可分别调整。 |
+| index-recommendation-tag-background | 标签底图 | index-recommendation-tag-group | decoration | true | 0, 0 | 132 x 42rpx |  |  | 临时复用现有标签底色，不是最终图片；填写图片路径即可替换。 |
+| index-recommendation-tag-text | 标签文字 | index-recommendation-tag-group | text | true | 0, 5 | 132 x 32rpx |  |  | 显示当前推荐标签，不与底图合并。 |
+| index-recommendation-title | 推荐故事标题 | index-recommendation-content | text | true | 280, 64 | 320 x 76rpx |  |  | 当前推荐的标题，在独立文字范围内截断。 |
+| index-recommendation-location | 推荐故事地点 | index-recommendation-content | text | true | 280, 146 | 320 x 30rpx |  |  | 保留当前推荐地点，拥有独立显隐与文字样式。 |
+| index-recommendation-summary | 推荐故事内容 | index-recommendation-content | text | true | 280, 184 | 320 x 78rpx |  |  | 只控制摘要展示，不修改推荐数据或原始故事。 |
+| index-recommendation-action-label | 免费阅读文字 | index-recommendation-content | text | true | 280, 278 | 320 x 32rpx |  |  | 只显示当前阅读提示，不新增跳转事件。 |
+| index-recommendation-dots | 轮播小点区域 | index-recommendation-section | group | true | 306, 430 | 74 x 14rpx |  |  | 三个点独立配置，按有效推荐数量显示。 |
+| index-recommendation-dot-1 | 第一个轮播小点 | index-recommendation-dots | dot | true | 0, 0 | 14 x 14rpx |  |  | 至少一条有效推荐时显示；当前为第一条时选中。 |
+| index-recommendation-dot-2 | 第二个轮播小点 | index-recommendation-dots | dot | true | 30, 0 | 14 x 14rpx |  |  | 至少两条有效推荐时显示；当前为第二条时选中。 |
+| index-recommendation-dot-3 | 第三个轮播小点 | index-recommendation-dots | dot | true | 60, 0 | 14 x 14rpx |  |  | 至少三条有效推荐时显示；当前为第三条时选中。 |

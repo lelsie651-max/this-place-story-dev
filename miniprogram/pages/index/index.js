@@ -139,6 +139,7 @@ function buildRecommendationUrl(storyId) {
 Page({
   data: {
     recommendationCards: [],
+    currentRecommendationIndex: 0,
     recommendationLoading: true,
     recommendationEmptyText: RECOMMENDATION_EMPTY_TEXT,
   },
@@ -171,6 +172,14 @@ Page({
     } finally {
       this._loadingRecommendations = false;
     }
+  },
+
+  onRecommendationChange(event) {
+    const current = event && event.detail ? event.detail.current : 0;
+    const lastIndex = Math.max(0, this.data.recommendationCards.length - 1);
+    this.setData({
+      currentRecommendationIndex: Math.min(lastIndex, Math.max(0, Number(current) || 0)),
+    });
   },
 
   goToExplore() {

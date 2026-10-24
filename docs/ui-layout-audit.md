@@ -1,5 +1,16 @@
 # UI Layout Audit
 
+## 当前首页说明与历史边界
+
+本文旧审计的全局结论属于历史记录，不代表当前首页。下文关于“没有统一设计变量 / 稳定 ID / 图片目录 / 资产清单”“尚未实现编辑器”、旧资源统计以及流式布局的建议均保留为历史背景，不可据此调整当前首页；其他页面的审计内容保留，未在本次重新验收。
+
+- 首页唯一人工维护来源为 `design/home-index-elements.json`，结构、样式和元素清单由此生成。
+- 首页布局数字、素材路径、显隐及生成步骤统一查阅[首页布局控制指南](home-layout-controls-guide.md)，不在本审计中维护第二套首页数值，也不要手改生成的首页 WXML/WXSS。
+- 当前品牌首页固定单屏，越界裁切，不通过滚动解决；可用窗口不含原生导航栏和底部导航。
+- 背景仍内嵌按钮、标题、推荐框、封面和装饰，独立节点的开关不能删除背景像素。
+- 放大镜字符和标签底色只是临时方案，不是最终图片素材；替换方式以新指南为准。
+- 按钮初始命中范围来自旧样式推导，尚未真机测量。不同机型的裁切、点击范围、轮播与原生 tabBar / 安全区适配仍待 DevTools 和真机验证，不能将静态配置视为实测结果。
+
 ## 1. 范围与结论
 
 本次审计覆盖以下页面：
@@ -22,7 +33,7 @@
 - 保留 `pages/atlas/atlas`
 - 保留其他进入 atlas 的合法路径
 
-总体判断：
+原审计总体判断（历史，不代表当前首页）：
 
 1. 当前小程序已经形成了比较稳定的暖色卡片式视觉语言，但主要靠分散在各页面 `wxss` 里的硬编码数值维持，还没有真正的统一设计变量。
 2. 首页、个人中心、投稿相关页面已经具备“组件化样式块”的雏形，适合进入“先统一 token，再做编辑器”的路线。
@@ -48,12 +59,10 @@
 - `width`
 - `height`
 
-测量节点优先级：
+当前首页按[首页布局控制指南](home-layout-controls-guide.md)中的 `designId` 测量背景、按钮命中范围和推荐区域，不再沿用旧首页选择器。
 
-- 首页标题 `.hero-title`
-- 首页主按钮 `.primary-entry .action-button`
-- 编辑推荐模块 `.recommendation-section`
-- 编辑推荐卡片 `.recommendation-card`
+其他页面测量节点优先级：
+
 - 个人中心资产卡 `.asset-panel`
 - 个人中心菜单项 `.menu-item`
 - 足迹卡片 `.atlas-card`
@@ -79,13 +88,11 @@
 
 ### 3.2 主要组件尺寸表
 
+首页组件尺寸与稳定 ID 已迁至[首页布局控制指南](home-layout-controls-guide.md)，由 `design/home-index-elements.json` 生成；以下全局行是历史公共基底记录，不作为当前首页布局约束，其他页记录保留。
+
 | 页面 | 组件名称 | 稳定 ID | WXML 节点 | WXSS 来源 | 宽度 | 高度 | 外边距 | 内边距 | 定位方式 | 对齐方式 | 字体 | 文字/背景 | 圆角/边框/阴影 | 层级 | 图片适配 | 可编辑属性 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---:|---|---|
 | 全局 | 页面根容器 | 无，只有通用 `.page` | `.page` | `app.wxss:.page` | `auto` | `min-height:100vh` | 无 | `40rpx 32rpx 56rpx` | normal | block | `32rpx` 默认文本 | 米白到暖棕径向渐变 | 无圆角；无边框 | 0 | 无 | `spacing`,`background`,`font` |
-| 首页 | 主视觉标题 | 无稳定 ID，建议 `home-title` | `.hero-title` | `index.wxss:.hero-title` | `auto` | auto | `margin-bottom:14rpx` | 无 | normal | `text-align:center` | `72rpx/1.2/600` | `#412a1f` | 无 | 0 | 无 | `font`,`spacing`,`color` |
-| 首页 | 主按钮“寻找传说” | 无稳定 ID，建议 `home-primary-button` | `.primary-entry .action-button` | `app.wxss:.action-button` | `100%` | `min-height:96rpx` | `.actions gap 22rpx` | 内部无，靠 `line-height:96rpx` | flow | block + center | `32rpx/96rpx/600` | 棕色渐变底 / 白字 | `999rpx`；阴影 `0 14rpx 30rpx ...` | 0 | 无 | `size`,`radius`,`shadow`,`background`,`font` |
-| 首页 | 编辑推荐容器 | 无稳定 ID，建议 `home-recommendation-section` | `.recommendation-section.panel` | `index.wxss:.recommendation-section` + `app.wxss:.panel` | `auto` | auto | `margin-top:32rpx` | `40rpx 32rpx 36rpx` | normal | block | 标题 `28rpx` | 浅暖色卡片背景 | `28rpx`，`1rpx` 边框，卡片阴影 | 0 | 无 | `spacing`,`background`,`radius`,`shadow` |
-| 首页 | 编辑推荐卡片 | 无稳定 ID，建议 `home-recommendation-card` | `.recommendation-card` | `index.wxss:.recommendation-card` | `100%` | `300rpx` | swiper 内部无额外外边距 | body `28rpx 28rpx 24rpx` | flex | 左图右文 | 标题 `32rpx`，摘要 `24rpx` | 暖白渐变底 | `28rpx`，`1rpx` 边框，阴影 `0 20rpx 36rpx ...` | 0 | 封面 `214rpx`，`image` 为 `width/height:100%` | `background`,`radius`,`shadow`,`cover`,`font`,`spacing` |
 | 个人中心 | 顶部资料卡 | 无稳定 ID，建议 `profile-header-card` | `.profile-header.panel` | `profile.wxss:.profile-header` + `app.wxss:.panel` | `auto` | auto | `margin-bottom:36rpx` | `padding-top:44rpx; padding-bottom:36rpx` + panel `32rpx` | normal | `text-align:center` | 名称 `40rpx/600` | 浅暖色渐变底 | `28rpx` 圆角，panel 阴影 | 0 | 头像为纯色圆形块 | `background`,`spacing`,`avatar`,`font` |
 | 个人中心 | 资产卡 | 无稳定 ID，建议 `profile-assets-card` | `.asset-panel.panel` | `profile.wxss:.asset-panel` | `auto` | auto | `margin-bottom:32rpx` | panel `32rpx` | normal | flex + space-between | 数字 `58rpx/1.1/600` | 浅暖金色渐变底 | `28rpx` 圆角，panel 阴影 | 0 | 无 | `background`,`spacing`,`font`,`radius` |
 | 个人中心 | 菜单项 | 无稳定 ID，建议每项增加 `data-component-id` | `.menu-item.panel` | `profile.wxss:.menu-item` + `.menu-*` | `auto` | auto | 每项依赖 panel `margin-bottom:28rpx` | `padding-top/bottom:28rpx` + panel `32rpx` | flex | 左右分栏 | 标题 `32rpx`，副文 `22rpx` | 暖白卡片底 | `28rpx` 圆角，panel 阴影 | 0 | emoji 图标，非图片 | `spacing`,`icon`,`font`,`background` |
@@ -105,6 +112,8 @@
 | 投稿编辑 | 编辑正文框 | 无稳定 ID，建议 `my-story-edit-content` | `.text-area` | `myStoryEdit.wxss:.text-area` | `100%` | `min-height:320rpx` | 无 | `24rpx` | normal | block | 默认 `32rpx`，`line-height:1.8` | 浅暖底色 | `22rpx` 圆角 | 0 | 无 | `radius`,`background`,`font`,`padding`,`minHeight` |
 
 ## 4. 颜色、字体、间距、圆角汇总
+
+本节频次及“无统一变量”的结论为原审计快照，未按新首页重新统计，不代表当前首页配置。
 
 ### 4.1 高频颜色
 
@@ -172,7 +181,7 @@
 
 ### 5.1 图片资源
 
-搜索结果表明：
+原审计搜索结果（历史，不代表当前首页资源现状）：
 
 - 当前审计页面中只发现 **1 处 `<image>`**：首页编辑推荐卡片封面 `.recommendation-cover-image`
 - 该图片来源是运行时数据 `item.coverImage`
@@ -183,10 +192,7 @@
 结论：
 
 1. 目前页面视觉几乎全部靠纯色、渐变、emoji、文字和阴影完成。
-2. Banner 图片未来替换主要涉及：
-   - `miniprogram/pages/index/index.wxml`
-   - `miniprogram/pages/index/index.wxss`
-   - 首页推荐数据配置（若真正启用图片）
+2. 当前首页素材替换统一参见[首页布局控制指南](home-layout-controls-guide.md)，维护 `design/home-index-elements.json`，不手改生成的 WXML/WXSS 或推荐业务数据。
 3. 背景图当前并未使用 `background-image`，背景替换主要会落在各页 `background` 渐变配置。
 
 ### 5.2 字体资源
@@ -229,8 +235,7 @@ font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
    - 有的用 `72rpx`
    - 有的用 `36rpx`
    缺少统一层级命名。
-4. 原生 `tabBar` 高度本身不可配置，页面对底部安全区的适配没有统一抽象，首页单独写了：
-   - `padding-bottom: calc(56rpx + env(safe-area-inset-bottom))`
+4. 原生 `tabBar` 高度本身不可配置，原审计中页面对底部安全区的适配没有统一抽象；当前首页已改为单屏，布局与安全区约束见[首页布局控制指南](home-layout-controls-guide.md)，不再沿用旧首页底部内边距数值。
 5. 一些关键容器是强业务节点，例如：
    - `location` 的 `.search-mask`
    - `profile` 的广告奖励按钮
@@ -238,6 +243,8 @@ font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
    它们不能被“纯视觉拖拽”误伤。
 
 ## 7. 可视化编辑器可行性
+
+本节是原审计阶段的可行性建议，不是当前首页编辑器状态。首页使用新配置及生成链路，操作与限制见[首页布局控制指南](home-layout-controls-guide.md)；其他页建议保留。
 
 ### 7.1 是否适合做 `design-editor/`
 
@@ -304,10 +311,7 @@ font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 需要。当前绝大多数组件只有类名，没有真正稳定的组件 ID。  
 建议至少给以下节点增加 `data-component-id` 或稳定 class：
 
-- `home-title`
-- `home-primary-button`
-- `home-recommendation-swiper`
-- `home-recommendation-card`
+- 首页已有配置中的稳定 `designId`，以[首页布局控制指南](home-layout-controls-guide.md)为准，不再新增旧 `home-*` ID
 - `profile-header-card`
 - `profile-assets-card`
 - `profile-favorites-entry`
@@ -373,37 +377,11 @@ font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 - 哪些属性可编辑
 - 是否与业务强耦合
 
-推荐结构：
-
-```json
-{
-  "componentId": "home-primary-button",
-  "page": "index",
-  "selector": ".primary-entry .action-button",
-  "position": {
-    "mode": "flow",
-    "marginTop": 12
-  },
-  "size": {
-    "width": "100%",
-    "minHeight": 96
-  },
-  "style": {
-    "backgroundColor": "#9b6937",
-    "borderRadius": 999,
-    "fontSize": 32
-  },
-  "editable": [
-    "size",
-    "spacing",
-    "color",
-    "font",
-    "backgroundImage"
-  ]
-}
-```
+以上为原审计的数据分层建议，不是当前首页的多源配置方案。旧首页按钮 JSON 示例已移除；首页唯一来源为 `design/home-index-elements.json`，字段语义与元素清单见[首页布局控制指南](home-layout-controls-guide.md)。
 
 ## 9. 后续实施顺序
+
+本节及后续风险、第一版建议保留为历史规划，不代表首页仍未实现编辑器。当前首页实施状态与待验证项以文首说明及[首页布局控制指南](home-layout-controls-guide.md)为准。
 
 ### 阶段一：设计变量统一
 

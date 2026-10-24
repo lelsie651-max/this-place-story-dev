@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "node ../scripts/home-generator.js --check && vite build",
+    "generate:home": "node ../scripts/home-generator.js",
+    "check:home": "node ../scripts/home-generator.js --check",
+    "test:home": "node --test home-layout.test.js home-api.test.js"
   },
   "devDependencies": {
     "vite": "^5.4.10"

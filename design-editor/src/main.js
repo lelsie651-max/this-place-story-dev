@@ -1,6 +1,8 @@
 import registryData from '../../design/component-registry.json';
 import tokensData from '../../design/design-tokens.json';
 import assetManifestData from '../../design/asset-manifest.json';
+import homeElements from '../../design/home-index-elements.json';
+import { mountHomeEditor } from './home-editor.js';
 
 import './styles.css';
 
@@ -43,7 +45,7 @@ import {
   undo
 } from './editor-core.js';
 
-const catalog = buildComponentCatalog(registryData);
+const catalog = buildComponentCatalog(registryData, homeElements);
 const pageList = Object.keys(catalog.byPage);
 const LOCAL_STATE_KEY = 'this-place-story.design-editor.state.v2';
 const MAX_IMAGE_FILE_SIZE = 8 * 1024 * 1024;
@@ -85,6 +87,7 @@ const PAGE_NAV_TITLES = {
 
 let state = loadInitialState();
 let modalState = null;
+let disposeHomeEditor = null;
 
 const app = document.querySelector('#app');
 const uiState = {
@@ -132,6 +135,16 @@ function loadInitialState() {
     const payload = safeParseJson(window.localStorage.getItem(LOCAL_STATE_KEY) || '');
     if (!payload?.draft) {
       return baseState;
+    }
+
+    if (Object.keys(payload.draft.overrides?.index || {}).length) {
+      // Archive incompatible homepage drafts before excluding them from legacy apply.
+      window.localStorage.setItem(`${LOCAL_STATE_KEY}.legacy-home.${Date.now()}`, JSON.stringify({
+        overrides: payload.draft.overrides.index,
+        metadata: payload.draft.metadata?.index
+      }));
+      delete payload.draft.overrides.index;
+      if (payload.draft.metadata) delete payload.draft.metadata.index;
     }
 
     return syncSelectedComponent({
@@ -1127,82 +1140,8 @@ function renderAdvancedSection(component) {
 }
 
 function renderIndexPage() {
-  const button = getResolvedStyle('index-primary-button');
-  const swiper = getResolvedStyle('index-recommendation-swiper');
-  const card = getResolvedStyle('index-recommendation-card');
-  const cards = PAGE_SAMPLE_DATA.index.recommendationCards;
-  const sampleCard = cards[0];
-
-  const coverStyle = styleObjectToString({
-    width: card.imageWidth || '220rpx',
-    minWidth: card.imageWidth || '220rpx',
-    height: card.imageHeight || '312rpx',
-    borderRadius: card.imageRadius || '0',
-    background: card.imageSrc
-      ? `center / ${card.objectFit || 'cover'} no-repeat url("${card.imageSrc}")`
-      : 'linear-gradient(180deg, rgba(226, 207, 179, 0.95), rgba(212, 184, 149, 0.92))'
-  });
-
-  return renderPageSurfaceNode('index-page-surface', 'mini-home-page', `
-      <div class="mini-home-main">
-        <section class="mini-home-hero">
-          ${renderTextNode('index-page-title', 'mini-hero-title')}
-          <div class="mini-hero-english">THIS PLACE HAS LEGENDS</div>
-          ${renderTextNode('index-page-subtitle', 'mini-hero-subtitle')}
-        </section>
-
-        <section class="mini-panel mini-primary-entry">
-          <div class="mini-entry-icon">🔍</div>
-          <div class="mini-actions">
-            ${renderButtonNode('index-primary-button', button, '寻找传说')}
-          </div>
-        </section>
-
-        ${renderCardNode('index-recommendation-section', `
-          <section class="mini-recommendation-section-inner">
-            <div class="mini-section-label mini-recommendation-label">编辑推荐</div>
-            <div class="mini-section-title mini-recommendation-title">先听一段传说，再决定要不要出发</div>
-            ${previewNode('index-recommendation-swiper', `
-              <div class="mini-recommendation-swiper-wrap">
-                <div class="mini-swiper-shell" style="${styleObjectToString({ height: swiper.height || '372rpx', margin: swiper.margin })}">
-                  ${previewNode('index-recommendation-card', `
-                    <div class="mini-recommendation-slide">
-                      <article class="mini-recommendation-card" style="${styleObjectToString({
-                        background: card.cardBackground,
-                        borderRadius: card.borderRadius,
-                        borderColor: card.cardBorderColor,
-                        boxShadow: card.cardShadow,
-                        margin: card.margin
-                      })}">
-                        <div class="mini-recommendation-cover" style="${coverStyle}">
-                          ${card.imageSrc ? '' : `
-                            <div class="mini-recommendation-cover-placeholder">
-                              <div class="mini-cover-emoji">📖</div>
-                              <div class="mini-cover-text">传说节选</div>
-                            </div>
-                          `}
-                        </div>
-                        <div class="mini-recommendation-body">
-                          <div class="mini-tag">${escapeHtml(sampleCard.label)}</div>
-                          <div class="mini-recommendation-card-title">${escapeHtml(card.text || sampleCard.title)}</div>
-                          <div class="mini-recommendation-card-location">${escapeHtml(sampleCard.location)}</div>
-                          <div class="mini-recommendation-card-summary">${escapeHtml(sampleCard.summary)}</div>
-                          <div class="mini-recommendation-card-action">${escapeHtml(sampleCard.cta)}</div>
-                        </div>
-                      </article>
-                    </div>
-                  `)}
-                  <div class="mini-swiper-dots">
-                    ${cards.map((_, index) => `<span class="mini-swiper-dot ${index === 0 ? 'is-active' : ''}"></span>`).join('')}
-                  </div>
-                </div>
-              </div>
-            `)}
-          </section>
-        `, 'mini-panel mini-recommendation-section')}
-      </div>
-      <div class="mini-company-footer">${escapeHtml(PAGE_SAMPLE_DATA.index.companyName)}</div>
-  `);
+  // Homepage rendering is exclusively owned by mountHomeEditor.
+  return '';
 }
 
 function renderProfilePage() {
@@ -1773,6 +1712,23 @@ function bindCanvasResizeObserver() {
 }
 
 function render() {
+  if (state.selectedPageId === 'index') {
+    if (!disposeHomeEditor) {
+      uiState.resizeObserver?.disconnect();
+      app.replaceChildren();
+      disposeHomeEditor = mountHomeEditor(app, { onExit() {
+        disposeHomeEditor = null;
+        state = syncSelectedComponent(selectPage(state, 'profile'), 'profile');
+        persistEditorState();
+        render();
+      } });
+    }
+    return;
+  }
+  if (disposeHomeEditor) {
+    disposeHomeEditor();
+    disposeHomeEditor = null;
+  }
   captureUiState();
   const compactWorkspace = isCompactWorkspace();
   if (!compactWorkspace) {

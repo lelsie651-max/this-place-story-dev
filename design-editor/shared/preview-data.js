@@ -158,8 +158,7 @@ export const PAGE_SAMPLE_DATA = {
         summary: '海浪负责提供背景证词，路过的人负责把正常散步演成悬疑片预告。',
         cta: '免费阅读'
       }
-    ],
-    companyName: '深圳市筠竹科技有限公司'
+    ]
   },
   profile: {
     level: '旅行观察员',
@@ -240,77 +239,6 @@ const BUTTON_IMAGE_DEFAULTS = {
 };
 
 export const COMPONENT_DEFAULTS = {
-  'index-page-surface': {
-    background: 'radial-gradient(circle at top, rgba(255, 248, 236, 0.98), rgba(239, 228, 210, 0.98) 48%, rgba(226, 207, 179, 0.98))',
-    ...BACKGROUND_ASSET_DEFAULTS
-  },
-  'index-page-title': {
-    text: '此地有传说',
-    fontSize: '72rpx',
-    color: '#412a1f',
-    fontWeight: '600',
-    lineHeight: '1.2',
-    letterSpacing: '2rpx',
-    textAlign: 'center',
-    fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
-    margin: '0 0 14rpx'
-  },
-  'index-page-subtitle': {
-    text: '让地点拥有不同的声音',
-    fontSize: '32rpx',
-    color: '#6f5740',
-    fontWeight: '400',
-    lineHeight: '1.7',
-    textAlign: 'center',
-    fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
-    margin: '0 0 18rpx'
-  },
-  'index-primary-button': {
-    text: '寻找传说',
-    fontSize: '32rpx',
-    buttonTextColor: '#ffffff',
-    fontWeight: '600',
-    lineHeight: '96rpx',
-    textAlign: 'center',
-    buttonBackground: 'linear-gradient(135deg, #9b6937, #6b4527)',
-    buttonRadius: '999rpx',
-    buttonHeight: '96rpx',
-    padding: '0 32rpx',
-    margin: '0',
-    boxShadow: '0 14rpx 30rpx rgba(107, 69, 39, 0.2)',
-    borderColor: 'transparent',
-    borderWidth: '0',
-    ...BUTTON_IMAGE_DEFAULTS
-  },
-  'index-recommendation-section': {
-    cardBackground: 'rgba(255, 250, 242, 0.92)',
-    padding: '40rpx 32rpx 36rpx',
-    margin: '32rpx 0 0',
-    borderRadius: '28rpx',
-    cardBorderColor: 'rgba(140, 94, 52, 0.12)',
-    cardShadow: '0 16rpx 40rpx rgba(108, 74, 45, 0.08)',
-    ...BACKGROUND_ASSET_DEFAULTS
-  },
-  'index-recommendation-swiper': {
-    height: '312rpx',
-    margin: '0',
-    bannerRatio: '214 / 312'
-  },
-  'index-recommendation-card': {
-    text: '南头古城今天有点像在认真讲八卦',
-    cardBackground: 'linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(248, 238, 220, 0.98))',
-    padding: '0',
-    margin: '0',
-    borderRadius: '28rpx',
-    cardBorderColor: 'rgba(140, 94, 52, 0.12)',
-    cardShadow: '0 20rpx 36rpx rgba(107, 69, 39, 0.12)',
-    imageSrc: '',
-    imageWidth: '214rpx',
-    imageHeight: '312rpx',
-    imageRadius: '0',
-    objectFit: 'cover',
-    bannerRatio: '214 / 312'
-  },
   'profile-page-title': {
     text: '我的',
     fontSize: '56rpx',

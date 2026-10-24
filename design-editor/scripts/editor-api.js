@@ -1,6 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash, randomUUID } from 'node:crypto';
+import homeGenerator from '../../scripts/home-generator.js';
+import { validateHomeConfig } from '../shared/home-layout.js';
 
 import {
   PROPERTY_LIBRARY,
@@ -170,6 +173,9 @@ function buildChangeEntries(draft, catalog) {
 }
 
 export async function buildApplyPlan(draft, options = {}) {
+  if (Object.keys(draft.overrides?.index || {}).length) {
+    throw new Error('首页已改用独立配置，请在首页编辑中保存，不再接受旧样式覆盖。');
+  }
   const projectRoot = options.projectRoot || PROJECT_ROOT;
   const { catalog } = await loadProjectInputs(projectRoot);
   const changes = buildChangeEntries(draft, catalog);
@@ -178,7 +184,7 @@ export async function buildApplyPlan(draft, options = {}) {
   const unsupportedChanges = changes.filter((item) => item.status === 'unsupported' || (item.status === 'safe' && !item.safeApplySelector));
   const previousManifest = await readLastApplyManifest(projectRoot);
   const currentPages = Array.from(new Set(safeChanges.map((item) => item.pageId)));
-  const affectedPages = Array.from(new Set([...(previousManifest.pagesTouched || []), ...currentPages]));
+  const affectedPages = Array.from(new Set([...(previousManifest.pagesTouched || []), ...currentPages])).filter((pageId) => pageId !== 'index');
 
   return {
     generatedAt: new Date().toISOString(),
@@ -471,4 +477,116 @@ export function getProjectRoot() {
 
 export function getDesignEditorRoot() {
   return DESIGN_EDITOR_ROOT;
+}
+
+const HOME_CONFIG_PATH = 'design/home-index-elements.json';
+const HOME_OUTPUTS = ['miniprogram/pages/index/index.wxml', 'miniprogram/pages/index/index.wxss', 'docs/home-layout-controls-guide.md'];
+const HOME_EDITABLE = new Set(['name', 'note', 'visible', 'x', 'y', 'width', 'height', 'scale', 'imagePath', 'imageCleared', 'imageMode', 'imageCropX', 'imageCropY', 'text', 'fontSize', 'fontWeight', 'color', 'lineHeight', 'textAlign', 'selectedColor']);
+const homeWrites = new Map();
+const revisionOf = (text) => createHash('sha256').update(text).digest('hex');
+
+export async function readHomeConfig(options = {}) {
+  const projectRoot = options.projectRoot || PROJECT_ROOT;
+  const raw = await fs.readFile(path.join(projectRoot, HOME_CONFIG_PATH), 'utf8');
+  return { config: JSON.parse(raw), revision: revisionOf(raw) };
+}
+
+async function resolveHomeAsset(projectRoot, source, allowStaged = true) {
+  const relative = source.startsWith('/assets/') ? `miniprogram${source}` : source;
+  if (!relative.startsWith('miniprogram/assets/') || relative.includes('\\') || relative.split('/').includes('..')) {
+    throw new Error('图片必须位于小程序图片目录内。');
+  }
+  const base = await fs.realpath(path.join(projectRoot, 'miniprogram/assets'));
+  let filename;
+  try {
+    filename = await fs.realpath(path.resolve(projectRoot, relative));
+  } catch (error) {
+    if (error.code !== 'ENOENT' || !allowStaged || !/^miniprogram\/assets\/home-uploads\/[\da-f-]+\.(png|jpg|webp)$/.test(relative)) throw error;
+    const staged = path.join(projectRoot, 'design-editor/resources/home-uploads', path.basename(relative));
+    await fs.access(staged);
+    return { filename: staged, mime: { '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' }[path.extname(staged)], staged: true, destination: path.resolve(projectRoot, relative) };
+  }
+  const inside = path.relative(base, filename);
+  if (!inside || inside.startsWith('..') || path.isAbsolute(inside)) throw new Error('图片路径超出允许范围。');
+  const mime = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' }[path.extname(filename).toLowerCase()];
+  if (!mime) throw new Error('仅支持常用图片格式。');
+  return { filename, mime };
+}
+
+export async function readHomeAsset(source, options = {}) {
+  // Redirect public HTTPS images instead of fetching arbitrary URLs on the server.
+  if (typeof source !== 'string') throw new Error('图片路径无效。');
+  if (source.startsWith('https://')) {
+    const url = new URL(source);
+    if (url.username || url.password) throw new Error('图片地址不能包含登录信息。');
+    return { redirect: url.href };
+  }
+  const { filename, mime } = await resolveHomeAsset(options.projectRoot || PROJECT_ROOT, source);
+  return { bytes: await fs.readFile(filename), mime };
+}
+
+export async function saveHomeConfig(payload, options = {}) {
+  const projectRoot = options.projectRoot || PROJECT_ROOT;
+  const previous = homeWrites.get(projectRoot) || Promise.resolve();
+  const operation = previous.catch(() => {}).then(async () => {
+    const current = await readHomeConfig({ projectRoot });
+    if (payload.revision !== current.revision) throw Object.assign(new Error('首页配置已被其他操作修改，请重新读取后再保存。'), { statusCode: 409 });
+    const next = payload.config;
+    const validation = validateHomeConfig(next);
+    if (!validation.valid) throw new Error('首页配置不符合要求，请检查输入值。');
+    // The editor cannot change membership, parentage, draw order or business bindings.
+    const immutable = (config) => ({
+      ...config,
+      elements: config.elements.map((element) => Object.fromEntries(Object.entries(element).filter(([key]) => !HOME_EDITABLE.has(key))))
+    });
+    if (JSON.stringify(immutable(next)) !== JSON.stringify(immutable(current.config))) {
+      throw new Error('不能通过编辑器修改元素关系、顺序或数据绑定。');
+    }
+    const stagedAssets = new Map();
+    for (const element of next.elements) {
+      if (element.imagePath?.startsWith('miniprogram/') || element.imagePath?.startsWith('/assets/')) {
+        const asset = await resolveHomeAsset(projectRoot, element.imagePath);
+        if (asset.staged && !element.imageCleared) stagedAssets.set(asset.destination, asset.filename);
+      }
+    }
+    const paths = [HOME_CONFIG_PATH, ...HOME_OUTPUTS];
+    const originals = new Map();
+    for (const relative of paths) originals.set(relative, await fs.readFile(path.join(projectRoot, relative), 'utf8'));
+    const backupRoot = path.join(projectRoot, 'design-editor/resources/backups', `home-${Date.now()}-${randomUUID()}`);
+    await backupFiles(projectRoot, backupRoot, paths.map((relative) => path.join(projectRoot, relative)));
+    const promoted = [];
+    try {
+      for (const [destination, staged] of stagedAssets) {
+        await fs.mkdir(path.dirname(destination), { recursive: true });
+        await fs.copyFile(staged, destination, 1);
+        promoted.push(destination);
+      }
+      await writeJson(path.join(projectRoot, HOME_CONFIG_PATH), next);
+      await homeGenerator.generateHome(next, { projectRoot });
+    } catch (error) {
+      for (const [relative, text] of originals) await fs.writeFile(path.join(projectRoot, relative), text, 'utf8');
+      for (const filename of promoted) await fs.unlink(filename);
+      throw error;
+    }
+    return { ...await readHomeConfig({ projectRoot }), filesModified: paths, backupRoot: relativeToProject(projectRoot, backupRoot) };
+  });
+  homeWrites.set(projectRoot, operation);
+  try { return await operation; } finally { if (homeWrites.get(projectRoot) === operation) homeWrites.delete(projectRoot); }
+}
+
+export async function uploadHomeAsset(payload, options = {}) {
+  const raw = String(payload.base64 || '').replace(/^data:image\/[a-z]+;base64,/, '');
+  if (!raw || raw.length > 12 * 1024 * 1024 || !/^[A-Za-z0-9+/]*={0,2}$/.test(raw)) throw new Error('图片内容无效或超过大小限制。');
+  const bytes = Buffer.from(raw, 'base64');
+  if (bytes.length > 8 * 1024 * 1024) throw new Error('图片不能超过八兆字节。');
+  const ext = bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) ? '.png'
+    : bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255 ? '.jpg'
+      : bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP' ? '.webp' : '';
+  if (!ext) throw new Error('请选择有效的图片文件。');
+  const imagePath = `miniprogram/assets/home-uploads/${randomUUID()}${ext}`;
+  // Keep uncommitted uploads outside the mini-program package until config save.
+  const filename = path.join(options.projectRoot || PROJECT_ROOT, 'design-editor/resources/home-uploads', path.basename(imagePath));
+  await fs.mkdir(path.dirname(filename), { recursive: true });
+  await fs.writeFile(filename, bytes, { flag: 'wx' });
+  return { imagePath };
 }

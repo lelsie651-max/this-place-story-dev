@@ -1,5 +1,5 @@
 export const PAGE_META = [
-  { id: 'index', name: '首页', widthHeights: { default: 812 } },
+  { id: 'index', name: '首页' },
   { id: 'profile', name: '个人中心', widthHeights: { default: 812 } },
   { id: 'atlas', name: '足迹', widthHeights: { default: 812 } },
   { id: 'discovery', name: '寻找传说', widthHeights: { default: 812 } },
@@ -12,15 +12,7 @@ export const PAGE_META = [
 ];
 
 export const PAGE_COMPONENT_ORDER = {
-  index: [
-    'index-page-surface',
-    'index-page-title',
-    'index-page-subtitle',
-    'index-primary-button',
-    'index-recommendation-section',
-    'index-recommendation-swiper',
-    'index-recommendation-card'
-  ],
+  index: [], // The homepage catalog is projected from its sole configuration.
   profile: [
     'profile-page-surface',
     'profile-page-title',
@@ -80,13 +72,6 @@ export const PAGE_COMPONENT_ORDER = {
 };
 
 export const COMPONENT_LABELS = {
-  'index-page-surface': '首页页面背景',
-  'index-page-title': '首页主标题',
-  'index-page-subtitle': '首页宣传语',
-  'index-primary-button': '首页主按钮',
-  'index-recommendation-section': '编辑推荐区',
-  'index-recommendation-swiper': '编辑推荐轮播',
-  'index-recommendation-card': '编辑推荐卡片',
   'profile-page-surface': '个人中心页面背景',
   'profile-page-title': '个人中心标题',
   'profile-assets-card': '资产卡',
@@ -231,11 +216,6 @@ export const ROLE_PROPERTY_MAP = {
 };
 
 export const MANUAL_COMPONENT_OPTIONS = {
-  'index-page-surface': { role: 'page-surface', selector: '.page', page: 'index', safeApplySelector: '.page' },
-  'index-recommendation-card': {
-    assetSlots: ['imageSrc', 'objectFit', 'imageWidth', 'imageHeight', 'imageRadius', 'bannerRatio'],
-    safeApplySelector: '.recommendation-card'
-  },
   'profile-page-surface': { role: 'page-surface', selector: '.page', page: 'profile', safeApplySelector: '.page' },
   'profile-favorites-entry': { safeApplySelector: null },
   'profile-submissions-entry': { safeApplySelector: null },
@@ -307,7 +287,7 @@ export function normalizeRegistryComponent(component) {
   };
 }
 
-export function buildComponentCatalog(registry) {
+export function buildComponentCatalog(registry, homeConfig = null) {
   const extraComponents = Object.entries(MANUAL_COMPONENT_OPTIONS)
     .filter(([, config]) => config.role === 'page-surface')
     .map(([designId, config]) => ({
@@ -318,7 +298,14 @@ export function buildComponentCatalog(registry) {
       role: config.role,
       editableProperties: ROLE_PROPERTY_MAP[config.role] || []
     }));
-  const components = [...registry.components, ...extraComponents].map(normalizeRegistryComponent);
+  const homeComponents = (homeConfig?.elements || []).map((element) => ({
+    ...element, page: 'index', pageName: homeConfig.pageName, label: element.name,
+    selector: '', safeApplySelector: null, supportedProperties: [], propertyStates: {},
+    assetSlots: [], hasSafeApply: false
+  }));
+  const components = [...registry.components, ...extraComponents]
+    .filter((component) => component.page !== 'index')
+    .map(normalizeRegistryComponent).concat(homeComponents);
   const byId = Object.fromEntries(components.map((item) => [item.designId, item]));
   const byPage = PAGE_META.reduce((acc, page) => {
     acc[page.id] = (PAGE_COMPONENT_ORDER[page.id] || [])
@@ -326,6 +313,7 @@ export function buildComponentCatalog(registry) {
       .filter(Boolean);
     return acc;
   }, {});
+  byPage.index = homeComponents;
 
   return { components, byId, byPage };
 }
