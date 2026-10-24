@@ -2,8 +2,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
-import homeGenerator from './home-generator-core.js';
+import homeGenerator, { inspectHomeBackground } from './home-generator-core.js';
 import { validateHomeConfig } from '../shared/home-layout.js';
+import { resolveHomeElements } from '../shared/home-adaptation.js';
 
 import {
   PROPERTY_LIBRARY,
@@ -480,8 +481,10 @@ export function getDesignEditorRoot() {
 }
 
 const HOME_CONFIG_PATH = 'design/home-index-elements.json';
-const HOME_OUTPUTS = ['miniprogram/pages/index/index.wxml', 'miniprogram/pages/index/index.wxss', 'docs/home-layout-controls-guide.md'];
-const HOME_EDITABLE = new Set(['name', 'note', 'visible', 'x', 'y', 'width', 'height', 'scale', 'imagePath', 'imageCleared', 'imageMode', 'imageCropX', 'imageCropY', 'text', 'fontSize', 'fontWeight', 'color', 'lineHeight', 'textAlign', 'selectedColor']);
+const HOME_OUTPUTS = ['miniprogram/pages/index/index.wxml', 'miniprogram/pages/index/index.wxss', 'docs/home-layout-controls-guide.md', 'miniprogram/pages/index/home-adaptation.generated.js'];
+const HOME_EDITABLE = new Set(['name', 'note', 'visible', 'x', 'y', 'width', 'height', 'scale', 'imagePath', 'runtimeImagePath', 'editorDebugImagePath', 'editorDebugVisible', 'imageCleared', 'imageMode', 'imageCropX', 'imageCropY', 'text', 'fontSize', 'fontWeight', 'color', 'lineHeight', 'textAlign', 'letterSpacing', 'textShadow', 'opacity', 'fontFamily', 'fontAssetId', 'hitPadding', 'selectedColor']);
+const HOME_IMAGE_PATHS = ['imagePath', 'runtimeImagePath', 'editorDebugImagePath'];
+const HOME_HIT_GEOMETRY = ['x', 'y', 'width', 'height', 'scale'];
 const homeWrites = new Map();
 const revisionOf = (text) => createHash('sha256').update(text).digest('hex');
 
@@ -525,33 +528,76 @@ export async function readHomeAsset(source, options = {}) {
   return { bytes: await fs.readFile(filename), mime };
 }
 
+async function validateHomeImagePath(projectRoot, source) {
+  if (typeof source !== 'string' || /[\s<>"'{}\\\x00-\x1f]/.test(source) || source.split('/').includes('..')) {
+    throw new Error('图片路径无效。');
+  }
+  if (!source) return null;
+  if (source.startsWith('https://')) {
+    const url = new URL(source);
+    if (!url.hostname || url.username || url.password) throw new Error('图片地址不能包含登录信息。');
+    return null;
+  }
+  return resolveHomeAsset(projectRoot, source);
+}
+
 export async function saveHomeConfig(payload, options = {}) {
   const projectRoot = options.projectRoot || PROJECT_ROOT;
   const previous = homeWrites.get(projectRoot) || Promise.resolve();
   const operation = previous.catch(() => {}).then(async () => {
     const current = await readHomeConfig({ projectRoot });
     if (payload.revision !== current.revision) throw Object.assign(new Error('首页配置已被其他操作修改，请重新读取后再保存。'), { statusCode: 409 });
-    const next = payload.config;
+    const next = structuredClone(payload.config);
     const validation = validateHomeConfig(next);
     if (!validation.valid) throw new Error('首页配置不符合要求，请检查输入值。');
     // The editor cannot change membership, parentage, draw order or business bindings.
     const immutable = (config) => ({
       ...config,
+      pageBackground: undefined,
       elements: config.elements.map((element) => Object.fromEntries(Object.entries(element).filter(([key]) => !HOME_EDITABLE.has(key))))
     });
     if (JSON.stringify(immutable(next)) !== JSON.stringify(immutable(current.config))) {
       throw new Error('不能通过编辑器修改元素关系、顺序或数据绑定。');
     }
+    const resolved = resolveHomeElements(next);
+    const currentById = new Map(current.config.elements.map((element) => [element.designId, element]));
+    const resolvedById = new Map(resolved.map((element) => [element.designId, element]));
+    for (const element of next.elements) {
+      if (element.type !== 'hit') continue;
+      const previousHit = currentById.get(element.designId);
+      const derivedHit = resolvedById.get(element.designId);
+      // Accept an unchanged draft or an already-resolved preview, never independent geometry.
+      const matches = (candidate) => HOME_HIT_GEOMETRY.every((key) => element[key] === candidate[key]);
+      if (!matches(previousHit) && !matches(derivedHit)) {
+        throw new Error('点击区域几何由底图和 hitPadding 派生，不能直接编辑。');
+      }
+      for (const key of HOME_HIT_GEOMETRY) element[key] = derivedHit[key];
+    }
+    if (!validateHomeConfig(next).valid) throw new Error('派生后的首页配置不符合要求。');
     const stagedAssets = new Map();
     for (const element of next.elements) {
-      if (element.imagePath?.startsWith('miniprogram/') || element.imagePath?.startsWith('/assets/')) {
-        const asset = await resolveHomeAsset(projectRoot, element.imagePath);
-        if (asset.staged && !element.imageCleared) stagedAssets.set(asset.destination, asset.filename);
+      for (const key of HOME_IMAGE_PATHS) {
+        if (!Object.hasOwn(element, key)) continue;
+        const asset = await validateHomeImagePath(projectRoot, element[key]);
+        if (asset?.staged && !element.imageCleared) stagedAssets.set(asset.destination, asset.filename);
       }
+    }
+    const background = next.elements.find((element) => element.designId === 'index-background-image');
+    const backgroundAsset = await validateHomeImagePath(projectRoot, background.imagePath || next.defaultImages[background.designId]);
+    const backgroundInfo = await inspectHomeBackground(next, projectRoot, backgroundAsset?.filename);
+    if (Math.abs(backgroundInfo.designHeightFromImage - next.designHeight) > 0.000001) {
+      throw new Error('背景图片真实比例与固定设计尺寸不一致。');
     }
     const paths = [HOME_CONFIG_PATH, ...HOME_OUTPUTS];
     const originals = new Map();
-    for (const relative of paths) originals.set(relative, await fs.readFile(path.join(projectRoot, relative), 'utf8'));
+    for (const relative of paths) {
+      try {
+        originals.set(relative, await fs.readFile(path.join(projectRoot, relative), 'utf8'));
+      } catch (error) {
+        if (error.code !== 'ENOENT' || relative === HOME_CONFIG_PATH) throw error;
+        originals.set(relative, null);
+      }
+    }
     const backupRoot = path.join(projectRoot, 'design-editor/resources/backups', `home-${Date.now()}-${randomUUID()}`);
     await backupFiles(projectRoot, backupRoot, paths.map((relative) => path.join(projectRoot, relative)));
     const promoted = [];
@@ -564,7 +610,11 @@ export async function saveHomeConfig(payload, options = {}) {
       await writeJson(path.join(projectRoot, HOME_CONFIG_PATH), next);
       await homeGenerator.generateHome(next, { projectRoot });
     } catch (error) {
-      for (const [relative, text] of originals) await fs.writeFile(path.join(projectRoot, relative), text, 'utf8');
+      for (const [relative, text] of originals) {
+        const filename = path.join(projectRoot, relative);
+        if (text === null) await fs.rm(filename, { force: true });
+        else await fs.writeFile(filename, text, 'utf8');
+      }
       for (const filename of promoted) await fs.unlink(filename);
       throw error;
     }

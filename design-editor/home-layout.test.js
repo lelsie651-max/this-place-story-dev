@@ -7,9 +7,9 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import {
   validateHomeConfig, elementStyle, renderHomePreview,
-  renderHomeWxml, renderHomeWxss, renderHomeGuide
+  renderHomeWxml, renderHomeWxss, renderHomeGuide, HOME_FONT_STACK
 } from './shared/home-layout.js';
-import generator from './scripts/home-generator-core.js';
+import generator, { renderHomeRuntime } from './scripts/home-generator-core.js';
 
 const { generateHome } = generator;
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -19,8 +19,16 @@ const element = (value, id) => value.elements.find((e) => e.designId === `index-
 const owned = [
   'miniprogram/pages/index/index.wxml',
   'miniprogram/pages/index/index.wxss',
-  'docs/home-layout-controls-guide.md'
+  'docs/home-layout-controls-guide.md',
+  'miniprogram/pages/index/home-adaptation.generated.js'
 ];
+
+async function readOptional(root, files) {
+  return Promise.all(files.map(async (file) => {
+    try { return await fs.readFile(path.join(root, file), 'utf8'); }
+    catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+  }));
+}
 
 function tag(markup, id) {
   const marker = markup.indexOf(`data-design-id="index-${id}"`);
@@ -90,19 +98,19 @@ test('local geometry stays unchanged in real nested HTML and WXML', () => {
   const label = element(c, 'primary-label');
   const region = element(c, 'primary-region');
   label.visible = true;
-  assert.match(elementStyle(label), /left:220rpx;top:93rpx;width:240rpx;height:48rpx/);
+  assert.match(elementStyle(label), /left:220px;top:93px;width:240px;height:48px/);
   region.x = 100;
   region.y = 200;
   region.scale = 2;
   const css = renderHomeWxss(c);
-  assert.match(rule(css, 'primary-region'), /left:100rpx;top:200rpx/);
+  assert.match(rule(css, 'primary-region'), /left:100px;top:200px/);
   assert.match(rule(css, 'primary-region'), /transform:scale\(2\)/);
-  assert.match(rule(css, 'primary-label'), /left:220rpx;top:93rpx/);
+  assert.match(rule(css, 'primary-label'), /left:220px;top:93px/);
   assert.match(rule(css, 'primary-label'), /transform:scale\(1\)/);
   assert.match(tag(renderHomePreview(c), 'primary-label'), /left:220px;top:93px/);
   element(c, 'recommendation-section').scale = 2;
   element(c, 'recommendation-tag-group').scale = 1.5;
-  assert.match(rule(renderHomeWxss(c), 'recommendation-tag-text'), /left:0rpx;top:5rpx/);
+  assert.match(rule(renderHomeWxss(c), 'recommendation-tag-text'), /left:0px;top:5px/);
   assert.match(rule(renderHomeWxss(c), 'recommendation-tag-text'), /transform:scale\(1\)/);
   for (const render of [renderHomePreview, renderHomeWxml]) {
     const parents = designParents(render(c));
@@ -112,11 +120,14 @@ test('local geometry stays unchanged in real nested HTML and WXML', () => {
   label.followParent = false;
   assert.equal(validateHomeConfig(c).valid, false);
   assert.throws(() => renderHomePreview(c), /followParent 必须固定为 true/);
-  assert.throws(() => elementStyle(label, 'em'), /unit/);
+  for (const unit of ['em', 'rpx', 'vh', 'design']) {
+    assert.throws(() => elementStyle(label, unit), /设计单位只输出 px/);
+  }
 });
 
 test('required fields cannot be omitted and validation errors are Chinese', () => {
-  for (const key of ['version', 'pageName', 'unit', 'referenceWidth', 'notes', 'defaultImages', 'elements']) {
+  for (const key of ['version', 'pageName', 'unit', 'referenceWidth', 'designWidth', 'designHeight',
+    'pageBackground', 'fixedLayers', 'notes', 'defaultImages', 'defaultRuntimeImages', 'defaultEditorImages', 'elements']) {
     const c = clone();
     delete c[key];
     const result = validateHomeConfig(c);
@@ -125,7 +136,8 @@ test('required fields cannot be omitted and validation errors are Chinese', () =
   }
   const keys = ['designId', 'name', 'note', 'parentId', 'type', 'visible', 'x', 'y',
     'width', 'height', 'scale', 'imagePath', 'imageMode', 'imageCropX', 'imageCropY',
-    'text', 'textBinding', 'fontSize', 'fontWeight', 'color', 'lineHeight', 'textAlign', 'followParent'];
+    'text', 'textBinding', 'fontSize', 'fontWeight', 'color', 'lineHeight', 'textAlign', 'followParent',
+    'letterSpacing', 'textShadow', 'opacity', 'fontFamily', 'fontAssetId'];
   for (const key of keys) {
     const c = clone();
     delete element(c, 'primary-label')[key];
@@ -155,7 +167,7 @@ test('hiding groups and hit markers does not hide descendants or disable the nat
   assert.match(tag(wxml, 'primary-button'), /^<button.*bindtap="goToExplore"/);
   assert.doesNotMatch(tag(wxml, 'primary-button'), /disabled|hidden|wx:if/);
   assert.match(tag(wxml, 'primary-button'), /z-index:10;pointer-events:auto/);
-  assert.match(rule(css, 'recommendation-title'), /width:320rpx;height:76rpx/);
+  assert.match(rule(css, 'recommendation-title'), /width:320px;height:76px/);
   assert.match(rule(css, 'primary-region'), /z-index:10/);
   assert.match(rule(css, 'recommendation-section'), /z-index:1/);
   for (const id of ['primary-region', 'recommendation-section', 'recommendation-content', 'recommendation-outer-frame']) {
@@ -214,9 +226,116 @@ test('temporary icon and tag fills yield to images and stay cleared until explic
   assert.doesNotMatch(output, /TEMP_ICON|\/assets\/icon.png|example.test\/tag.png|background:rgba\(140,94,52,0.12\)/);
 });
 
+test('fixed design pixels and transparent aspectFit cover are the rendering defaults', () => {
+  assert.equal(config.unit, 'design');
+  assert.equal(config.referenceWidth, config.designWidth);
+  const css = renderHomeWxss(config);
+  const preview = renderHomePreview(config);
+  const wxml = renderHomeWxml(config);
+  for (const output of [css, preview, wxml]) assert.doesNotMatch(output, /\d(?:rpx|vh)|--home-preview-height/);
+  for (const style of [rule(css, 'page'), tag(preview, 'page')]) {
+    assert.ok(style.includes(`width:${config.designWidth}px;height:${config.designHeight}px`));
+  }
+  assert.match(wxml, /wx:if="\{\{homeLayoutReady\}\}"/);
+  assert.match(tag(wxml, 'page'), /left:\{\{homeOffsetX\}\}px;top:\{\{homeOffsetY\}\}px;transform:scale\(\{\{homeScale\}\}\)/);
+  const cover = element(config, 'recommendation-cover');
+  assert.equal(cover.imageMode, 'aspectFit');
+  assert.equal(cover.opacity, 1);
+  for (const style of [rule(css, 'recommendation-cover'), tag(preview, 'recommendation-cover')]) {
+    assert.ok(style.includes(`width:${cover.width}px;height:${cover.height}px`));
+    assert.doesNotMatch(style, /background(?:-color|-image)?:|border-radius:/);
+  }
+  const coverBody = (markup) => markup.slice(markup.indexOf(tag(markup, 'recommendation-cover'))).split(/<\/(?:view|div)>/)[0];
+  assert.match(coverBody(wxml), /mode="aspectFit"/);
+  assert.match(coverBody(preview), /width:100%;height:100%;left:0%;top:0%;pointer-events:none;object-fit:contain/);
+  for (const id of ['page', 'background-image']) {
+    const invalid = clone();
+    element(invalid, id).heightUnit = 'vh';
+    assert.equal(validateHomeConfig(invalid).valid, false);
+  }
+});
+
+test('runtime and debug button images stay isolated without changing the followed hit area', () => {
+  const c = clone();
+  const visual = element(c, 'primary-background');
+  const hit = element(c, 'primary-button');
+  const debug = c.defaultEditorImages[visual.designId];
+  assert.ok(debug);
+  assert.equal(visual.runtimeImagePath, '');
+  assert.equal(c.defaultRuntimeImages[visual.designId], '');
+  assert.equal(c.defaultImages[visual.designId], '');
+  assert.equal(visual.radius, 0, 'The whole transparent button rectangle must remain visible');
+  assert.equal(hit.radius, 0, 'The hit rectangle must include the image corners');
+  const originalLabel = tag(renderHomePreview(c), 'primary-label');
+  const originalIcon = tag(renderHomePreview(c), 'primary-icon');
+  Object.assign(visual, { x: 51, y: -37, width: 280, height: 90, scale: 1.5 });
+  hit.hitPadding = { top: 3, right: 7, bottom: 5, left: 11 };
+  Object.assign(hit, { x: 999, y: 999, width: 1, height: 1, scale: 9 });
+  const expected = `left:${visual.x - hit.hitPadding.left * visual.scale}px;top:${visual.y - hit.hitPadding.top * visual.scale}px;`
+    + `width:${visual.width + hit.hitPadding.left + hit.hitPadding.right}px;height:${visual.height + hit.hitPadding.top + hit.hitPadding.bottom}px`;
+  for (const runtime of ['', 'miniprogram/assets/buttons/runtime.png']) {
+    visual.runtimeImagePath = runtime;
+    for (const debugVisible of [true, false]) {
+      visual.editorDebugVisible = debugVisible;
+      for (const visible of [true, false]) {
+        visual.visible = hit.visible = visible;
+        const before = structuredClone(c);
+        const wxml = renderHomeWxml(c);
+        const preview = renderHomePreview(c);
+        const css = renderHomeWxss(c);
+        assert.equal(wxml.includes(debug.replace(/^miniprogram\//, '/')), false);
+        assert.equal(wxml.includes('/assets/buttons/runtime.png'), Boolean(runtime));
+        assert.equal(preview.includes(encodeURIComponent(debug)), debugVisible);
+        if (runtime) assert.equal(preview.includes(encodeURIComponent(runtime)), !debugVisible);
+        for (const style of [rule(css, 'primary-button'), tag(preview, 'primary-button')]) {
+          assert.ok(style.includes(expected));
+          assert.match(style, /transform:scale\(1\.5\)/);
+          assert.doesNotMatch(style, /display:none/);
+        }
+        assert.match(tag(wxml, 'primary-button'), /bindtap="goToExplore"/);
+        assert.equal(tag(preview, 'primary-label'), originalLabel);
+        assert.equal(tag(preview, 'primary-icon'), originalIcon);
+        assert.deepEqual(c, before);
+      }
+    }
+  }
+  visual.imageCleared = true;
+  assert.doesNotMatch(renderHomeWxml(c), /runtime\.png/);
+  assert.equal(renderHomePreview(c).includes(encodeURIComponent(debug)), false);
+  visual.runtimeImagePath = debug;
+  assert.equal(validateHomeConfig(c).valid, false, 'Debug default cannot become the runtime image');
+  visual.runtimeImagePath = debug.replace(/^miniprogram/, '');
+  assert.equal(validateHomeConfig(c).valid, false, 'Mini-program path aliases cannot publish the debug image');
+  visual.runtimeImagePath = debug.replace('/buttons/', '/buttons/./');
+  assert.equal(validateHomeConfig(c).valid, false, 'Dot path aliases cannot publish the debug image');
+});
+
+test('font fields reach preview and WXSS with reserved family fields validated', () => {
+  const c = clone();
+  const label = element(c, 'primary-label');
+  Object.assign(label, { visible: true, fontSize: 31, fontWeight: 500, lineHeight: 1.7,
+    color: '#123456', textAlign: 'right', letterSpacing: -0.75, textShadow: '1px 2px 3px #123456', opacity: 0.65 });
+  for (const style of [elementStyle(label), tag(renderHomePreview(c), 'primary-label'), rule(renderHomeWxss(c), 'primary-label')]) {
+    for (const part of ['font-size:31px;', 'font-weight:500;', 'line-height:1.7;', 'color:#123456;',
+      'text-align:right;', 'letter-spacing:-0.75px;', 'text-shadow:1px 2px 3px #123456;', 'opacity:0.65;']) {
+      assert.ok(style.includes(part), part);
+    }
+    assert.doesNotMatch(style, /line-height:1\.7px/);
+  }
+  assert.ok(renderHomeWxss(c).includes(`font-family:${HOME_FONT_STACK};`));
+  for (const [key, value] of [['letterSpacing', NaN], ['opacity', -0.1], ['opacity', 1.1],
+    ['textShadow', '1px 2px 3px red;display:none'], ['fontFamily', 'Custom'], ['fontAssetId', 'custom-font']]) {
+    const invalid = clone();
+    element(invalid, 'primary-label')[key] = value;
+    assert.equal(validateHomeConfig(invalid).valid, false, key);
+    assert.throws(() => renderHomeWxml(invalid), /首页配置无效/);
+  }
+});
+
 test('crop overscan uses native images, keeps geometry and avoids unsupported local backgrounds', () => {
   const c = clone();
   const cover = element(c, 'recommendation-cover');
+  cover.imageMode = 'aspectFill';
   cover.imageCropX = 100;
   cover.imageCropY = 0;
   const wxml = renderHomeWxml(c);
@@ -224,7 +343,7 @@ test('crop overscan uses native images, keeps geometry and avoids unsupported lo
   assert.match(wxml, /mode="aspectFill" style="[^"]*width:200%;height:200%;left:-100%;top:0%/);
   assert.match(preview, /width:200%;height:200%;left:-100%;top:0%;pointer-events:none;object-fit:cover/);
   assert.doesNotMatch(wxml, /background-image\s*:/);
-  assert.match(rule(renderHomeWxss(c), 'recommendation-cover'), /width:260rpx;height:260rpx/);
+  assert.ok(rule(renderHomeWxss(c), 'recommendation-cover').includes(`width:${cover.width}px;height:${cover.height}px`));
   cover.imageMode = 'aspectFit';
   assert.match(renderHomePreview(c), /width:100%;height:100%;left:0%;top:0%;pointer-events:none;object-fit:contain/);
 });
@@ -284,18 +403,19 @@ test('rendering is deterministic, escapes text, uses only configured geometry an
   assert.equal(JSON.stringify(c), before);
   const all = renderHomeWxml(c) + renderHomeWxss(c);
   assert.doesNotMatch(all, /company|scroll-view|overflow:auto|overflow:scroll|recommendationCards\[0\]/);
-  assert.match(renderHomeWxss(c), /page \{ height:100%; min-height:0; overflow:hidden; \}/);
-  assert.match(renderHomePreview(c), /--home-preview-height/);
+  assert.ok(renderHomeWxss(c).includes(`page { height:100%; min-height:0; overflow:hidden; background:${c.pageBackground}; }`));
+  assert.ok(tag(renderHomePreview(c), 'page').includes(`width:${c.designWidth}px;height:${c.designHeight}px`));
+  assert.doesNotMatch(renderHomePreview(c), /--home-preview-height|\d(?:rpx|vh)/);
   const guide = renderHomeGuide(c);
   for (const e of c.elements) assert.ok(guide.includes(`| ${e.designId} |`));
   for (const key of ['imageCleared', 'defaultImages', 'followParent', 'onRecommendationChange', '--check']) assert.ok(guide.includes(key));
   for (const note of config.notes) assert.ok(guide.includes(note));
   for (const image of Object.values(config.defaultImages).filter(Boolean)) assert.ok(guide.includes(image));
-  assert.match(guide, /恢复默认图：[^\n]*保留 visible 原值/);
+  assert.match(guide, /恢复普通元素默认图：[^\n]*保留 visible 原值/);
   assert.doesNotMatch(guide, /恢复默认图：[^\n]*visible=true|公司|需后续实现|UI-1A 不修改 JS|\/@fs\//);
   assert.match(guide, /放大取景的临时控件限制，不是标准焦点裁切/);
   element(c, 'recommendation-title').x = 301;
-  assert.match(rule(renderHomeWxss(c), 'recommendation-title'), /left:301rpx/);
+  assert.match(rule(renderHomeWxss(c), 'recommendation-title'), /left:301px/);
   assert.match(tag(renderHomePreview(c), 'recommendation-title'), /left:301px/);
 });
 
@@ -304,7 +424,7 @@ test('generator checks without creating files and writes only owned artifacts in
   t.after(() => fs.rm(sandbox, { recursive: true, force: true }));
   const root = path.join(sandbox, 'project');
   const untouched = [...owned, 'miniprogram/pages/index/index.js', 'design/home-index-elements.json'];
-  const before = await Promise.all(untouched.map((file) => fs.readFile(path.join(projectRoot, file), 'utf8')));
+  const before = await readOptional(projectRoot, untouched);
   // All writes and cleanup remain inside the temporary sandbox.
   const missing = await generateHome(config, { projectRoot: root, check: true });
   assert.equal(missing.ok, false);
@@ -314,7 +434,7 @@ test('generator checks without creating files and writes only owned artifacts in
   const written = await generateHome(config, { projectRoot: root });
   assert.equal(written.ok, true);
   assert.deepEqual(written.written, owned);
-  const expected = [renderHomeWxml(config), renderHomeWxss(config), renderHomeGuide(config)];
+  const expected = [renderHomeWxml(config), renderHomeWxss(config), renderHomeGuide(config), await renderHomeRuntime(config)];
   assert.deepEqual(await Promise.all(owned.map((file) => fs.readFile(path.join(root, file), 'utf8'))), expected);
   const stats = await Promise.all(owned.map((file) => fs.stat(path.join(root, file))));
   assert.equal((await generateHome(config, { projectRoot: root, check: true })).ok, true);
@@ -324,17 +444,21 @@ test('generator checks without creating files and writes only owned artifacts in
   const drift = await generateHome(config, { projectRoot: root, check: true });
   assert.deepEqual(drift.differences, [owned[0]]);
   assert.equal(await fs.readFile(path.join(root, owned[0]), 'utf8'), 'deliberate drift');
+  await fs.writeFile(path.join(root, owned[3]), 'runtime drift');
+  assert.deepEqual((await generateHome(config, { projectRoot: root, check: true })).differences, [owned[0], owned[3]]);
+  assert.equal(await fs.readFile(path.join(root, owned[3]), 'utf8'), 'runtime drift');
   const invalid = clone();
   element(invalid, 'primary-button').width = -1;
   await assert.rejects(generateHome(invalid, { projectRoot: root }), /首页配置无效/);
   assert.equal(await fs.readFile(path.join(root, owned[0]), 'utf8'), 'deliberate drift');
   await assert.rejects(generateHome(config, { projectRoot: '.' }), /绝对路径/);
-  assert.deepEqual(await Promise.all(untouched.map((file) => fs.readFile(path.join(projectRoot, file), 'utf8'))), before);
+  assert.deepEqual(await readOptional(projectRoot, untouched), before);
 });
 
 test('CLI check exit codes reflect artifact drift and reject unknown options without writing', async () => {
   const script = path.join(projectRoot, 'scripts/home-generator.js');
-  const before = await Promise.all(owned.map((file) => fs.readFile(path.join(projectRoot, file), 'utf8')));
+  const untouched = [...owned, 'miniprogram/pages/index/index.js', 'design/home-index-elements.json'];
+  const before = await readOptional(projectRoot, untouched);
   const result = await generateHome(config, { projectRoot, check: true });
   const run = spawnSync(process.execPath, [script, '--check'], { cwd: os.tmpdir(), encoding: 'utf8' });
   assert.equal(run.error, undefined);
@@ -343,5 +467,5 @@ test('CLI check exit codes reflect artifact drift and reject unknown options wit
   const unknown = spawnSync(process.execPath, [script, '--unexpected'], { encoding: 'utf8' });
   assert.equal(unknown.status, 1);
   assert.match(unknown.stderr, /用法/);
-  assert.deepEqual(await Promise.all(owned.map((file) => fs.readFile(path.join(projectRoot, file), 'utf8'))), before);
+  assert.deepEqual(await readOptional(projectRoot, untouched), before);
 });

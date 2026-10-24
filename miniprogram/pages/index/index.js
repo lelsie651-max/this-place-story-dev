@@ -1,5 +1,6 @@
 const locationService = require('../../services/locationService');
 const storyService = require('../../services/storyService');
+const homeAdaptation = require('./home-adaptation.generated');
 
 const RECOMMENDATION_LABEL = '编辑推荐';
 const RECOMMENDATION_EMPTY_TEXT = '推荐内容正在整理中';
@@ -138,6 +139,12 @@ function buildRecommendationUrl(storyId) {
 
 Page({
   data: {
+    homeLayoutReady: false,
+    homeWindowWidth: 0,
+    homeWindowHeight: 0,
+    homeScale: 1,
+    homeOffsetX: 0,
+    homeOffsetY: 0,
     recommendationCards: [],
     currentRecommendationIndex: 0,
     recommendationLoading: true,
@@ -145,7 +152,37 @@ Page({
   },
 
   onLoad() {
+    this.updateHomeViewport();
     this.loadRecommendations();
+  },
+
+  onReady() {
+    this.updateHomeViewport();
+  },
+
+  onShow() {
+    this.updateHomeViewport();
+  },
+
+  onResize() {
+    this.updateHomeViewport();
+  },
+
+  updateHomeViewport() {
+    const info = wx.getWindowInfo();
+    // Native navigation/tabBar already reduce windowHeight; never subtract twice.
+    const available = homeAdaptation.getAvailableRect(info);
+    const fitted = homeAdaptation.fitHome(homeAdaptation.design, available);
+    // Retain raw measurements for device acceptance without logging business data.
+    this._homeViewport = { windowInfo: info, available, fitted };
+    this.setData({
+      homeLayoutReady: fitted.scale > 0,
+      homeWindowWidth: info.windowWidth,
+      homeWindowHeight: info.windowHeight,
+      homeScale: fitted.scale,
+      homeOffsetX: fitted.offsetX,
+      homeOffsetY: fitted.offsetY,
+    });
   },
 
   async loadRecommendations() {

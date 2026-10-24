@@ -4,12 +4,23 @@
 
 本文旧审计的全局结论属于历史记录，不代表当前首页。下文关于“没有统一设计变量 / 稳定 ID / 图片目录 / 资产清单”“尚未实现编辑器”、旧资源统计以及流式布局的建议均保留为历史背景，不可据此调整当前首页；其他页面的审计内容保留，未在本次重新验收。
 
-- 首页唯一人工维护来源为 `design/home-index-elements.json`，结构、样式和元素清单由此生成。
-- 首页布局数字、素材路径、显隐及生成步骤统一查阅[首页布局控制指南](home-layout-controls-guide.md)，不在本审计中维护第二套首页数值，也不要手改生成的首页 WXML/WXSS。
-- 当前品牌首页固定单屏，越界裁切，不通过滚动解决；可用窗口不含原生导航栏和底部导航。
+- 首页唯一人工维护来源为 `design/home-index-elements.json`（v2），结构、样式、元素清单和运行时适配模块由当前配置、shared 渲染及 core 规则生成。
+- 首页布局数字、素材路径、显隐及生成步骤统一查阅[首页布局控制指南](home-layout-controls-guide.md)，不在本审计中维护第二套首页数值，也不要独立维护四份生成产物。
+- 当前品牌首页固定设计画布，统一 contain 等比缩放到窗口安全区并居中，留白使用页面底色，不通过滚动解决越界。safeArea 通过 screenTop 转换为窗口局部坐标再取交集；缺少有效字段时整窗回退并记录诊断，不猜测屏幕原点。
+- windowHeight 已扣除原生导航栏和 tabBar，不再减 tabBar、高度常量或底部安全区；statusBarHeight 仅供诊断，编辑器和小程序使用同一共享算法，不双扣。
 - 背景仍内嵌按钮、标题、推荐框、封面和装饰，独立节点的开关不能删除背景像素。
 - 放大镜字符和标签底色只是临时方案，不是最终图片素材；替换方式以新指南为准。
-- 按钮初始命中范围来自旧样式推导，尚未真机测量。不同机型的裁切、点击范围、轮播与原生 tabBar / 安全区适配仍待 DevTools 和真机验证，不能将静态配置视为实测结果。
+- 按钮命中范围跟随同父级底图及四边 hitPadding 派生，不再独立保存旧命中几何；底图隐藏、透明或为空都不禁用原生按钮。正式 runtimeImagePath 与 editorDebugImagePath 隔离，正式路径为空不回退旧棕色辅助图。
+- 透明 PNG 的完整显示使用 aspectFit，保留透明边缘和图片比例；文字支持字间距、阴影与自身透明度，字体资源字段仅空值预留。详见指南，不承诺浏览器与真机字形完全一致。
+
+### UI-1B 静态投影记录（2026-10-25）
+
+- 已读取当前 v2 配置、`design-editor/shared/home-layout.js`、`design-editor/shared/home-adaptation.js`、`design-editor/scripts/home-generator-core.js` 及 CLI 入口。画布比例与元素底边是设计推导，非实测；背景真实比例必须读取本地 PNG 头后确认，不能只按配置认定通过。
+- 已先尝试正常执行 `node scripts/home-generator.js`，但宿主 PowerShell 加载命令脚本时返回 `PSSecurityException / UnauthorizedAccess`（禁止运行脚本），生成器未实际执行；工具外层退出码不能作为生成成功证据。未修改执行策略或绕过宿主限制。
+- 因此以 `apply_patch` 按读取到的规则精确投影 `index.wxml`、`index.wxss`、本指南 `home-layout-controls-guide.md` 和 `home-adaptation.generated.js`。运行时产物保留共享源码，按 core 规则去掉 `export function` 的 `export`，追加 CommonJS 函数及 design 尺寸导出，不另写适配算法。
+- 状态：**未自动校验**。PNG 头/比例检查、四产物 `--check` 和 Node 测试尚未执行通过；静态投影不是自动生成验收。其他 shared 函数、core、配置和页面 JS 由并行主代理负责，本任务不修改。
+- **未进行 DevTools 或真机验证**。不同窗口、缺失 screenTop 回退、tabBar/安全区、背景留白、透明图、命中范围、文字截断、推荐轮播和页面跳转均待补验；不能将配置、预览或编辑器诊断当作实测结果。
+- 正常执行环境恢复且并行修改合并后，补跑 `node scripts/home-generator.js --check`；若配置或共享规则变化，先重新生成再检查，并完成 DevTools 与真机验收。
 
 ## 1. 范围与结论
 
