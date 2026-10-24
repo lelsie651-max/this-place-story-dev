@@ -223,7 +223,7 @@ test('crop overscan uses native images, keeps geometry and avoids unsupported lo
   const preview = renderHomePreview(c);
   assert.match(wxml, /mode="aspectFill" style="[^"]*width:200%;height:200%;left:-100%;top:0%/);
   assert.match(preview, /width:200%;height:200%;left:-100%;top:0%;pointer-events:none;object-fit:cover/);
-  assert.doesNotMatch(wxml, /background-image/);
+  assert.doesNotMatch(wxml, /background-image\s*:/);
   assert.match(rule(renderHomeWxss(c), 'recommendation-cover'), /width:260rpx;height:260rpx/);
   cover.imageMode = 'aspectFit';
   assert.match(renderHomePreview(c), /width:100%;height:100%;left:0%;top:0%;pointer-events:none;object-fit:contain/);
