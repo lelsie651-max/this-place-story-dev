@@ -209,7 +209,7 @@
 }
 
 .page.page--embedded-branding .home-recommendation-panel-image {
-  display: block; /* 外层面板图片显示开关 */
+  display: none; /* 外层面板图片显示开关 */
   position: absolute;
   left: 0rpx;
   top: 0rpx;
@@ -221,10 +221,10 @@
 .page.page--embedded-branding .home-recommendation-card {
   display: flex;
   position: absolute;
-  left: 0rpx; /* 内部传说节选卡片左右位置 */
-  top: 0rpx; /* 内部传说节选卡片上下位置 */
+  left: 60rpx; /* 内部传说节选卡片左右位置 */
+  top: 740rpx; /* 内部传说节选卡片上下位置 */
   width: 624rpx; /* 内部传说节选卡片宽度 */
-  height: 312rpx; /* 内部传说节选卡片高度 */
+  height: 400rpx; /* 内部传说节选卡片高度 */
   overflow: hidden;
   box-sizing: border-box;
   transform: translateX(0rpx) translateY(0rpx); /* 卡片移动，不改变点击逻辑 */
@@ -240,9 +240,9 @@
 }
 
 .page.page--embedded-branding .recommendation-cover {
-  width: 220rpx; /* 左侧封面宽度 */
-  height: 312rpx; /* 左侧封面高度 */
-  flex: 0 0 220rpx; /* flex-basis 必须和 width 同步 */
+  width: 260rpx; /* 左侧封面宽度 */
+  height: 260rpx; /* 左侧封面高度 */
+  flex: 0 0 260rpx; /* flex-basis 必须和 width 同步 */
   min-width: 0;
   min-height: 0;
   flex-shrink: 0;
@@ -291,7 +291,7 @@
 
 .page.page--embedded-branding .recommendation-card-action {
   padding-top: 22rpx; /* “免费阅读”与简介的间距 */
-  transform: translateY(0rpx); /* “免费阅读”上下位置 */
+  transform: translateY(10rpx); /* “免费阅读”上下位置 */
 }
 
 .page {
