@@ -9,7 +9,7 @@ import {
   validateHomeConfig, elementStyle, renderHomePreview,
   renderHomeWxml, renderHomeWxss, renderHomeGuide
 } from './shared/home-layout.js';
-import generator from '../scripts/home-generator.js';
+import generator from './scripts/home-generator-core.js';
 
 const { generateHome } = generator;
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));

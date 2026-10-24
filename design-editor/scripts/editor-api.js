@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
-import homeGenerator from '../../scripts/home-generator.js';
+import homeGenerator from './home-generator-core.js';
 import { validateHomeConfig } from '../shared/home-layout.js';
 
 import {

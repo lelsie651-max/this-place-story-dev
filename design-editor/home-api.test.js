@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
-import generator from '../scripts/home-generator.js';
+import generator from './scripts/home-generator-core.js';
 import { readHomeConfig, saveHomeConfig, uploadHomeAsset, readHomeAsset } from './scripts/editor-api.js';
 import { validateHomeConfig } from './shared/home-layout.js';
 

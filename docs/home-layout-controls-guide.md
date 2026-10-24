@@ -53,7 +53,7 @@
 | index-background-image | 首页背景图片 | index-page | image | true | 0, 0 | 750 x 100vh | miniprogram/assets/backgrounds/home-background-placeholder.png | miniprogram/assets/backgrounds/home-background-placeholder.png | 整张背景仍含按钮、标题、推荐框、封面和装饰，不能通过子元素开关删除。 |
 | index-primary-region | 寻找传说区域 | index-page | group | true | 32, 444 | 686 x 250rpx |  |  | 整体移动四个子项；自身没有外观，显隐不关闭子项。 |
 | index-primary-button | 按钮点击区域 | index-primary-region | hit | true | 83, 45 | 500 x 150rpx |  |  | 保留原生按钮与现有跳转；显隐仅控制编辑辅助标记，不禁用点击。初始范围沿用旧样式推导。 |
-| index-primary-background | 按钮底图 | index-primary-region | image | true | 83, 45 | 500 x 150rpx | miniprogram/assets/buttons/home-primary-button-placeholder.png | miniprogram/assets/buttons/home-primary-button-placeholder.png | 只控制按钮图片，不影响文字、图标或点击范围。 |
+| index-primary-background | 按钮底图 | index-primary-region | image | true | 83, -120 | 500 x 150rpx | miniprogram/assets/buttons/home-primary-button-placeholder.png | miniprogram/assets/buttons/home-primary-button-placeholder.png | 只控制按钮图片，不影响文字、图标或点击范围。 |
 | index-primary-icon | 放大镜图标 | index-primary-region | icon | false | 150, 82 | 64 x 64rpx |  |  | 临时使用现有放大镜字符，不是最终图片；填写图片路径即可替换。背景另有内嵌放大镜。 |
 | index-primary-label | 寻找传说文字 | index-primary-region | text | false | 220, 93 | 240 x 48rpx |  |  | 独立文字，默认延续隐藏，背景中仍有同名文字。 |
 | index-recommendation-section | 编辑推荐区域 | index-page | group | true | 32, 650 | 686 x 450rpx |  |  | 整体移动外框、标题、内容和小点；自身没有外观。 |
@@ -62,7 +62,7 @@
 | index-recommendation-subtitle | 标题下面的小文字 | index-recommendation-section | text | false | 28, 42 | 620 x 34rpx |  |  | 只控制独立说明文字，不影响故事内容。 |
 | index-recommendation-content | 推荐内容区域 | index-recommendation-section | group | true | 28, 90 | 624 x 320rpx |  |  | 每条推荐共用同一套设计；滑动与点击包装不增加视觉编辑项。 |
 | index-recommendation-inner-frame | 推荐内框图片 | index-recommendation-content | image | true | 0, 0 | 624 x 320rpx | miniprogram/assets/cards/home-recommendation-card-placeholder.png | miniprogram/assets/cards/home-recommendation-card-placeholder.png | 推荐内容的独立纸纹底图。 |
-| index-recommendation-cover | 推荐封面图片 | index-recommendation-content | image | true | 0, 0 | 260 x 260rpx | miniprogram/assets/banners/home-recommendation-cover-placeholder.png | miniprogram/assets/banners/home-recommendation-cover-placeholder.png | 动态封面优先，无动态图使用本地回退图；编辑器只显示一个封面对象。 |
+| index-recommendation-cover | 推荐封面图片 | index-recommendation-content | image | true | 0, 0 | 300 x 200rpx | miniprogram/assets/banners/home-recommendation-cover-placeholder.png | miniprogram/assets/banners/home-recommendation-cover-placeholder.png | 动态封面优先，无动态图使用本地回退图；编辑器只显示一个封面对象。 |
 | index-recommendation-tag-group | 推荐标签区域 | index-recommendation-content | group | true | 280, 12 | 132 x 42rpx |  |  | 整体移动标签底图和文字，两者仍可分别调整。 |
 | index-recommendation-tag-background | 标签底图 | index-recommendation-tag-group | decoration | true | 0, 0 | 132 x 42rpx |  |  | 临时复用现有标签底色，不是最终图片；填写图片路径即可替换。 |
 | index-recommendation-tag-text | 标签文字 | index-recommendation-tag-group | text | true | 0, 5 | 132 x 32rpx |  |  | 显示当前推荐标签，不与底图合并。 |

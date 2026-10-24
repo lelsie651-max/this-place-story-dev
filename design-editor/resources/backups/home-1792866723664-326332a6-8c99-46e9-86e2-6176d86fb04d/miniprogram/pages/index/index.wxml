@@ -1,0 +1,31 @@
+<!-- Generated from design/home-index-elements.json; do not edit. -->
+<view class="home-layout index-page" data-design-id="index-page">
+<view class="home-element index-background-image" data-design-id="index-background-image" style="pointer-events:none;"><image src="/assets/backgrounds/home-background-placeholder.png" mode="aspectFill" style="position:absolute;display:block;width:100%;height:100%;left:0%;top:0%;pointer-events:none;" /></view>
+<view class="home-element index-primary-region" data-design-id="index-primary-region" data-group-visible="true" style="pointer-events:none;"><button class="home-element index-primary-button" data-design-id="index-primary-button" bindtap="goToExplore" aria-label="寻找传说" style="z-index:10;pointer-events:auto;background:transparent;border:0;box-shadow:none;min-height:0;"></button>
+<view class="home-element index-primary-background" data-design-id="index-primary-background" style="pointer-events:none;"><image src="/assets/buttons/home-primary-button-placeholder.png" mode="scaleToFill" style="position:absolute;display:block;width:100%;height:100%;left:0%;top:0%;pointer-events:none;" /></view>
+<view class="home-element index-primary-icon" data-design-id="index-primary-icon" style="pointer-events:none;">🔍</view>
+<view class="home-element index-primary-label" data-design-id="index-primary-label" style="pointer-events:none;">寻找传说</view></view>
+<view class="home-element index-recommendation-section" data-design-id="index-recommendation-section" data-group-visible="true" style="pointer-events:none;"><view class="home-element index-recommendation-outer-frame" data-design-id="index-recommendation-outer-frame" style="pointer-events:none;"><image src="/assets/cards/home-recommendation-panel-placeholder.png" mode="scaleToFill" style="position:absolute;display:block;width:100%;height:100%;left:0%;top:0%;pointer-events:none;" /></view>
+<view class="home-element index-recommendation-heading" data-design-id="index-recommendation-heading" style="pointer-events:none;">编辑推荐</view>
+<view class="home-element index-recommendation-subtitle" data-design-id="index-recommendation-subtitle" style="pointer-events:none;">先听一段传说，再决定要不要出发</view>
+<view class="home-element index-recommendation-content" data-design-id="index-recommendation-content" data-group-visible="true" style="pointer-events:none;">
+  <view wx:if="{{recommendationLoading}}" class="home-state" aria-label="推荐加载中">推荐加载中</view>
+  <swiper wx:elif="{{recommendationCards.length > 0}}" class="home-swiper" current="{{currentRecommendationIndex}}" bindchange="onRecommendationChange" indicator-dots="{{false}}" autoplay="{{false}}" circular="{{false}}" display-multiple-items="1">
+    <swiper-item wx:for="{{recommendationCards}}" wx:key="storyId">
+      <view class="home-slide" bindtap="goToRecommendation" data-story-id="{{item.storyId}}">
+<view class="home-element index-recommendation-inner-frame" data-design-id="index-recommendation-inner-frame" style="pointer-events:none;"><image src="/assets/cards/home-recommendation-card-placeholder.png" mode="scaleToFill" style="position:absolute;display:block;width:100%;height:100%;left:0%;top:0%;pointer-events:none;" /></view>
+<view class="home-element index-recommendation-cover" data-design-id="index-recommendation-cover" style="pointer-events:none;"><image src="{{item.coverImage || '/assets/banners/home-recommendation-cover-placeholder.png'}}" mode="aspectFill" style="position:absolute;display:block;width:100%;height:100%;left:0%;top:0%;pointer-events:none;" /></view>
+<view class="home-element index-recommendation-tag-group" data-design-id="index-recommendation-tag-group" data-group-visible="true" style="pointer-events:none;"><view class="home-element index-recommendation-tag-background" data-design-id="index-recommendation-tag-background" style="pointer-events:none;"><view style="width:100%;height:100%;background:rgba(140,94,52,0.12);"></view></view>
+<view class="home-element index-recommendation-tag-text" data-design-id="index-recommendation-tag-text" style="pointer-events:none;">{{item.label}}</view></view>
+<view class="home-element index-recommendation-title" data-design-id="index-recommendation-title" style="pointer-events:none;">{{item.displayTitle}}</view>
+<view class="home-element index-recommendation-location" data-design-id="index-recommendation-location" style="pointer-events:none;">{{item.locationName}}</view>
+<view class="home-element index-recommendation-summary" data-design-id="index-recommendation-summary" style="pointer-events:none;">{{item.displaySummary}}</view>
+<view class="home-element index-recommendation-action-label" data-design-id="index-recommendation-action-label" style="pointer-events:none;">{{item.actionText}}</view>
+      </view>
+    </swiper-item>
+  </swiper>
+  <view wx:else class="home-state">{{recommendationEmptyText}}</view></view>
+<view class="home-element index-recommendation-dots" data-design-id="index-recommendation-dots" data-group-visible="true" style="pointer-events:none;"><view class="home-element index-recommendation-dot-1" data-design-id="index-recommendation-dot-1" wx:if="{{!recommendationLoading && recommendationCards.length > 0}}" style="pointer-events:none;background:{{currentRecommendationIndex === 0 ? '#8b5e34' : '#c7b7a3'}};"></view>
+<view class="home-element index-recommendation-dot-2" data-design-id="index-recommendation-dot-2" wx:if="{{!recommendationLoading && recommendationCards.length > 1}}" style="pointer-events:none;background:{{currentRecommendationIndex === 1 ? '#8b5e34' : '#c7b7a3'}};"></view>
+<view class="home-element index-recommendation-dot-3" data-design-id="index-recommendation-dot-3" wx:if="{{!recommendationLoading && recommendationCards.length > 2}}" style="pointer-events:none;background:{{currentRecommendationIndex === 2 ? '#8b5e34' : '#c7b7a3'}};"></view></view></view>
+</view>
